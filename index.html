@@ -592,46 +592,64 @@ function renderCard(d){
   var ec=d.emaBullish?'g':(d.emaBearish?'r':'');
   var es=f0(d.ema1)+' / '+f0(d.ema2)+' / '+f0(d.ema3);
   var vc=d.vwap!=null?(d.price>d.vwap?'g':'r'):'';
-  var rc=d.rsi>70?'r':(d.rsi<30?'g':'');
+  var rc=(d.rsi||0)>70?'r':((d.rsi||0)<30?'g':'');
+  // === FIX: use actual backend field names ===
+  var signalScore=(isB?d.buyScore:d.sellScore)||0;
+  var signalReason=d.sentimentReason||d.sentiment||'—';
+  var sl=d.sl; var tp1=d.tp1; var tp2=d.tp2;
+  var isIntra=currentMode==='intraday';
+  var slLbl=isIntra?'Stop Loss':'Stop Loss (Swing)';
+  var tp1Lbl=isIntra?'Target 1':'Target 1 (2×ATR)';
+  var tp2Lbl=isIntra?'Target 2':'Target 2 (3×ATR)';
+  var volStr=fv(d.volume||0);
+  var priceChange=d.price&&d.previousClose?parseFloat((d.price-d.previousClose).toFixed(2)):0;
+  // S/R from day high/low as proxy
+  var support=d.dayLow||null;
+  var resistance=d.dayHigh||null;
+  var vwapLbl=isIntra?'VWAP':'VWAP(20d)';
   var tags='';
   if(d.emaBullish)tags+='<span class="t s">EMA Bull</span>';if(d.emaBearish)tags+='<span class="t d">EMA Bear</span>';
-  if(d.volumeRatio>1.5)tags+='<span class="t w">Vol '+d.volumeRatio+'x</span>';
-  if(d.rsi>70)tags+='<span class="t d">RSI High</span>';if(d.rsi<30)tags+='<span class="t s">RSI Low</span>';
-  if(d.breakoutType.indexOf('Breakout')>=0)tags+='<span class="t s">⚡ Breakout</span>';
-  if(d.breakoutType.indexOf('Breakdown')>=0)tags+='<span class="t d">💥 Breakdown</span>';
+  if((d.volumeRatio||0)>1.5)tags+='<span class="t w">Vol '+d.volumeRatio+'x</span>';
+  if((d.rsi||0)>70)tags+='<span class="t d">RSI High</span>';if((d.rsi||0)<30)tags+='<span class="t s">RSI Low</span>';
+  if(d.breakoutType&&d.breakoutType.indexOf('Breakout')>=0)tags+='<span class="t s">⚡ Breakout</span>';
+  if(d.breakoutType&&d.breakoutType.indexOf('Breakdown')>=0)tags+='<span class="t d">💥 Breakdown</span>';
   if(d.atrExpanding)tags+='<span class="t w">ATR Up</span>';
   if(d.near52WeekHigh)tags+='<span class="t s">52W High</span>';if(d.near52WeekLow)tags+='<span class="t d">52W Low</span>';
-  if(d.chartPattern!=='Consolidation'&&d.chartPattern!=='Uptrend'&&d.chartPattern!=='Downtrend')tags+='<span class="t '+(d.chartPatternType==='bullish'?'s':(d.chartPatternType==='bearish'?'d':'w'))+'">'+d.chartPattern+'</span>';
-  tags+='<span class="t">'+d.trend+'</span>';
+  if(d.chartPattern&&d.chartPattern!=='Consolidation'&&d.chartPattern!=='Uptrend'&&d.chartPattern!=='Downtrend')tags+='<span class="t '+(d.chartPatternType==='bullish'?'s':(d.chartPatternType==='bearish'?'d':'w'))+'">'+d.chartPattern+'</span>';
+  if(d.trend)tags+='<span class="t">'+d.trend+'</span>';
   if(d.orbSignal==='Bullish ORB')tags+='<span class="t o">ORB+</span>';
   if(d.orbSignal==='Bearish ORB')tags+='<span class="t o" style="color:var(--red)">ORB-</span>';
   if(d.emaCrossSignal&&d.emaCrossSignal!=='None'&&d.emaCrossFreshness!=='Fading'){tags+='<span class="t '+(d.emaCrossType==='bullish'?'s':'d')+'" style="font-weight:700">'+d.emaCrossSignal+'</span>';}
   if(d.emaCrossFreshness==='Fresh')tags+='<span class="t w">Cross Fresh</span>';
   var ch=d.changePercent>=0?'pos':'neg';
   var ih='';
-  if(currentMode==='intraday'&&d.dayOpen!=null){
-    var mc=d.dayMomentum>=0?'g':'r';
+  if(isIntra&&d.dayOpen!=null){
+    var mc=(d.dayMomentum||0)>=0?'g':'r';
     ih='<div class="intra-row"><div><span class="mini-l">Open</span><span class="mini-v">'+f0(d.dayOpen)+'</span></div><div><span class="mini-l">High</span><span class="mini-v g">'+f0(d.dayHigh)+'</span></div><div><span class="mini-l">Low</span><span class="mini-v r">'+f0(d.dayLow)+'</span></div><div><span class="mini-l">Mom</span><span class="mini-v '+mc+'">'+(d.dayMomentum>=0?'+':'')+d.dayMomentum+'%</span></div></div>';
   }
   var h='<div class="sig-card '+cc+'"><div class="sc-head"><div><div class="sc-name">'+cs(d.symbol)+'</div><div class="sc-price">'+f(d.price)+'</div></div><div class="sc-badge '+bc+'">'+d.signal+'</div></div>'+
-    '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(d.change>=0?'+':'')+f0(d.change)+')</span><span class="vol-txt">Vol: '+fv(d.currentVolume)+' ('+d.volumeRatio+'x)</span></div>'+
+    '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(priceChange>=0?'+':'')+f0(priceChange)+')</span><span class="vol-txt">Vol: '+volStr+' ('+d.volumeRatio+'x)</span></div>'+
     ih+
-    '<div class="reason-box"><b>Signal:</b> '+d.signalReason+' · Score: '+d.signalScore+'<br><b>Pattern:</b> '+d.chartPattern+' ('+d.chartPatternType+') | <b>Breakout:</b> '+d.breakoutType+' | <b>ATR:</b> '+d.atrTrend+' | <b>Sentiment:</b> '+d.sentiment+(d.emaCrossSignal&&d.emaCrossSignal!=='None'?'<br><b>EMA Crossover:</b> '+d.emaCrossLabel+' ('+d.emaCrossFreshness+', '+d.emaCrossBars+' bars ago) @ '+f(d.emaCrossPrice):'')+'</div>'+
+    '<div class="reason-box"><b>Signal Score:</b> Buy '+d.buyScore+' / Sell '+d.sellScore+'<br><b>Pattern:</b> '+d.chartPattern+' ('+d.chartPatternType+') | <b>Breakout:</b> '+d.breakoutType+' | <b>ATR:</b> '+d.atrTrend+' | <b>Sentiment:</b> '+d.sentiment+(d.emaCrossSignal&&d.emaCrossSignal!=='None'?'<br><b>EMA Cross:</b> '+d.emaCrossLabel+' ('+d.emaCrossFreshness+', '+d.emaCrossBars+' bars ago) @ '+f(d.emaCrossPrice):'')+(signalReason?'<br>'+signalReason:'')+'</div>'+
     '<div class="tag-row">'+tags+'</div>'+
-    '<div class="mini-grid"><div class="mini"><span class="mini-l">'+d.emaLabel+'</span><span class="mini-v '+ec+'">'+es+'</span></div><div class="mini"><span class="mini-l">'+d.vwapLabel+'</span><span class="mini-v '+vc+'">'+f0(d.vwap)+'</span></div><div class="mini"><span class="mini-l">RSI</span><span class="mini-v '+rc+'">'+d.rsi+'</span></div></div>'+
-    '<div class="mini-grid"><div class="mini"><span class="mini-l">ATR</span><span class="mini-v">'+f0(d.atr)+'</span></div><div class="mini"><span class="mini-l">Support</span><span class="mini-v g">'+f0(d.support)+'</span></div><div class="mini"><span class="mini-l">Resistance</span><span class="mini-v r">'+f0(d.resistance)+'</span></div></div>';
-  if(currentMode==='intraday'&&d.orbHigh!=null){
-    h+='<div class="mini-grid"><div class="mini"><span class="mini-l">ORB H</span><span class="mini-v" style="color:var(--orange)">'+f0(d.orbHigh)+'</span></div><div class="mini"><span class="mini-l">ORB L</span><span class="mini-v" style="color:var(--orange)">'+f0(d.orbLow)+'</span></div><div class="mini"><span class="mini-l">ORB</span><span class="mini-v '+(d.orbSignal.indexOf('Bullish')>=0?'g':(d.orbSignal.indexOf('Bearish')>=0?'r':''))+'">'+d.orbSignal+'</span></div></div>';
+    '<div class="mini-grid"><div class="mini"><span class="mini-l">'+(d.emaLabel||'EMA')+'</span><span class="mini-v '+ec+'">'+es+'</span></div><div class="mini"><span class="mini-l">'+vwapLbl+'</span><span class="mini-v '+vc+'">'+f0(d.vwap)+'</span></div><div class="mini"><span class="mini-l">RSI</span><span class="mini-v '+rc+'">'+(d.rsi||'—')+'</span></div></div>'+
+    '<div class="mini-grid"><div class="mini"><span class="mini-l">ATR</span><span class="mini-v">'+f0(d.atr)+'</span></div><div class="mini"><span class="mini-l">Day Low</span><span class="mini-v g">'+f0(support)+'</span></div><div class="mini"><span class="mini-l">Day High</span><span class="mini-v r">'+f0(resistance)+'</span></div></div>';
+  if(isIntra&&d.orbSignal&&d.orbSignal!=='None'){
+    h+='<div class="mini-grid"><div class="mini"><span class="mini-l">ORB Signal</span><span class="mini-v '+(d.orbSignal.indexOf('Bullish')>=0?'g':(d.orbSignal.indexOf('Bearish')>=0?'r':''))+'">'+d.orbSignal+'</span></div><div class="mini"><span class="mini-l">Vol Ratio</span><span class="mini-v '+(d.volumeRatio>1.5?'o':'')+'">'+d.volumeRatio+'x</span></div><div class="mini"><span class="mini-l">Trend</span><span class="mini-v">'+d.trend+'</span></div></div>';
   }
-  h+='<div class="mini-grid"><div class="mini"><span class="mini-l">52W H</span><span class="mini-v">'+f0(d.fiftyTwoWeekHigh)+'</span></div><div class="mini"><span class="mini-l">52W L</span><span class="mini-v">'+f0(d.fiftyTwoWeekLow)+'</span></div><div class="mini"><span class="mini-l">Avg Vol</span><span class="mini-v">'+fv(d.avgVolume)+'</span></div></div>'+
-    '<div class="sl-tp"><div class="box sl"><div class="lbl">'+d.slLabel+'</div><div class="val">'+f(d.stopLoss)+'</div></div><div class="box tp"><div class="lbl">'+d.tp1Label+'</div><div class="val">'+f(d.takeProfit1)+'</div></div><div class="box tp"><div class="lbl">'+d.tp2Label+'</div><div class="val">'+f(d.takeProfit2)+'</div></div></div></div>';
+  h+='<div class="mini-grid"><div class="mini"><span class="mini-l">52W H</span><span class="mini-v">'+f0(d.fiftyTwoWeekHigh)+'</span></div><div class="mini"><span class="mini-l">52W L</span><span class="mini-v">'+f0(d.fiftyTwoWeekLow)+'</span></div><div class="mini"><span class="mini-l">Chg%H</span><span class="mini-v neg">-'+(d.pctFrom52WeekHigh||'—')+'%</span></div></div>'+
+    '<div class="sl-tp">'+
+    '<div class="box sl"><div class="lbl">'+slLbl+'</div><div class="val">'+(sl!=null?f(sl):'—')+'</div></div>'+
+    '<div class="box tp"><div class="lbl">'+tp1Lbl+'</div><div class="val">'+(tp1!=null?f(tp1):'—')+'</div></div>'+
+    '<div class="box tp"><div class="lbl">'+tp2Lbl+'</div><div class="val">'+(tp2!=null?f(tp2):'—')+'</div></div>'+
+    '</div></div>';
   return h;
 }
 
 function renderTA(data){
   var v=data.filter(function(d){return!d.error;});
-  var b=v.filter(function(d){return d.signal.indexOf('BUY')>=0;}).sort(function(a,b){return b.signalScore-a.signalScore;});
-  var s=v.filter(function(d){return d.signal.indexOf('SELL')>=0;}).sort(function(a,b){return a.signalScore-b.signalScore;});
+  var b=v.filter(function(d){return d.signal.indexOf('BUY')>=0;}).sort(function(a,b){return (b.buyScore||0)-(a.buyScore||0);});
+  var s=v.filter(function(d){return d.signal.indexOf('SELL')>=0;}).sort(function(a,b){return (b.sellScore||0)-(a.sellScore||0);});
   var h=v.filter(function(d){return d.signal==='HOLD';}).sort(function(a,b){return Math.abs(b.changePercent)-Math.abs(a.changePercent);});
   document.getElementById('buyCards').innerHTML=b.map(renderCard).join('')||'<div class="loading">No buy signals</div>';
   document.getElementById('sellCards').innerHTML=s.map(renderCard).join('')||'<div class="loading">No sell signals</div>';
