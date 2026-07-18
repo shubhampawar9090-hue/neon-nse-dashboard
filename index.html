@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Neon NSE">
 <title>⚡ Neon NSE — Trading Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#0a0e1a;--card:rgba(15,20,32,.92);--card2:rgba(20,26,40,.85);--cyan:#00f0ff;--green:#00ff88;--red:#ff2d55;--yellow:#ffe600;--purple:#b026ff;--orange:#ff9500;--text:#e0e0ff;--muted:#6a7080;--border:rgba(255,255,255,.06)}
@@ -204,6 +205,59 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
 @media(max-width:768px){.ai-panel{width:calc(100vw - 24px);right:12px;bottom:80px}.ai-fab{bottom:16px;right:16px}}
 
 
+
+/* ===== NEW PANELS: SENTIMENT METER + CHARTS + SECTOR HEATMAP ===== */
+.sentimeter-wrap{background:var(--card);border:1px solid rgba(176,38,255,.2);border-radius:10px;padding:16px;margin-bottom:14px}
+.sentimeter-title{font-size:13px;font-weight:700;color:var(--purple);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.sentimeter-body{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.sentimeter-gauge{position:relative;width:200px;height:100px;flex-shrink:0}
+.sentimeter-gauge canvas{width:200px!important;height:100px!important}
+.sentimeter-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;flex:1;min-width:200px}
+.sentimeter-stat{background:rgba(0,0,0,.2);border-radius:6px;padding:8px 12px;text-align:center}
+.sentimeter-stat .ss-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.sentimeter-stat .ss-val{font-size:22px;font-weight:800;font-family:'Courier New',monospace;margin-top:2px}
+.sentimeter-stat.buy .ss-val{color:var(--green)}
+.sentimeter-stat.sell .ss-val{color:var(--red)}
+.sentimeter-stat.hold .ss-val{color:var(--yellow)}
+.sentimeter-stat.total .ss-val{color:var(--cyan)}
+.sentimeter-verdict{font-size:12px;color:var(--muted);margin-top:10px;padding:8px 12px;background:rgba(0,0,0,.15);border-radius:6px;border-left:3px solid var(--purple);line-height:1.5}
+.sentimeter-verdict b{color:var(--text)}
+
+.chart-panel{background:var(--card);border:1px solid rgba(0,240,255,.15);border-radius:10px;padding:14px;margin-bottom:14px}
+.chart-panel-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.chart-panel-title{font-size:13px;font-weight:700;color:var(--cyan);display:flex;align-items:center;gap:5px}
+.chart-select{background:rgba(15,20,32,.8);border:1px solid rgba(0,240,255,.2);color:var(--text);font-size:11px;padding:5px 10px;border-radius:5px;cursor:pointer;font-family:inherit}
+.chart-select:hover{border-color:var(--cyan)}
+.chart-select:focus{outline:none;border-color:var(--cyan)}
+.chart-container{position:relative;height:280px;width:100%}
+.chart-info{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;font-size:11px;font-family:'Courier New',monospace}
+.chart-info-item{display:flex;align-items:center;gap:4px}
+.chart-info-item .ci-label{color:var(--muted)}
+.chart-info-item .ci-val{font-weight:700}
+
+.heatmap-panel{background:var(--card);border:1px solid rgba(255,149,0,.15);border-radius:10px;padding:14px;margin-bottom:14px}
+.heatmap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.heatmap-cell{border-radius:6px;padding:10px;text-align:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.heatmap-cell:hover{transform:scale(1.05);z-index:2}
+.heatmap-cell .hm-name{font-size:11px;font-weight:700;margin-bottom:2px}
+.heatmap-cell .hm-price{font-size:14px;font-weight:800;font-family:'Courier New',monospace}
+.heatmap-cell .hm-chg{font-size:10px;margin-top:2px}
+.heatmap-cell.hm-strong-up{background:rgba(0,255,136,.22);border:1px solid rgba(0,255,136,.3)}
+.heatmap-cell.hm-up{background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.2)}
+.heatmap-cell.hm-flat{background:rgba(255,230,0,.08);border:1px solid rgba(255,230,0,.15)}
+.heatmap-cell.hm-down{background:rgba(255,45,85,.1);border:1px solid rgba(255,45,85,.2)}
+.heatmap-cell.hm-strong-down{background:rgba(255,45,85,.22);border:1px solid rgba(255,45,85,.3)}
+.heatmap-cell.hm-strong-up .hm-name,.heatmap-cell.hm-strong-up .hm-price,.heatmap-cell.hm-strong-up .hm-chg{color:var(--green)}
+.heatmap-cell.hm-up .hm-name,.heatmap-cell.hm-up .hm-price,.heatmap-cell.hm-up .hm-chg{color:var(--green)}
+.heatmap-cell.hm-flat .hm-name,.heatmap-cell.hm-flat .hm-price,.heatmap-cell.hm-flat .hm-chg{color:var(--yellow)}
+.heatmap-cell.hm-down .hm-name,.heatmap-cell.hm-down .hm-price,.heatmap-cell.hm-down .hm-chg{color:var(--red)}
+.heatmap-cell.hm-strong-down .hm-name,.heatmap-cell.hm-strong-down .hm-price,.heatmap-cell.hm-strong-down .hm-chg{color:var(--red)}
+
+.compare-panel{background:var(--card);border:1px solid rgba(0,255,136,.15);border-radius:10px;padding:14px;margin-bottom:14px}
+.compare-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}
+.compare-tbl th{text-align:left;padding:6px 8px;color:var(--muted);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.compare-tbl td{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.03);font-family:'Courier New',monospace;white-space:nowrap}
+.compare-tbl tr:hover td{background:rgba(0,240,255,.025)}
 </style>
 </head>
 <body>
@@ -292,6 +346,87 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
   <div class="panel" style="border:1px solid rgba(255,45,85,.15)">
     <div class="panel-hdr"><span class="panel-name" style="color:var(--red)">🔴 Top 10 Losers — ≤-3% + Vol Surge</span></div>
     <div class="tbl-wrap" style="max-height:none"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Vol×</th></tr></thead><tbody id="lBody"></tbody></table></div>
+  </div>
+</div>
+
+
+<!-- ===== MARKET SENTIMENT METER ===== -->
+<div class="divider"><span class="divider-text">🌐 MARKET SENTIMENT METER</span><span class="divider-line"></span></div>
+<div class="sentimeter-wrap">
+  <div class="sentimeter-title">📊 Aggregated Signal Strength — All Tracked Stocks</div>
+  <div class="sentimeter-body">
+    <div class="sentimeter-gauge">
+      <canvas id="sentiGauge"></canvas>
+    </div>
+    <div class="sentimeter-stats">
+      <div class="sentimeter-stat buy"><div class="ss-label">Strong Buy</div><div class="ss-val" id="sentiSBuy">0</div></div>
+      <div class="sentimeter-stat buy"><div class="ss-label">Buy</div><div class="ss-val" id="sentiBuy">0</div></div>
+      <div class="sentimeter-stat hold"><div class="ss-label">Hold</div><div class="ss-val" id="sentiHold">0</div></div>
+      <div class="sentimeter-stat sell"><div class="ss-label">Sell</div><div class="ss-val" id="sentiSell">0</div></div>
+      <div class="sentimeter-stat sell"><div class="ss-label">Strong Sell</div><div class="ss-val" id="sentiSSell">0</div></div>
+      <div class="sentimeter-stat total"><div class="ss-label">Total</div><div class="ss-val" id="sentiTotal">0</div></div>
+    </div>
+  </div>
+  <div class="sentimeter-verdict" id="sentiVerdict">Calculating market sentiment...</div>
+</div>
+
+<!-- ===== LIVE CHART ===== -->
+<div class="divider"><span class="divider-text">📈 LIVE PRICE CHART</span><span class="divider-line"></span></div>
+<div class="chart-panel">
+  <div class="chart-panel-hdr">
+    <span class="chart-panel-title">📉 Price Action</span>
+    <select class="chart-select" id="chartSelect" onchange="loadChart(this.value)">
+      <option value="^NSEI">NIFTY 50</option>
+      <option value="RELIANCE.NS">RELIANCE</option>
+      <option value="TCS.NS">TCS</option>
+      <option value="HDFCBANK.NS">HDFCBANK</option>
+      <option value="INFY.NS">INFY</option>
+      <option value="ICICIBANK.NS">ICICIBANK</option>
+      <option value="SBIN.NS">SBIN</option>
+      <option value="TATAMOTORS.NS">TATAMOTORS</option>
+      <option value="BHARTIARTL.NS">BHARTIARTL</option>
+      <option value="ITC.NS">ITC</option>
+      <option value="LT.NS">LT</option>
+      <option value="KOTAKBANK.NS">KOTAKBANK</option>
+    </select>
+  </div>
+  <div class="chart-container"><canvas id="priceChart"></canvas></div>
+  <div class="chart-info" id="chartInfo">
+    <div class="chart-info-item"><span class="ci-label">O:</span><span class="ci-val" id="ciOpen">—</span></div>
+    <div class="chart-info-item"><span class="ci-label">H:</span><span class="ci-val" id="ciHigh">—</span></div>
+    <div class="chart-info-item"><span class="ci-label">L:</span><span class="ci-val" id="ciLow">—</span></div>
+    <div class="chart-info-item"><span class="ci-label">C:</span><span class="ci-val" id="ciClose">—</span></div>
+    <div class="chart-info-item"><span class="ci-label">Vol:</span><span class="ci-val" id="ciVol">—</span></div>
+    <div class="chart-info-item"><span class="ci-label">Chg:</span><span class="ci-val" id="ciChg">—</span></div>
+  </div>
+</div>
+
+<!-- ===== SECTOR HEATMAP ===== -->
+<div class="divider"><span class="divider-text">🔥 SECTOR HEATMAP</span><span class="divider-line"></span></div>
+<div class="heatmap-panel">
+  <div class="chart-panel-hdr">
+    <span class="chart-panel-title" style="color:var(--orange)">🗺️ Sector Performance Grid</span>
+    <span style="font-size:10px;color:var(--muted)">Click any cell to load chart</span>
+  </div>
+  <div class="heatmap-grid" id="heatmapGrid">
+    <div style="color:var(--muted);font-size:11px;padding:20px;text-align:center;grid-column:1/-1">Loading sector data...</div>
+  </div>
+</div>
+
+<!-- ===== MULTI-STOCK COMPARISON ===== -->
+<div class="divider"><span class="divider-text">⚖️ MULTI-STOCK COMPARISON</span><span class="divider-line"></span></div>
+<div class="compare-panel">
+  <div class="chart-panel-hdr">
+    <span class="chart-panel-title" style="color:var(--green)">📊 Side-by-Side Technical Comparison</span>
+    <span style="font-size:10px;color:var(--muted)">Top movers ranked by signal strength</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="compare-tbl">
+      <thead><tr><th>Stock</th><th>Price</th><th>Chg%</th><th>Signal</th><th>Buy Score</th><th>Sell Score</th><th>RSI</th><th>VWAP</th><th>EMA Stack</th><th>Pattern</th><th>Breakout</th><th>SL</th><th>TP1</th><th>Vol×</th></tr></thead>
+      <tbody id="compareBody">
+        <tr><td colspan="14" style="color:var(--muted);text-align:center;padding:12px">Loading comparison data...</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
@@ -527,7 +662,9 @@ async function loadAll(){
   var p2=fetch(TA_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:taSyms,timeframe:currentMode})}).then(function(r){return r.json();}).catch(function(){return{success:false};});
   var r=await Promise.all([p1,p2]);var pd=r[0],td=r[1];
   if(pd.success&&pd.data){renderIndices(pd.data);renderGL(pd.data);}
-  if(td.success&&td.data){renderMovers(td.data);renderScreeners(td.data);renderTA(td.data);if(!pd.success)renderIndices(td.data);}
+  if(td.success&&td.data){renderMovers(td.data);renderScreeners(td.data);renderTA(td.data);renderSentiment(td.data);renderCompare(td.data);if(!pd.success)renderIndices(td.data);}
+  if(pd.success&&pd.data){renderHeatmap(pd.data,td.success?td.data:[]);}
+  if(!priceChart)loadChart('^NSEI');
   updStatus();
 }
 
@@ -615,6 +752,200 @@ async function aiProcess(q){
   aiBusy=false;
   document.getElementById('aiSendBtn').disabled=false;
 }
+
+
+// ===== MARKET SENTIMENT METER =====
+var sentiChart=null;
+function renderSentiment(data){
+  var v=data.filter(function(d){return!d.error;});
+  var sbuy=v.filter(function(d){return d.signal==='STRONG BUY';}).length;
+  var buy=v.filter(function(d){return d.signal==='BUY';}).length;
+  var hold=v.filter(function(d){return d.signal==='HOLD';}).length;
+  var sell=v.filter(function(d){return d.signal==='SELL';}).length;
+  var ssell=v.filter(function(d){return d.signal==='STRONG SELL';}).length;
+  var total=v.length;
+  document.getElementById('sentiSBuy').textContent=sbuy;
+  document.getElementById('sentiBuy').textContent=buy;
+  document.getElementById('sentiHold').textContent=hold;
+  document.getElementById('sentiSell').textContent=sell;
+  document.getElementById('sentiSSell').textContent=ssell;
+  document.getElementById('sentiTotal').textContent=total;
+
+  // Calculate score: -100 to +100
+  var score=total>0?((sbuy*2+buy-hold-sell-ssell*2)/total)*100:0;
+  var bullPct=Math.round(((sbuy+buy)/total)*100)||0;
+  var bearPct=Math.round(((sell+ssell)/total)*100)||0;
+
+  var verdict='';
+  if(score>40)verdict='<b>🟢 STRONG BULLISH</b> — '+bullPct+'% buy signals, '+bearPct+'% sell. Market is in strong upward momentum. Favorable for long positions.';
+  else if(score>15)verdict='<b>🟢 BULLISH</b> — '+bullPct+'% buy signals vs '+bearPct+'% sell. Positive but cautious. Look for confirmation.';
+  else if(score>-15)verdict='<b>🟡 NEUTRAL / SIDEWAYS</b> — Mixed signals ('+bullPct+'% buy, '+bearPct+'% sell). No clear trend. Wait for breakout.';
+  else if(score>-40)verdict='<b>🔴 BEARISH</b> — '+bearPct+'% sell signals vs '+bullPct+'% buy. Negative pressure. Consider defensive positions.';
+  else verdict='<b>🔴 STRONG BEARISH</b> — '+bearPct+'% sell signals. Heavy selling pressure. Avoid new longs.';
+  document.getElementById('sentiVerdict').innerHTML=verdict;
+
+  // Draw gauge
+  var cvs=document.getElementById('sentiGauge');
+  if(!cvs)return;
+  var ctx=cvs.getContext('2d');
+  var w=200,h=100,cx=100,cy=90,r=80;
+  ctx.clearRect(0,0,w,h);
+  // Arc background
+  var startAng=Math.PI,endAng=2*Math.PI;
+  // Segments
+  var segs=[{from:-100,to:-60,color:'#ff2d55'},{from:-60,to:-15,color:'#ff6680'},{from:-15,to:15,color:'#ffe600'},{from:15,to:60,color:'#66ffaa'},{from:60,to:100,color:'#00ff88'}];
+  segs.forEach(function(s){
+    var a1=startAng+(s.from+100)/200*Math.PI;
+    var a2=startAng+(s.to+100)/200*Math.PI;
+    ctx.beginPath();ctx.arc(cx,cy,r,a1,a2);ctx.lineWidth=14;ctx.strokeStyle=s.color;ctx.stroke();
+  });
+  // Needle
+  var ang=startAng+(score+100)/200*Math.PI;
+  ctx.beginPath();ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(ang)*(r-8),cy+Math.sin(ang)*(r-8));
+  ctx.lineWidth=3;ctx.strokeStyle='#e0e0ff';ctx.lineCap='round';ctx.stroke();
+  // Center dot
+  ctx.beginPath();ctx.arc(cx,cy,5,0,2*Math.PI);ctx.fillStyle='#e0e0ff';ctx.fill();
+  // Score text
+  ctx.font='bold 16px Courier New';ctx.textAlign='center';
+  ctx.fillStyle=score>15?'#00ff88':(score<-15?'#ff2d55':'#ffe600');
+  ctx.fillText((score>0?'+':'')+Math.round(score),cx,cy-25);
+  ctx.font='9px sans-serif';ctx.fillStyle='#6a7080';
+  ctx.fillText('SENTIMENT',cx,cy-12);
+}
+
+// ===== LIVE PRICE CHART =====
+var priceChart=null;
+var chartData=null;
+async function loadChart(sym){
+  try{
+    var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=5m&range=1d';
+    var res=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0'}});
+    var json=await res.json();
+    var result=json.chart&&json.chart.result&&json.chart.result[0];
+    if(!result)return;
+    var meta=result.meta;
+    var timestamps=result.timestamp||[];
+    var quotes=result.indicators&&result.indicators.quote&&result.indicators.quote[0]||{};
+    var closes=quotes.close||[];
+    var highs=quotes.high||[];
+    var lows=quotes.low||[];
+    var volumes=quotes.volume||[];
+    chartData={meta:meta,closes:closes,highs:highs,lows:lows,volumes:volumes,timestamps:timestamps,sym:sym};
+
+    // Render chart
+    var labels=timestamps.map(function(t){var d=new Date(t*1000);return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});});
+    var priceColor=meta.regularMarketPrice>=meta.chartPreviousClose?'#00ff88':'#ff2d55';
+
+    if(priceChart)priceChart.destroy();
+    var cvs=document.getElementById('priceChart');
+    if(!cvs)return;
+    var ctx=cvs.getContext('2d');
+
+    // Gradient fill
+    var gradient=ctx.createLinearGradient(0,0,0,280);
+    gradient.addColorStop(0,priceColor+'40');
+    gradient.addColorStop(1,priceColor+'00');
+
+    priceChart=new Chart(ctx,{
+      type:'line',
+      data:{labels:labels,datasets:[
+        {label:cs(sym),data:closes,borderColor:priceColor,backgroundColor:gradient,borderWidth:2,fill:true,tension:0.3,pointRadius:0,pointHoverRadius:4},
+        {label:'High',data:highs,borderColor:'rgba(0,240,255,.2)',borderWidth:1,fill:false,tension:0.3,pointRadius:0},
+        {label:'Low',data:lows,borderColor:'rgba(255,149,0,.2)',borderWidth:1,fill:false,tension:0.3,pointRadius:0}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{
+          backgroundColor:'rgba(10,14,26,.95)',borderColor:'rgba(0,240,255,.2)',borderWidth:1,
+          titleColor:'#00f0ff',bodyColor:'#e0e0ff',
+          callbacks:{label:function(ctx){return ctx.dataset.label+': \u20B9'+Number(ctx.parsed.y).toFixed(2)}}
+        }},
+        scales:{
+          x:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#6a7080',font:{size:9},maxTicksLimit:8}},
+          y:{grid:{color:'rgba(255,255,255,.03)'},ticks:{color:'#6a7080',font:{size:9},callback:function(v){return '\u20B9'+v.toFixed(0)}}}
+        },
+        interaction:{intersect:false,mode:'index'}
+      }
+    });
+
+    // Update info bar
+    document.getElementById('ciOpen').textContent=f0(meta.regularMarketDayOpen||meta.chartPreviousClose);
+    document.getElementById('ciHigh').textContent=f0(meta.regularMarketDayHigh);
+    document.getElementById('ciLow').textContent=f0(meta.regularMarketDayLow);
+    document.getElementById('ciClose').textContent=f0(meta.regularMarketPrice);
+    document.getElementById('ciVol').textContent=fv(meta.regularMarketVolume);
+    var chg=meta.chartPreviousClose?((meta.regularMarketPrice-meta.chartPreviousClose)/meta.chartPreviousClose*100).toFixed(2):0;
+    var chgEl=document.getElementById('ciChg');
+    chgEl.textContent=(chg>=0?'+':'')+chg+'%';
+    chgEl.style.color=chg>=0?'var(--green)':'var(--red)';
+  }catch(e){console.log('Chart error:',e);}
+}
+
+// ===== SECTOR HEATMAP =====
+var sectorMap={
+  'IT':['TCS.NS','INFY.NS','WIPRO.NS','HCLTECH.NS'],
+  'Banking':['HDFCBANK.NS','ICICIBANK.NS','SBIN.NS','AXISBANK.NS','KOTAKBANK.NS'],
+  'Energy':['RELIANCE.NS','ONGC.NS','NTPC.NS','POWERGRID.NS','COALINDIA.NS'],
+  'Auto':['TATAMOTORS.NS','MARUTI.NS','M&M.NS','EICHERMOT.NS'],
+  'Pharma':['SUNPHARMA.NS','CIPLA.NS','DRREDDY.NS','DIVISLAB.NS'],
+  'Metals':['TATASTEEL.NS','JSWSTEEL.NS','HINDALCO.NS','VEDL.NS'],
+  'FMCG':['ITC.NS','HINDUNILVR.NS','NESTLEIND.NS','BRITANNIA.NS'],
+  'Infra':['LT.NS','ULTRACEMCO.NS','DLF.NS'],
+  'Adani':['ADANIENT.NS','ADANIPORTS.NS'],
+  'Finserv':['BAJFINANCE.NS','BAJAJFINSV.NS','JIOFIN.NS']
+};
+function renderHeatmap(priceData,taData){
+  var grid=document.getElementById('heatmapGrid');
+  if(!grid)return;
+  var h='';
+  Object.keys(sectorMap).forEach(function(sector){
+    var syms=sectorMap[sector];
+    var sectorStocks=priceData.filter(function(d){return syms.indexOf(d.symbol)>=0&&!d.error;});
+    if(sectorStocks.length===0)return;
+    var avgChg=sectorStocks.reduce(function(s,d){return s+d.changePercent;},0)/sectorStocks.length;
+    var topStock=sectorStocks.sort(function(a,b){return Math.abs(b.changePercent)-Math.abs(a.changePercent);})[0];
+    var cls=avgChg>=2?'hm-strong-up':(avgChg>0?'hm-up':(avgChg>-2?'hm-down':'hm-strong-down'));
+    if(Math.abs(avgChg)<0.3)cls='hm-flat';
+    h+='<div class="heatmap-cell '+cls+'" onclick="loadChart(\''+topStock.symbol+'\');document.getElementById(\'chartSelect\').value=\''+topStock.symbol+'\'">';
+    h+='<div class="hm-name">'+sector+'</div>';
+    h+='<div class="hm-price">'+f0(topStock.price)+'</div>';
+    h+='<div class="hm-chg">'+(avgChg>=0?'+':'')+avgChg.toFixed(2)+'%</div>';
+    h+='</div>';
+  });
+  grid.innerHTML=h||'<div style="color:var(--muted);padding:12px">No data</div>';
+}
+
+// ===== MULTI-STOCK COMPARISON =====
+function renderCompare(data){
+  var v=data.filter(function(d){return!d.error;});
+  var sorted=v.sort(function(a,b){
+    var ba=(a.buyScore||0)-(a.sellScore||0),bb=(b.buyScore||0)-(b.sellScore||0);
+    return bb-ba;
+  }).slice(0,15);
+  var h=sorted.map(function(d){
+    var sigClass=d.signal.indexOf('BUY')>=0?'pos':(d.signal.indexOf('SELL')>=0?'neg':'');
+    var emaTxt=d.emaLabel||'\u2014';
+    return '<tr>'
+      +'<td><b>'+cs(d.symbol)+'</b></td>'
+      +'<td>'+f0(d.price)+'</td>'
+      +'<td class="'+(d.changePercent>=0?'pos':'neg')+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'%</td>'
+      +'<td><span class="sc-badge '+(d.signal.indexOf('BUY')>=0?'buy':(d.signal.indexOf('SELL')>=0?'sell':'hold'))+'" style="font-size:9px;padding:2px 6px">'+d.signal+'</span></td>'
+      +'<td style="color:var(--green)">'+(d.buyScore||0)+'</td>'
+      +'<td style="color:var(--red)">'+(d.sellScore||0)+'</td>'
+      +'<td>'+(d.rsi||'\u2014')+'</td>'
+      +'<td>'+(d.vwap||'\u2014')+'</td>'
+      +'<td style="font-size:10px">'+emaTxt+'</td>'
+      +'<td style="font-size:10px">'+d.chartPattern+'</td>'
+      +'<td style="font-size:10px">'+d.breakoutType+'</td>'
+      +'<td>'+(d.sl?f0(d.sl):'\u2014')+'</td>'
+      +'<td>'+(d.tp1?f0(d.tp1):'\u2014')+'</td>'
+      +'<td>'+(d.volumeRatio||0)+'x</td>'
+      +'</tr>';
+  }).join('');
+  document.getElementById('compareBody').innerHTML=h||'<tr><td colspan="14" style="color:var(--muted);text-align:center;padding:12px">No data</td></tr>';
+}
+
 
 // ===== END ELARA AI =====
 </script>
