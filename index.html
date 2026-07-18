@@ -308,7 +308,7 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
 
 <!-- Combined: Breakout + Chart Pattern + EMA Stack + Price Action -->
 <div class="panel" style="border:1px solid rgba(0,240,255,.2);margin-bottom:12px">
-  <div class="panel-hdr"><span class="panel-name" style="color:var(--cyan)">🎯 Combined Screener — Breakout · Chart Pattern · EMA Stack · Price Action</span><span class="panel-count" id="combCount"></span></div>
+  <div class="panel-hdr"><span class="panel-name" style="color:var(--cyan)">🎯 Combined Screener — Breakout · Pattern · EMA Stack · EMA Cross · Price Action</span><span class="panel-count" id="combCount"></span></div>
   <div class="tbl-wrap" style="max-height:400px"><table class="tbl"><thead><tr><th>Stock</th><th>Price</th><th>Chg%</th><th>⚡ Breakout</th><th>📊 Pattern</th><th>📈 EMA Stack</th><th>✅ Price Action</th><th>Hits</th><th>Signal</th></tr></thead><tbody id="combBody"></tbody></table></div>
 </div>
 
@@ -422,9 +422,9 @@ body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,
   </div>
   <div style="overflow-x:auto">
     <table class="compare-tbl">
-      <thead><tr><th>Stock</th><th>Price</th><th>Chg%</th><th>Signal</th><th>Buy Score</th><th>Sell Score</th><th>RSI</th><th>VWAP</th><th>EMA Stack</th><th>Pattern</th><th>Breakout</th><th>SL</th><th>TP1</th><th>Vol×</th></tr></thead>
+      <thead><tr><th>Stock</th><th>Price</th><th>Chg%</th><th>Signal</th><th>Buy Score</th><th>Sell Score</th><th>RSI</th><th>VWAP</th><th>EMA Stack</th><th>EMA Cross</th><th>Pattern</th><th>Breakout</th><th>SL</th><th>TP1</th><th>Vol×</th></tr></thead>
       <tbody id="compareBody">
-        <tr><td colspan="14" style="color:var(--muted);text-align:center;padding:12px">Loading comparison data...</td></tr>
+        <tr><td colspan="15" style="color:var(--muted);text-align:center;padding:12px">Loading comparison data...</td></tr>
       </tbody>
     </table>
   </div>
@@ -539,6 +539,10 @@ function renderScreeners(data){
     var emaActive=d.emaBullish||d.emaBearish;
     if(emaActive)hits++;
     var emaTag=emaActive?'<span class="tag '+(d.emaBullish?'bull':'bear')+'">'+(d.emaBullish?'▲ '+d.emaLabel.replace('EMA ',''):'▼ '+d.emaLabel.replace('EMA ',''))+'</span>':'<span style="color:var(--muted);font-size:10px">—</span>';
+    // EMA Crossover
+    var crossActive=d.emaCrossSignal&&d.emaCrossSignal!=='None'&&d.emaCrossFreshness!=='Fading';
+    if(crossActive)hits++;
+    var crossTag=crossActive?'<span class="tag '+(d.emaCrossType==='bullish'?'s':'d')+'" style="font-weight:700">'+d.emaCrossSignal+'</span><br><span style="font-size:8px;color:var(--muted)">'+d.emaCrossLabel+' · '+d.emaCrossBars+' bars</span>':(d.emaCrossSignal&&d.emaCrossSignal!=='None'?'<span style="font-size:9px;color:var(--muted)">'+d.emaCrossSignal+' (fading)</span>':'<span style="color:var(--muted);font-size:10px">—</span>');
     // Price Action (VWAP + RSI + Volume + Momentum)
     var paParts=[];
     if(d.vwap!=null){paParts.push(d.price>d.vwap?'VWAP↑':'VWAP↓');if(d.price>d.vwap||d.price<d.vwap)hits++;}
@@ -554,8 +558,8 @@ function renderScreeners(data){
   document.getElementById('combBody').innerHTML=comb.length?comb.map(function(x){
     var d=x.d;
     var hc=x.hits>=4?'var(--green)':(x.hits>=3?'var(--cyan)':(x.hits>=2?'var(--yellow)':'var(--muted)'));
-    return '<tr><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="'+(d.changePercent>=0?'pos':'neg')+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'%</td><td>'+x.boTag+'</td><td>'+x.patTag+'</td><td>'+x.emaTag+'</td><td>'+x.paTag+'</td><td style="text-align:center;font-weight:800;color:'+hc+'">'+x.hits+'</td><td style="font-size:10px">'+d.signal+'</td></tr>';
-  }).join(''):'<tr><td colspan="9" class="empty-row">No stocks matching criteria</td></tr>';
+    return '<tr><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="'+(d.changePercent>=0?'pos':'neg')+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'%</td><td>'+x.boTag+'</td><td>'+x.patTag+'</td><td>'+x.emaTag+'</td><td>'+x.crossTag+'</td><td>'+x.paTag+'</td><td style="text-align:center;font-weight:800;color:'+hc+'">'+x.hits+'</td><td style="font-size:10px">'+d.signal+'</td></tr>';
+  }).join(''):'<tr><td colspan="10" class="empty-row">No stocks matching criteria</td></tr>';
 
   // ATR
   var atr=v.filter(function(d){return d.atrExpanding;});
@@ -601,6 +605,8 @@ function renderCard(d){
   tags+='<span class="t">'+d.trend+'</span>';
   if(d.orbSignal==='Bullish ORB')tags+='<span class="t o">ORB+</span>';
   if(d.orbSignal==='Bearish ORB')tags+='<span class="t o" style="color:var(--red)">ORB-</span>';
+  if(d.emaCrossSignal&&d.emaCrossSignal!=='None'&&d.emaCrossFreshness!=='Fading'){tags+='<span class="t '+(d.emaCrossType==='bullish'?'s':'d')+'" style="font-weight:700">'+d.emaCrossSignal+'</span>';}
+  if(d.emaCrossFreshness==='Fresh')tags+='<span class="t w">Cross Fresh</span>';
   var ch=d.changePercent>=0?'pos':'neg';
   var ih='';
   if(currentMode==='intraday'&&d.dayOpen!=null){
@@ -610,7 +616,7 @@ function renderCard(d){
   var h='<div class="sig-card '+cc+'"><div class="sc-head"><div><div class="sc-name">'+cs(d.symbol)+'</div><div class="sc-price">'+f(d.price)+'</div></div><div class="sc-badge '+bc+'">'+d.signal+'</div></div>'+
     '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(d.change>=0?'+':'')+f0(d.change)+')</span><span class="vol-txt">Vol: '+fv(d.currentVolume)+' ('+d.volumeRatio+'x)</span></div>'+
     ih+
-    '<div class="reason-box"><b>Signal:</b> '+d.signalReason+' · Score: '+d.signalScore+'<br><b>Pattern:</b> '+d.chartPattern+' ('+d.chartPatternType+') | <b>Breakout:</b> '+d.breakoutType+' | <b>ATR:</b> '+d.atrTrend+' | <b>Sentiment:</b> '+d.sentiment+'</div>'+
+    '<div class="reason-box"><b>Signal:</b> '+d.signalReason+' · Score: '+d.signalScore+'<br><b>Pattern:</b> '+d.chartPattern+' ('+d.chartPatternType+') | <b>Breakout:</b> '+d.breakoutType+' | <b>ATR:</b> '+d.atrTrend+' | <b>Sentiment:</b> '+d.sentiment+(d.emaCrossSignal&&d.emaCrossSignal!=='None'?'<br><b>EMA Crossover:</b> '+d.emaCrossLabel+' ('+d.emaCrossFreshness+', '+d.emaCrossBars+' bars ago) @ '+f(d.emaCrossPrice):'')+'</div>'+
     '<div class="tag-row">'+tags+'</div>'+
     '<div class="mini-grid"><div class="mini"><span class="mini-l">'+d.emaLabel+'</span><span class="mini-v '+ec+'">'+es+'</span></div><div class="mini"><span class="mini-l">'+d.vwapLabel+'</span><span class="mini-v '+vc+'">'+f0(d.vwap)+'</span></div><div class="mini"><span class="mini-l">RSI</span><span class="mini-v '+rc+'">'+d.rsi+'</span></div></div>'+
     '<div class="mini-grid"><div class="mini"><span class="mini-l">ATR</span><span class="mini-v">'+f0(d.atr)+'</span></div><div class="mini"><span class="mini-l">Support</span><span class="mini-v g">'+f0(d.support)+'</span></div><div class="mini"><span class="mini-l">Resistance</span><span class="mini-v r">'+f0(d.resistance)+'</span></div></div>';
@@ -935,7 +941,8 @@ function renderCompare(data){
       +'<td style="color:var(--red)">'+(d.sellScore||0)+'</td>'
       +'<td>'+(d.rsi||'\u2014')+'</td>'
       +'<td>'+(d.vwap||'\u2014')+'</td>'
-      +'<td style="font-size:10px">'+emaTxt+'</td>'
+      +'<td style="font-size:10px">'+emaTxt+'</td>'+
+      '<td style="font-size:10px">'+(d.emaCrossSignal&&d.emaCrossSignal!=='None'?'<span style="color:'+(d.emaCrossType==='bullish'?'var(--green)':'var(--red)')+'">'+d.emaCrossSignal+'</span><br><span style="color:var(--muted);font-size:9px">'+d.emaCrossBars+' bars ('+d.emaCrossFreshness+')</span>':'\u2014')+'</td>'
       +'<td style="font-size:10px">'+d.chartPattern+'</td>'
       +'<td style="font-size:10px">'+d.breakoutType+'</td>'
       +'<td>'+(d.sl?f0(d.sl):'\u2014')+'</td>'
@@ -943,7 +950,7 @@ function renderCompare(data){
       +'<td>'+(d.volumeRatio||0)+'x</td>'
       +'</tr>';
   }).join('');
-  document.getElementById('compareBody').innerHTML=h||'<tr><td colspan="14" style="color:var(--muted);text-align:center;padding:12px">No data</td></tr>';
+  document.getElementById('compareBody').innerHTML=h||'<tr><td colspan="15" style="color:var(--muted);text-align:center;padding:12px">No data</td></tr>';
 }
 
 

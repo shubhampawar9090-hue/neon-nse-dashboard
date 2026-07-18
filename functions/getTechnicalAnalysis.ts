@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
         const prevClose = meta.chartPreviousClose || meta.previousClose || closes[closes.length - 2] || price;
         const changePercent = prevClose ? parseFloat(((price - prevClose) / prevClose * 100).toFixed(2)) : 0;
 
-        // EMA
+        // EMA (final value + full series for crossover detection)
         function calcEMA(data, period) {
           if (data.length < period) return null;
           const k = 2 / (period + 1);
@@ -49,7 +49,89 @@ Deno.serve(async (req) => {
           for (let i = period; i < data.length; i++) ema = data[i] * k + ema * (1 - k);
           return parseFloat(ema.toFixed(2));
         }
+        function calcEMASeries(data, period) {
+          if (data.length < period) return [];
+          const k = 2 / (period + 1);
+          const series = [];
+          let ema = data.slice(0, period).reduce((a, b) => a + b, 0) / period;
+          series.push(ema);
+          for (let i = period; i < data.length; i++) { ema = data[i] * k + ema * (1 - k); series.push(ema); }
+          return series;
+        }
         const [ema1, ema2, ema3] = emaPeriods.map(p => calcEMA(closes, p));
+        const ema1Series = calcEMASeries(closes, emaPeriods[0]);
+        const ema2Series = calcEMASeries(closes, emaPeriods[1]);
+        const ema3Series = calcEMASeries(closes, emaPeriods[2]);
+
+        // ===== EMA CROSSOVER DETECTION =====
+        // Detect Golden Cross (fast crosses ABOVE slow) and Death Cross (fast crosses BELOW slow)
+        let emaCrossSignal = "None";
+        let emaCrossType = "none"; // bullish / bearish / none
+        let emaCrossLabel = "";
+        let emaCrossBars = 0; // candles since crossover
+        let emaCrossPrice = null; // price at crossover
+
+        // EMA1/EMA2 crossover (fast/mid)
+        if (ema1Series.length >= 2 && ema2Series.length >= 2) {
+          const len = Math.min(ema1Series.length, ema2Series.length);
+          const minLen = Math.min(len, 30); // look back up to 30 candles
+          for (let i = len - 1; i > 0 && i >= len - minLen; i--) {
+            const fastPrev = ema1Series[i - 1], slowPrev = ema2Series[i - 1];
+            const fastCur = ema1Series[i], slowCur = ema2Series[i];
+            // Bullish crossover: fast was below slow, now above
+            if (fastPrev <= slowPrev && fastCur > slowCur) {
+              emaCrossSignal = "Golden Cross";
+              emaCrossType = "bullish";
+              emaCrossBars = len - 1 - i;
+              emaCrossLabel = "EMA" + emaPeriods[0] + " \u2191 EMA" + emaPeriods[1];
+              emaCrossPrice = parseFloat(closes[i].toFixed(2));
+              break;
+            }
+            // Bearish crossover: fast was above slow, now below
+            if (fastPrev >= slowPrev && fastCur < slowCur) {
+              emaCrossSignal = "Death Cross";
+              emaCrossType = "bearish";
+              emaCrossBars = len - 1 - i;
+              emaCrossLabel = "EMA" + emaPeriods[0] + " \u2193 EMA" + emaPeriods[1];
+              emaCrossPrice = parseFloat(closes[i].toFixed(2));
+              break;
+            }
+          }
+        }
+
+        // EMA2/EMA3 crossover (mid/slow) — only if no fast/mid cross found
+        if (emaCrossSignal === "None" && ema2Series.length >= 2 && ema3Series.length >= 2) {
+          const len = Math.min(ema2Series.length, ema3Series.length);
+          const minLen = Math.min(len, 30);
+          for (let i = len - 1; i > 0 && i >= len - minLen; i--) {
+            const fastPrev = ema2Series[i - 1], slowPrev = ema3Series[i - 1];
+            const fastCur = ema2Series[i], slowCur = ema3Series[i];
+            if (fastPrev <= slowPrev && fastCur > slowCur) {
+              emaCrossSignal = "Golden Cross";
+              emaCrossType = "bullish";
+              emaCrossBars = len - 1 - i;
+              emaCrossLabel = "EMA" + emaPeriods[1] + " \u2191 EMA" + emaPeriods[2];
+              emaCrossPrice = parseFloat(closes[i].toFixed(2));
+              break;
+            }
+            if (fastPrev >= slowPrev && fastCur < slowCur) {
+              emaCrossSignal = "Death Cross";
+              emaCrossType = "bearish";
+              emaCrossBars = len - 1 - i;
+              emaCrossLabel = "EMA" + emaPeriods[1] + " \u2193 EMA" + emaPeriods[2];
+              emaCrossPrice = parseFloat(closes[i].toFixed(2));
+              break;
+            }
+          }
+        }
+
+        // Crossover freshness: "Fresh" (≤3 bars), "Recent" (≤10), "Fading" (>10)
+        let emaCrossFreshness = "None";
+        if (emaCrossSignal !== "None") {
+          if (emaCrossBars <= 3) emaCrossFreshness = "Fresh";
+          else if (emaCrossBars <= 10) emaCrossFreshness = "Recent";
+          else emaCrossFreshness = "Fading";
+        }
 
         // RSI 14
         function calcRSI(data, period) {
@@ -248,6 +330,8 @@ Deno.serve(async (req) => {
         if (volumeRatio > 1.5) sentimentReason += "Volume surge " + volumeRatio + "x. ";
         if (breakoutType === "Breakout Resistance") { bullScore += 1; sentimentReason += "Breakout. "; }
         if (breakoutType === "Breakdown Support") { bearScore += 1; sentimentReason += "Breakdown. "; }
+        if (emaCrossType === "bullish" && emaCrossFreshness !== "Fading") { bullScore += 1; sentimentReason += emaCrossSignal + " (" + emaCrossFreshness + ", " + emaCrossBars + " bars ago). "; }
+        if (emaCrossType === "bearish" && emaCrossFreshness !== "Fading") { bearScore += 1; sentimentReason += emaCrossSignal + " (" + emaCrossFreshness + ", " + emaCrossBars + " bars ago). "; }
         if (chartPatternType === "bullish") { bullScore += 1; sentimentReason += chartPattern + ". "; }
         if (chartPatternType === "bearish") { bearScore += 1; sentimentReason += chartPattern + ". "; }
         if (bullScore >= 4) sentiment = "Bullish";
@@ -255,10 +339,13 @@ Deno.serve(async (req) => {
         else if (bearScore >= 4) sentiment = "Bearish";
         else if (bearScore >= 2) sentiment = "Negative";
 
-        // Signal
+        // Signal — includes EMA crossover bonus
         let signal = "HOLD";
-        const buyScore = (emaBullish ? 2 : 0) + (price > vwap ? 1 : 0) + (rsi < 35 ? 1 : 0) + (breakoutType === "Breakout Resistance" ? 1 : 0) + (chartPatternType === "bullish" ? 1 : 0) + (trend === "Uptrend" ? 1 : 0) + (orbSignal === "Bullish ORB" ? 1 : 0);
-        const sellScore = (emaBearish ? 2 : 0) + (price < vwap ? 1 : 0) + (rsi > 65 ? 1 : 0) + (breakoutType === "Breakdown Support" ? 1 : 0) + (chartPatternType === "bearish" ? 1 : 0) + (trend === "Downtrend" ? 1 : 0) + (orbSignal === "Bearish ORB" ? 1 : 0);
+        let crossBuyBonus = 0, crossSellBonus = 0;
+        if (emaCrossType === "bullish" && emaCrossFreshness !== "Fading") crossBuyBonus = emaCrossFreshness === "Fresh" ? 2 : 1;
+        if (emaCrossType === "bearish" && emaCrossFreshness !== "Fading") crossSellBonus = emaCrossFreshness === "Fresh" ? 2 : 1;
+        const buyScore = (emaBullish ? 2 : 0) + (price > vwap ? 1 : 0) + (rsi < 35 ? 1 : 0) + (breakoutType === "Breakout Resistance" ? 1 : 0) + (chartPatternType === "bullish" ? 1 : 0) + (trend === "Uptrend" ? 1 : 0) + (orbSignal === "Bullish ORB" ? 1 : 0) + crossBuyBonus;
+        const sellScore = (emaBearish ? 2 : 0) + (price < vwap ? 1 : 0) + (rsi > 65 ? 1 : 0) + (breakoutType === "Breakdown Support" ? 1 : 0) + (chartPatternType === "bearish" ? 1 : 0) + (trend === "Downtrend" ? 1 : 0) + (orbSignal === "Bearish ORB" ? 1 : 0) + crossSellBonus;
         if (buyScore >= 4) signal = "STRONG BUY";
         else if (buyScore >= 2) signal = "BUY";
         else if (sellScore >= 4) signal = "STRONG SELL";
@@ -284,6 +371,7 @@ Deno.serve(async (req) => {
           breakoutType,
           emaBullish, emaBearish, emaLabel,
           ema1, ema2, ema3,
+          emaCrossSignal, emaCrossType, emaCrossLabel, emaCrossBars, emaCrossFreshness, emaCrossPrice,
           vwap, rsi, atr,
           atrExpanding, atrTrend, volatility,
           near52WeekHigh, near52WeekLow,
