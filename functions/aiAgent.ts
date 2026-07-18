@@ -1,5 +1,22 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
 
+// Full NSE stock list URL (2,384 stocks) — fetched at runtime
+const NSE_SYMBOLS_URL = "https://base44.app/api/apps/6a5b3772e2193d1b5140a8e3/files/mp/public/6a5b3772e2193d1b5140a8e3/e2d45e769_nse_symbols.json";
+let nseSymbolsCache = null;
+
+async function getNseSymbols() {
+  if (nseSymbolsCache) return nseSymbolsCache;
+  try {
+    const res = await fetch(NSE_SYMBOLS_URL);
+    if (res.ok) {
+      const arr = await res.json();
+      nseSymbolsCache = new Set(arr);
+      return nseSymbolsCache;
+    }
+  } catch (e) {}
+  return null;
+}
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   
@@ -12,103 +29,80 @@ Deno.serve(async (req) => {
     return Response.json({ success: false, error: "No question provided" });
   }
 
-  // Expanded stock list with aliases
+  // Natural language aliases for common stocks
   const stockAliases = {
-    "RELIANCE.NS": ["reliance", "reliance industries", "ril", "mukesh ambani"],
-    "TCS.NS": ["tcs", "tata consultancy", "tata consult"],
+    "RELIANCE.NS": ["reliance", "reliance industries", "ril"],
+    "TCS.NS": ["tcs", "tata consultancy"],
     "HDFCBANK.NS": ["hdfc bank", "hdfcbank", "hdfc"],
-    "INFY.NS": ["infy", "infosys", "infosys limited"],
+    "INFY.NS": ["infy", "infosys"],
     "ICICIBANK.NS": ["icici bank", "icicibank", "icici"],
     "SBIN.NS": ["sbin", "state bank", "sbi"],
-    "TATAMOTORS.NS": ["tata motors", "tatamotors", "tata motor"],
-    "BHARTIARTL.NS": ["bharti airtel", "bhartiartl", "airtel"],
-    "ITC.NS": ["itc", "itc limited"],
-    "LT.NS": ["lt", "larsen", "l&t", "larsen toubro", "l and t"],
-    "AXISBANK.NS": ["axis bank", "axisbank", "axis"],
+    "TATAMOTORS.NS": ["tata motors", "tatamotors"],
+    "BHARTIARTL.NS": ["bharti airtel", "airtel"],
+    "ITC.NS": ["itc"],
+    "LT.NS": ["larsen", "l&t", "larsen toubro", "l and t"],
+    "AXISBANK.NS": ["axis bank", "axisbank"],
     "KOTAKBANK.NS": ["kotak bank", "kotakbank", "kotak"],
     "MARUTI.NS": ["maruti", "maruti suzuki"],
-    "WIPRO.NS": ["wipro"],
     "HCLTECH.NS": ["hcl tech", "hcltech", "hcl"],
-    "SUNPHARMA.NS": ["sun pharma", "sunpharma", "sun pharmaceutical"],
-    "ULTRACEMCO.NS": ["ultracemco", "ultra tech", "ultratech"],
-    "ASIANPAINT.NS": ["asian paints", "asianpaint", "asian paint"],
-    "NESTLEIND.NS": ["nestle", "nestleind", "nestle india"],
-    "BAJFINANCE.NS": ["bajaj finance", "bajfinance", "bajaj fin"],
-    "TITAN.NS": ["titan", "titan company"],
+    "SUNPHARMA.NS": ["sun pharma", "sunpharma"],
+    "ULTRACEMCO.NS": ["ultracemco", "ultratech", "ultra tech"],
+    "ASIANPAINT.NS": ["asian paints", "asianpaint"],
+    "NESTLEIND.NS": ["nestle", "nestleind"],
+    "BAJFINANCE.NS": ["bajaj finance", "bajfinance"],
+    "TITAN.NS": ["titan"],
     "TATASTEEL.NS": ["tata steel", "tatasteel"],
-    "NTPC.NS": ["ntpc"],
-    "POWERGRID.NS": ["powergrid", "power grid", "power grid corp"],
-    "ONGC.NS": ["ongc", "oil and natural gas"],
-    "COALINDIA.NS": ["coal india", "coalindia"],
-    "ADANIENT.NS": ["adani enterprises", "adanient", "adani ent"],
-    "ADANIPORTS.NS": ["adani ports", "adaniports", "adani port"],
+    "ADANIENT.NS": ["adani enterprises", "adanient"],
+    "ADANIPORTS.NS": ["adani ports", "adaniports"],
     "JSWSTEEL.NS": ["jsw steel", "jswsteel"],
-    "BAJAJFINSV.NS": ["bajaj finserv", "bajajfinsv", "bajaj finserv"],
-    "GRASIM.NS": ["grasim", "grasim industries"],
-    "HINDALCO.NS": ["hindalco", "hindalco industries"],
-    "TECHM.NS": ["techm", "tech mahindra", "tech m"],
-    "DIVISLAB.NS": ["divis lab", "divislab", "divi's lab"],
-    "DRREDDY.NS": ["dr reddy", "drreddy", "dr reddy's lab"],
+    "BAJAJFINSV.NS": ["bajaj finserv", "bajajfinsv"],
+    "GRASIM.NS": ["grasim"],
+    "HINDALCO.NS": ["hindalco"],
+    "TECHM.NS": ["tech mahindra", "techm"],
+    "DIVISLAB.NS": ["divis lab", "divislab"],
+    "DRREDDY.NS": ["dr reddy", "drreddy"],
     "CIPLA.NS": ["cipla"],
-    "BRITANNIA.NS": ["britannia", "britannia industries"],
-    "HEROMOTOCO.NS": ["hero motocorp", "heromotoco", "hero moto"],
-    "EICHERMOT.NS": ["eicher motor", "eichermot", "eicher motors"],
-    "UPL.NS": ["upl"],
-    "SHRIRAMFIN.NS": ["shriram finance", "shriramfin", "shriram fin"],
-    "BAJAJ-AUTO.NS": ["bajaj auto", "bajaj-auto", "bajaj motorcycle"],
+    "BRITANNIA.NS": ["britannia"],
+    "HEROMOTOCO.NS": ["hero motocorp", "heromotoco"],
+    "EICHERMOT.NS": ["eicher motor", "eichermot"],
+    "SHRIRAMFIN.NS": ["shriram finance", "shriramfin"],
     "BPCL.NS": ["bpcl", "bharat petroleum"],
     "INDUSINDBK.NS": ["indusind bank", "indusindbk", "indusind"],
-    "TATACONSUM.NS": ["tata consumer", "tataconsum", "tata consumer products"],
-    "M&M.NS": ["mahindra", "m&m", "m and m", "mahindra & mahindra"],
-    "LTIM.NS": ["ltim", "lti mindtree", "lti"],
-    "SBILIFE.NS": ["sbi life", "sbilife", "sbi life insurance"],
-    "HDFCLIFE.NS": ["hdfc life", "hdfclife", "hdfc life insurance"],
+    "TATACONSUM.NS": ["tata consumer", "tataconsum"],
+    "M&M.NS": ["mahindra", "m&m", "m and m"],
     "TATAPOWER.NS": ["tata power", "tatapower"],
-    "DMART.NS": ["dmart", "avenue supermarts", "avenue supermart"],
-    "PIDILITIND.NS": ["pidilite", "pidilitind", "pidilite industries"],
+    "DMART.NS": ["dmart", "avenue supermarts"],
+    "PIDILITIND.NS": ["pidilite", "pidilitind"],
     "ZOMATO.NS": ["zomato"],
-    "PAYTM.NS": ["paytm", "one97"],
-    "NYKAA.NS": ["nykaa", "nykaa fsn"],
-    "POLICYBZR.NS": ["policybazaar", "policybzr", "policy bazaar"],
-    "IRCTC.NS": ["irctc", "indian railway catering"],
+    "IRCTC.NS": ["irctc"],
     "DLF.NS": ["dlf"],
     "VEDL.NS": ["vedanta", "vedl"],
     "HINDUNILVR.NS": ["hindustan unilever", "hindunilvr", "hul"],
-    "SIEMENS.NS": ["siemens"],
-    "TATAELXSI.NS": ["tata elxsi", "tataelxsi"],
-    "BEL.NS": ["bel", "bharat electronics"],
-    "HAL.NS": ["hal", "hindustan aeronautics"],
-    "PFC.NS": ["pfc", "power finance corp"],
-    "RECLTD.NS": ["rec ltd", "recltd", "rec limited"],
-    "MOTHERSON.NS": ["motherson", "mothersummi", "samvardhana motherson"],
-    "BHEL.NS": ["bhel", "bharat heavy electricals"],
-    "GAIL.NS": ["gail", "gail india"],
+    "BEL.NS": ["bharat electronics"],
+    "HAL.NS": ["hindustan aeronautics"],
+    "BHEL.NS": ["bhel", "bharat heavy"],
+    "GAIL.NS": ["gail"],
     "IOC.NS": ["ioc", "indian oil"],
     "NMDC.NS": ["nmdc"],
-    "BANKBARODA.NS": ["bank of baroda", "bankbaroda", "bob", "baroda"],
+    "BANKBARODA.NS": ["bank of baroda", "bankbaroda", "baroda"],
     "PNB.NS": ["pnb", "punjab national bank"],
     "CANBK.NS": ["canara bank", "canbk"],
-    "UNIONBANK.NS": ["union bank", "unionbank"],
-    "IDFCFIRSTB.NS": ["idfc first bank", "idfcfirstb", "idfc first"],
-    "FEDERALBNK.NS": ["federal bank", "federalbnk"],
-    "IIFL.NS": ["iifl", "india infoline"],
-    "MANAPPURAM.NS": ["manappuram"],
-    "MUTHOOTFIN.NS": ["muthoot", "muthootfin", "muthoot finance"]
+    "MUTHOOTFIN.NS": ["muthoot", "muthootfin"]
   };
 
   const indices = [
-    { sym: "^NSEI", name: "NIFTY 50", aliases: ["nifty 50", "nifty50", "nifty", "^nsei", "nsei"] },
-    { sym: "^BSESN", name: "SENSEX", aliases: ["sensex", "^bsesn", "bsesn", "bombay stock", "bse"] },
-    { sym: "^NSEBANK", name: "BANK NIFTY", aliases: ["bank nifty", "banknifty", "nsebank", "^nsebank", "bank nifty 50"] },
+    { sym: "^NSEI", name: "NIFTY 50", aliases: ["nifty 50", "nifty50", "nifty", "nsei"] },
+    { sym: "^BSESN", name: "SENSEX", aliases: ["sensex", "bse", "bombay stock"] },
+    { sym: "^NSEBANK", name: "BANK NIFTY", aliases: ["bank nifty", "banknifty", "nsebank"] },
     { sym: "^CNXIT", name: "NIFTY IT", aliases: ["nifty it", "cnxit", "it index"] },
-    { sym: "^CNXAUTO", name: "NIFTY AUTO", aliases: ["nifty auto", "cnxauto", "auto index"] },
-    { sym: "^CNXPHARMA", name: "NIFTY PHARMA", aliases: ["nifty pharma", "cnxpharma", "pharma index"] }
+    { sym: "^CNXAUTO", name: "NIFTY AUTO", aliases: ["nifty auto", "cnxauto"] },
+    { sym: "^CNXPHARMA", name: "NIFTY PHARMA", aliases: ["nifty pharma", "cnxpharma"] }
   ];
 
   const queryLower = query.toLowerCase().trim();
   let symbols = [];
 
-  // Check indices first (more specific)
+  // Check indices
   for (const idx of indices) {
     for (const alias of idx.aliases) {
       if (queryLower.includes(alias.toLowerCase())) {
@@ -118,7 +112,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Check stock aliases
+  // Check natural language aliases
   for (const [ticker, aliases] of Object.entries(stockAliases)) {
     for (const alias of aliases) {
       if (queryLower.includes(alias.toLowerCase())) {
@@ -128,8 +122,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Check for explicit .NS or .BO symbols
-  const nsMatches = query.match(/[A-Z&\-\.]+\.NS/gi);
+  // Check explicit .NS symbols
+  const nsMatches = query.match(/[A-Z0-9&\-\.]+\.NS/gi);
   if (nsMatches) {
     for (const m of nsMatches) {
       const sym = m.toUpperCase();
@@ -137,35 +131,53 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Detect intent
+  // Check ALL uppercase words against full NSE symbol list (2,384 stocks)
+  const upperWords = query.match(/\b[A-Z][A-Z0-9&\-]{2,}\b/g);
+  if (upperWords) {
+    const nseSet = await getNseSymbols();
+    if (nseSet) {
+      for (const w of upperWords) {
+        if (nseSet.has(w) && !symbols.includes(w + ".NS")) {
+          symbols.push(w + ".NS");
+        }
+      }
+    }
+  }
+
+  // Also check Title Case words merged (e.g. "Tata Motors" -> "TATAMOTORS")
+  const titleWords = query.match(/\b[A-Z][a-z]+\s+[A-Z][a-z]+\b/g);
+  if (titleWords) {
+    const nseSet = nseSymbolsCache || await getNseSymbols();
+    if (nseSet) {
+      for (const w of titleWords) {
+        const merged = w.replace(/\s+/g, '').toUpperCase();
+        if (nseSet.has(merged) && !symbols.includes(merged + ".NS")) {
+          symbols.push(merged + ".NS");
+        }
+      }
+    }
+  }
+
   const isMarketQuery = /market|nifty|sensex|index|indices|overall|how.*(market|doing|today|sector)|top.*(gainer|loser|stock)|best.*(stock|buy)|trend|outlook/i.test(query);
   const isGreeting = /^\s*(hi|hello|hey|yo|sup|namaste|hii|help|what.*can.*you|who.*are|start)\b/i.test(query);
   const isBreakoutQuery = /breakout|breakdown|screening|screener|scan|hot stock|momentum stock|pick/i.test(query);
-  const isBuySell = /buy|sell|hold|long|short|entry|exit|should i/i.test(query);
 
-  // Handle greeting
   if (isGreeting && symbols.length === 0) {
     return Response.json({
       success: true,
-      response: "👋 Hi! I'm <b>Elara</b> — your AI trading assistant.\n\nI can analyze <b>ANY NSE stock</b> using live Yahoo Finance data. Try:\n\n• <b>\"Analyze Reliance\"</b> — full technical breakdown\n• <b>\"TCS buy or sell?\"</b> — signal with SL/TP\n• <b>\"NIFTY 50 outlook\"</b> — index analysis\n• <b>\"Tata Motors signal\"</b> — any stock\n• <b>\"Market today\"</b> — all indices snapshot\n\nI recognize 80+ NSE stocks by name — just type naturally!",
+      response: "\u{1F44B} Hi! I'm <b>Elara</b> \u2014 your AI trading assistant.\n\nI can analyze <b>ALL 2,384 NSE stocks</b> using live Yahoo Finance data. Try:\n\n\u2022 <b>\"Analyze RELIANCE\"</b> \u2014 full technical breakdown\n\u2022 <b>\"TCS buy or sell?\"</b> \u2014 signal with SL/TP\n\u2022 <b>\"NIFTY 50 outlook\"</b> \u2014 index analysis\n\u2022 <b>\"Market today\"</b> \u2014 all indices snapshot\n\u2022 Type any NSE ticker (e.g. \"HDFCBANK\", \"ZOMATO\", \"IRCTC\") for instant analysis!",
       conversation_id: convId || crypto.randomUUID()
     });
   }
 
-  // If no symbols found, fall back to market overview
   if (symbols.length === 0) {
     if (isBreakoutQuery) {
-      // Return top NIFTY stocks for breakout scanning
       symbols = ["^NSEI", "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS", "SBIN.NS", "TATAMOTORS.NS", "BHARTIARTL.NS", "ADANIENT.NS"];
-    } else if (isMarketQuery || isBuySell) {
-      symbols = ["^NSEI", "^BSESN", "^NSEBANK"];
     } else {
-      // Even if we can't parse the query, show market overview
       symbols = ["^NSEI", "^BSESN", "^NSEBANK"];
     }
   }
 
-  // Fetch data for all identified symbols
   const analysisResults = [];
   for (const sym of symbols.slice(0, 8)) {
     try {
@@ -175,14 +187,12 @@ Deno.serve(async (req) => {
       const json = await res.json();
       const result = json.chart?.result?.[0];
       if (!result) continue;
-
       const meta = result.meta;
       const quotes = result.indicators?.quote?.[0] || {};
       const closes = quotes.close?.filter(v => v != null) || [];
       const highs = quotes.high?.filter(v => v != null) || [];
       const lows = quotes.low?.filter(v => v != null) || [];
       const volumes = quotes.volume?.filter(v => v != null) || [];
-
       if (closes.length < 10) continue;
 
       const price = meta.regularMarketPrice || closes[closes.length - 1];
@@ -242,7 +252,6 @@ Deno.serve(async (req) => {
 
       const last20 = closes.slice(-20);
       let pattern = "Consolidation";
-      let patternType = "neutral";
       if (last20.length >= 10) {
         const n = last20.length;
         const sumX = n * (n - 1) / 2;
@@ -251,8 +260,8 @@ Deno.serve(async (req) => {
         const sumX2 = n * (n - 1) * (2 * n - 1) / 6;
         const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
         const slopePct = (slope / (sumY / n)) * 100;
-        if (slopePct > 0.3) { pattern = "Uptrend"; patternType = "bullish"; }
-        else if (slopePct < -0.3) { pattern = "Downtrend"; patternType = "bearish"; }
+        if (slopePct > 0.3) pattern = "Uptrend";
+        else if (slopePct < -0.3) pattern = "Downtrend";
       }
 
       let buyScore = 0, sellScore = 0;
@@ -287,8 +296,7 @@ Deno.serve(async (req) => {
         ema5, ema13, ema26, rsi, vwap, atr, volumeRatio, pattern, signal,
         sl, tp1, tp2,
         fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh, fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
-        dayHigh: meta.regularMarketDayHigh, dayLow: meta.regularMarketDayLow,
-        isIndex: sym.startsWith("^")
+        dayHigh: meta.regularMarketDayHigh, dayLow: meta.regularMarketDayLow
       });
     } catch (e) {}
   }
@@ -296,92 +304,71 @@ Deno.serve(async (req) => {
   if (analysisResults.length === 0) {
     return Response.json({
       success: true,
-      response: "I couldn't fetch live data right now — Yahoo Finance might be rate-limiting. Please try again in a few seconds.",
+      response: "I couldn't fetch live data right now \u2014 Yahoo Finance might be rate-limiting. Please try again in a few seconds.",
       conversation_id: convId || crypto.randomUUID()
     });
   }
 
   let response = "";
-
   if (analysisResults.length === 1) {
-    // Single stock — detailed analysis
     const d = analysisResults[0];
-    const changeIcon = d.changePercent >= 0 ? "🟢" : "🔴";
-    const signalEmoji = d.signal.includes("BUY") ? "🟢" : d.signal.includes("SELL") ? "🔴" : "🟡";
-
-    response = "<b>" + d.name + "</b> — " + changeIcon + " ₹" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%)\n\n";
+    const changeIcon = d.changePercent >= 0 ? "\u{1F7E2}" : "\u{1F534}";
+    const signalEmoji = d.signal.includes("BUY") ? "\u{1F7E2}" : d.signal.includes("SELL") ? "\u{1F534}" : "\u{1F7E1}";
+    response = "<b>" + d.name + "</b> \u2014 " + changeIcon + " \u20B9" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%)\n\n";
     response += "<b>" + signalEmoji + " Signal: " + d.signal + "</b>\n\n";
-    response += "<b>📊 Technical Indicators</b>\n";
-    response += "• EMA 5/13/26: " + d.ema5 + " / " + d.ema13 + " / " + d.ema26 + "\n";
-    const emaStack = d.ema5 > d.ema13 && d.ema13 > d.ema26 ? "Bullish ↑" : d.ema5 < d.ema13 && d.ema13 < d.ema26 ? "Bearish ↓" : "Mixed";
-    response += "• EMA Stack: <b>" + emaStack + "</b>\n";
-    response += "• RSI (14): " + d.rsi + (d.rsi < 30 ? " (Oversold)" : d.rsi > 70 ? " (Overbought)" : " (Neutral)") + "\n";
-    response += "• VWAP: " + (d.vwap || "N/A") + (d.vwap ? (d.price > d.vwap ? " (Above ✓)" : " (Below ✗)") : "") + "\n";
-    response += "• ATR (14): " + d.atr + "\n";
-    response += "• Volume Ratio: " + d.volumeRatio + "x" + (d.volumeRatio > 1.5 ? " (Surge!)" : "") + "\n";
-    response += "• Pattern: " + d.pattern + "\n\n";
-    response += "<b>🎯 Trade Levels</b>\n";
-    if (d.sl) response += "• Stop Loss: ₹" + d.sl + "\n";
-    if (d.tp1) response += "• Target 1: ₹" + d.tp1 + "\n";
-    if (d.tp2) response += "• Target 2: ₹" + d.tp2 + "\n";
-    response += "• Day High/Low: ₹" + d.dayHigh + " / ₹" + d.dayLow + "\n";
-    response += "• 52W High/Low: ₹" + d.fiftyTwoWeekHigh + " / ₹" + d.fiftyTwoWeekLow + "\n\n";
-
+    response += "<b>\u{1F4CA} Technical Indicators</b>\n";
+    response += "\u2022 EMA 5/13/26: " + d.ema5 + " / " + d.ema13 + " / " + d.ema26 + "\n";
+    const emaStack = d.ema5 > d.ema13 && d.ema13 > d.ema26 ? "Bullish \u2191" : d.ema5 < d.ema13 && d.ema13 < d.ema26 ? "Bearish \u2193" : "Mixed";
+    response += "\u2022 EMA Stack: <b>" + emaStack + "</b>\n";
+    response += "\u2022 RSI (14): " + d.rsi + (d.rsi < 30 ? " (Oversold)" : d.rsi > 70 ? " (Overbought)" : " (Neutral)") + "\n";
+    response += "\u2022 VWAP: " + (d.vwap || "N/A") + (d.vwap ? (d.price > d.vwap ? " (Above \u2713)" : " (Below \u2717)") : "") + "\n";
+    response += "\u2022 ATR (14): " + d.atr + "\n";
+    response += "\u2022 Volume Ratio: " + d.volumeRatio + "x" + (d.volumeRatio > 1.5 ? " (Surge!)" : "") + "\n";
+    response += "\u2022 Pattern: " + d.pattern + "\n\n";
+    response += "<b>\u{1F3AF} Trade Levels</b>\n";
+    if (d.sl) response += "\u2022 Stop Loss: \u20B9" + d.sl + "\n";
+    if (d.tp1) response += "\u2022 Target 1: \u20B9" + d.tp1 + "\n";
+    if (d.tp2) response += "\u2022 Target 2: \u20B9" + d.tp2 + "\n";
+    response += "\u2022 Day High/Low: \u20B9" + d.dayHigh + " / \u20B9" + d.dayLow + "\n";
+    response += "\u2022 52W High/Low: \u20B9" + d.fiftyTwoWeekHigh + " / \u20B9" + d.fiftyTwoWeekLow + "\n\n";
     if (d.signal.includes("BUY")) {
-      response += "<b>💡 Verdict:</b> Bullish setup. EMA stack aligned, price " + (d.price > d.vwap ? "above VWAP" : "near VWAP") + ", RSI at " + d.rsi + ". Look for entry on dips with SL below ₹" + d.sl + ".";
+      response += "<b>\u{1F4A1} Verdict:</b> Bullish setup. EMA stack aligned, price " + (d.price > d.vwap ? "above VWAP" : "near VWAP") + ", RSI at " + d.rsi + ". Look for entry on dips with SL below \u20B9" + d.sl + ".";
     } else if (d.signal.includes("SELL")) {
-      response += "<b>💡 Verdict:</b> Bearish pressure. EMA stack bearish" + (d.price < d.vwap ? ", below VWAP" : "") + ", RSI at " + d.rsi + ". Consider exiting or shorting with SL above ₹" + d.sl + ".";
+      response += "<b>\u{1F4A1} Verdict:</b> Bearish pressure. EMA stack bearish" + (d.price < d.vwap ? ", below VWAP" : "") + ", RSI at " + d.rsi + ". Consider exiting or shorting with SL above \u20B9" + d.sl + ".";
     } else {
-      response += "<b>💡 Verdict:</b> Sideways/neutral. Wait for a clear breakout above ₹" + d.dayHigh + " or breakdown below ₹" + d.dayLow + " before taking a position.";
+      response += "<b>\u{1F4A1} Verdict:</b> Sideways/neutral. Wait for a clear breakout above \u20B9" + d.dayHigh + " or breakdown below \u20B9" + d.dayLow + " before taking a position.";
     }
   } else if (analysisResults.length <= 3) {
-    // 2-3 stocks — medium detail
     for (const d of analysisResults) {
-      const signalEmoji = d.signal.includes("BUY") ? "🟢" : d.signal.includes("SELL") ? "🔴" : "🟡";
-      response += "<b>" + d.name + "</b> " + signalEmoji + " ₹" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%)\n";
-      response += "  " + d.signal + " • EMA " + d.ema5 + "/" + d.ema13 + "/" + d.ema26 + " • RSI " + d.rsi + " • " + d.pattern + "\n";
-      if (d.sl) response += "  SL: ₹" + d.sl + " • TP: ₹" + d.tp1 + " / ₹" + d.tp2 + "\n";
+      const signalEmoji = d.signal.includes("BUY") ? "\u{1F7E2}" : d.signal.includes("SELL") ? "\u{1F534}" : "\u{1F7E1}";
+      response += "<b>" + d.name + "</b> " + signalEmoji + " \u20B9" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%)\n";
+      response += "  " + d.signal + " \u2022 EMA " + d.ema5 + "/" + d.ema13 + "/" + d.ema26 + " \u2022 RSI " + d.rsi + " \u2022 " + d.pattern + "\n";
+      if (d.sl) response += "  SL: \u20B9" + d.sl + " \u2022 TP: \u20B9" + d.tp1 + " / \u20B9" + d.tp2 + "\n";
       response += "\n";
     }
     response += "Ask me about any specific stock for a full detailed breakdown!";
   } else {
-    // 4+ stocks — compact screener view
-    if (isBreakoutQuery) {
-      response += "🔥 <b>Breakout Scan</b>\n\n";
-    } else {
-      response += "📊 <b>Market Snapshot</b>\n\n";
-    }
-
+    if (isBreakoutQuery) response += "\u{1F525} <b>Breakout Scan</b>\n\n";
+    else response += "\u{1F4CA} <b>Market Snapshot</b>\n\n";
     const buyStocks = analysisResults.filter(d => d.signal.includes("BUY")).sort((a, b) => b.changePercent - a.changePercent);
     const sellStocks = analysisResults.filter(d => d.signal.includes("SELL")).sort((a, b) => a.changePercent - b.changePercent);
     const holdStocks = analysisResults.filter(d => d.signal === "HOLD");
-
     if (buyStocks.length > 0) {
-      response += "🟢 <b>Bullish</b>\n";
-      for (const d of buyStocks.slice(0, 5)) {
-        response += "  " + d.name + " ₹" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%) — " + d.signal + " RSI " + d.rsi + "\n";
-      }
+      response += "\u{1F7E2} <b>Bullish</b>\n";
+      for (const d of buyStocks.slice(0, 5)) response += "  " + d.name + " \u20B9" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%) \u2014 " + d.signal + " RSI " + d.rsi + "\n";
       response += "\n";
     }
     if (sellStocks.length > 0) {
-      response += "🔴 <b>Bearish</b>\n";
-      for (const d of sellStocks.slice(0, 5)) {
-        response += "  " + d.name + " ₹" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%) — " + d.signal + " RSI " + d.rsi + "\n";
-      }
+      response += "\u{1F534} <b>Bearish</b>\n";
+      for (const d of sellStocks.slice(0, 5)) response += "  " + d.name + " \u20B9" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%) \u2014 " + d.signal + " RSI " + d.rsi + "\n";
       response += "\n";
     }
     if (holdStocks.length > 0) {
-      response += "🟡 <b>Neutral</b>\n";
-      for (const d of holdStocks.slice(0, 3)) {
-        response += "  " + d.name + " ₹" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%) — HOLD\n";
-      }
+      response += "\u{1F7E1} <b>Neutral</b>\n";
+      for (const d of holdStocks.slice(0, 3)) response += "  " + d.name + " \u20B9" + d.price + " (" + (d.changePercent >= 0 ? "+" : "") + d.changePercent + "%) \u2014 HOLD\n";
     }
     response += "\nAsk me about any stock for detailed analysis!";
   }
 
-  return Response.json({
-    success: true,
-    response: response,
-    conversation_id: convId || crypto.randomUUID()
-  });
+  return Response.json({ success: true, response: response, conversation_id: convId || crypto.randomUUID() });
 });
