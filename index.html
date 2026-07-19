@@ -1649,6 +1649,12 @@ body {
 .auth-err{font-size:11px;color:var(--red);text-align:center;margin-top:8px;font-family:'Courier New',monospace;min-height:16px}
 .auth-skip{text-align:center;margin-top:12px;font-size:10px;color:var(--grey);cursor:pointer;font-family:'Courier New',monospace}
 .auth-skip:hover{color:var(--amber)}
+.auth-google{width:100%;padding:10px;background:#fff;color:#333;border:1px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Courier New',monospace;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;margin-top:10px}
+.auth-google:hover{background:#f5f5f5}
+.auth-google svg{width:16px;height:16px}
+.auth-divider{text-align:center;font-size:10px;color:var(--grey);margin:10px 0 6px;font-family:'Courier New',monospace;position:relative}
+.auth-divider:before,.auth-divider:after{content:"";position:absolute;top:50%;width:35%;height:1px;background:var(--border2)}
+.auth-divider:before{left:0}.auth-divider:after{right:0}
 
 /* User badge in header */
 .user-badge{display:flex;align-items:center;gap:6px;padding:2px 10px;border:1px solid var(--amber-dim);background:rgba(255,136,0,.06);border-radius:4px;font-size:10px;font-family:'Courier New',monospace;cursor:pointer;transition:all .15s}
@@ -1680,6 +1686,7 @@ body {
       </div>
       <button class="auth-btn" id="loginBtn" onclick="doLogin()">LOGIN</button>
       <div class="auth-err" id="loginErr"></div>
+<div class="auth-divider">OR</div><button class="auth-google" onclick="doGoogleLogin()"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>SIGN IN WITH GOOGLE</button>
     </div>
     <div id="authFormSignup" style="display:none">
       <div class="auth-field">
@@ -1696,8 +1703,9 @@ body {
       </div>
       <button class="auth-btn" id="signupBtn" onclick="doSignup()">CREATE ACCOUNT</button>
       <div class="auth-err" id="signupErr"></div>
+<div class="auth-divider">OR</div><button class="auth-google" onclick="doGoogleLogin()"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>SIGN IN WITH GOOGLE</button>
     </div>
-    <div class="auth-skip" onclick="skipAuth()">Continue without login →</div>
+
   </div>
 </div>
 
@@ -2264,6 +2272,15 @@ function authTab(t){
   }
 }
 
+async function doGoogleLogin(){
+  try{
+    var{data,error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.href}});
+    if(error)throw error;
+  }catch(e){
+    document.getElementById('loginErr').textContent='Google login failed: '+(e.message||'');
+  }
+}
+
 async function doLogin(){
   var btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='LOGGING IN...';
   document.getElementById('loginErr').textContent='';
@@ -2319,10 +2336,6 @@ function doLogout(){
   document.getElementById('userBadge').style.display='none';
   document.getElementById('authOverlay').classList.remove('hidden');
   localStorage.removeItem('sb_session');
-}
-
-function skipAuth(){
-  document.getElementById('authOverlay').classList.add('hidden');
 }
 
 // Check existing session on load — ALWAYS show login unless valid session
