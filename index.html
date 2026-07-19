@@ -685,8 +685,20 @@ async function loadAll(){
   var p1=fetch(PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:pxSyms})}).then(function(r){return r.json();}).catch(function(){return{success:false};});
   var p2=fetch(TA_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:taSyms,timeframe:currentMode})}).then(function(r){return r.json();}).catch(function(){return{success:false};});
   var r=await Promise.all([p1,p2]);var pd=r[0],td=r[1];
-  if(pd.success&&pd.data){renderIndices(pd.data);renderGL(pd.data);}
-  if(td.success&&td.data){renderMovers(td.data);renderScreeners(td.data);renderTA(td.data);renderSentiment(td.data);renderCompare(td.data);if(!pd.success)renderIndices(td.data);}
+  // Merge price data and TA data by symbol so all fields available everywhere
+  var merged=[];
+  if(td.success&&td.data){
+    merged=td.data.map(function(t){
+      var p=pd.success&&pd.data?pd.data.find(function(x){return x.symbol===t.symbol;}):null;
+      return p?Object.assign({},p,t):t;
+    });
+  }else if(pd.success&&pd.data){
+    merged=pd.data;
+  }
+  if(pd.success&&pd.data){renderIndices(pd.data);}
+  if(merged.length){renderGL(merged);renderMovers(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);}
+  else if(td.success&&td.data){renderMovers(td.data);renderScreeners(td.data);renderTA(td.data);}
+  else if(pd.success&&pd.data){renderGL(pd.data);}
   if(pd.success&&pd.data){renderHeatmap(pd.data,td.success?td.data:[]);}
   if(!priceChart)loadChart('^NSEI');
   updStatus();

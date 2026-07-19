@@ -385,6 +385,7 @@ Deno.serve(async (req) => {
           dayMomentum,
           previousClose: parseFloat((prevClose || 0).toFixed(2)),
           sl, tp1, tp2,
+          buyScore, sellScore,
           volume: meta.regularMarketVolume || 0,
           error: false
         };
