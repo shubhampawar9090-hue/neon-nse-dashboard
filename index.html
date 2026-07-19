@@ -270,10 +270,200 @@ body{background:var(--bg);color:var(--white);font-family:'Courier New',Consolas,
 .compare-tbl td{padding:4px 7px;border-bottom:1px solid var(--border);font-family:'Courier New',monospace;white-space:nowrap}
 .compare-tbl tr:hover td{background:rgba(255,136,0,.03)}
 .gl-row{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px}
+.foot{font-size:10px;color:var(--grey);padding:6px 8px;text-align:center;font-family:'Courier New',monospace;border-top:1px solid var(--border);margin-top:8px;line-height:1.5}
 
 /* ===== RESPONSIVE ===== */
-@media(max-width:1024px){.scr-row{grid-template-columns:1fr 1fr}.idx-strip{grid-template-columns:1fr 1fr 1fr}}
-@media(max-width:768px){.movers-row,.scr-row,.gl-row{grid-template-columns:1fr}.sig-grid{grid-template-columns:1fr}.idx-strip{grid-template-columns:1fr}.intra-row{grid-template-columns:1fr 1fr}.brand-title{font-size:12px}.ai-panel{width:calc(100vw - 24px);right:12px;bottom:60px}.ai-fab{bottom:12px;right:12px}}
+
+
+/* ===== MOBILE STICKY NAV ===== */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--amber-dim);z-index:9997;padding:4px;justify-content:space-around}
+.mobile-nav button{flex:1;background:none;border:none;color:var(--grey);font-size:9px;padding:4px 2px;cursor:pointer;font-family:'Courier New',monospace;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:1px}
+.mobile-nav button.active{color:var(--amber)}
+.mobile-nav button .mn-icon{font-size:14px}
+@media(max-width:767px){.mobile-nav{display:flex}.neon-wrap{padding-bottom:50px}}
+
+/* ===== DESKTOP (≥1200px) — Multi-column dense layout ===== */
+@media(min-width:1200px){
+  .neon-wrap{padding:12px;max-width:1600px}
+  .movers-row{grid-template-columns:1fr 1fr;gap:6px}
+  .scr-row{grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .sig-grid{grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:6px}
+  .idx-strip{grid-template-columns:repeat(3,1fr);gap:6px}
+  .gl-row{grid-template-columns:1fr 1fr;gap:6px}
+  .heatmap-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+  .sentimeter-body{gap:24px}
+  .sentimeter-stats{grid-template-columns:repeat(6,1fr)}
+  .compare-tbl{font-size:12px}
+  .compare-tbl th,.compare-tbl td{padding:6px 10px}
+  .top-bar{padding:6px 12px}
+  .brand-title{font-size:15px}
+  .idx-info .idx-val{font-size:20px}
+  .sc-price{font-size:18px}
+  .panel{padding:12px}
+  .tbl{font-size:12px}
+  .tbl th,.tbl td{padding:5px 8px}
+}
+
+/* ===== LARGE DESKTOP (≥1600px) — Ultra-wide optimizations ===== */
+@media(min-width:1600px){
+  .neon-wrap{max-width:1920px;padding:16px}
+  .sig-grid{grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:8px}
+  .scr-row{gap:8px}
+  .movers-row{gap:8px}
+}
+
+/* ===== TABLET (768px–1199px) — 2-column adaptive ===== */
+@media(min-width:768px) and (max-width:1199px){
+  .neon-wrap{padding:8px;max-width:100%}
+  .movers-row{grid-template-columns:1fr 1fr;gap:4px}
+  .scr-row{grid-template-columns:1fr 1fr;gap:4px}
+  .sig-grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:4px}
+  .idx-strip{grid-template-columns:repeat(3,1fr);gap:4px}
+  .gl-row{grid-template-columns:1fr 1fr;gap:4px}
+  .heatmap-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:4px}
+  .sentimeter-stats{grid-template-columns:repeat(3,1fr)}
+  .compare-tbl{font-size:10px}
+  .compare-tbl th,.compare-tbl td{padding:4px 6px}
+}
+
+/* ===== MOBILE (≤767px) — Single column, touch-optimized ===== */
+@media(max-width:767px){
+  .neon-wrap{padding:4px;max-width:100%}
+  
+  /* Header */
+  .top-bar{padding:4px 6px;flex-wrap:wrap;gap:4px}
+  .brand-title{font-size:11px;letter-spacing:1px}
+  .brand-icon{font-size:14px}
+  .pill{font-size:9px;padding:2px 6px}
+  .clock{font-size:10px}
+  .btn-refresh{font-size:10px;padding:2px 8px}
+  .status-cluster{gap:4px}
+  
+  /* Mode toggle */
+  .mode-row{margin-bottom:4px}
+  .mode-btn{padding:6px;font-size:10px;letter-spacing:0}
+  
+  /* Index strip — horizontal scroll on mobile */
+  .idx-strip{grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:4px}
+  .idx-card{padding:4px 6px;flex-direction:column;align-items:flex-start;gap:2px}
+  .idx-info .idx-name{font-size:7px}
+  .idx-info .idx-val{font-size:13px}
+  .idx-chg{font-size:9px;text-align:left}
+  
+  /* Info bar */
+  .info-bar{padding:4px 8px;margin-bottom:4px}
+  .info-bar h2{font-size:11px}
+  .info-bar .sub{font-size:9px}
+  
+  /* Dividers */
+  .divider{margin:6px 0 4px;gap:4px}
+  .divider-text{font-size:9px;letter-spacing:1px}
+  
+  /* Panels */
+  .panel{padding:6px;margin-bottom:4px}
+  .panel-name{font-size:10px}
+  .panel-count{font-size:9px}
+  .tbl-wrap{max-height:200px}
+  .tbl{font-size:10px}
+  .tbl th{font-size:8px;padding:3px 4px}
+  .tbl td{padding:2px 4px;font-size:10px}
+  
+  /* Movers/Screeners — single column */
+  .movers-row{grid-template-columns:1fr;gap:4px;margin-bottom:4px}
+  .scr-row{grid-template-columns:1fr;gap:4px;margin-bottom:4px}
+  
+  /* Signal cards */
+  .sig-section{font-size:10px;padding:3px 8px;margin:4px 0 3px}
+  .sig-grid{grid-template-columns:1fr;gap:4px}
+  .sig-card{padding:8px}
+  .sc-name{font-size:12px}
+  .sc-price{font-size:14px}
+  .sc-badge{font-size:9px;padding:2px 6px}
+  .sc-meta{font-size:10px}
+  .chg-val{font-size:11px}
+  .reason-box{font-size:9px;padding:4px 6px}
+  .t{font-size:8px;padding:1px 4px}
+  .mini-grid{grid-template-columns:1fr 1fr 1fr;gap:2px}
+  .mini{padding:3px 4px}
+  .mini-l{font-size:7px}
+  .mini-v{font-size:10px}
+  .intra-row{grid-template-columns:1fr 1fr;gap:2px;padding:3px}
+  .sl-tp{gap:2px}
+  .sl-tp .box{padding:3px}
+  .sl-tp .lbl{font-size:7px}
+  .sl-tp .val{font-size:11px}
+  
+  /* Gainers/Losers */
+  .gl-row{grid-template-columns:1fr;gap:4px;margin-bottom:4px}
+  
+  /* Sentiment meter */
+  .sentimeter-wrap{padding:8px;margin-bottom:4px}
+  .sentimeter-title{font-size:11px;margin-bottom:6px}
+  .sentimeter-body{flex-direction:column;gap:8px}
+  .sentimeter-gauge{width:160px;height:80px}
+  .sentimeter-gauge canvas{width:160px!important;height:80px!important}
+  .sentimeter-stats{grid-template-columns:repeat(3,1fr);gap:3px;width:100%}
+  .sentimeter-stat{padding:4px 6px}
+  .sentimeter-stat .ss-val{font-size:16px}
+  .sentimeter-verdict{font-size:10px;padding:4px 8px}
+  
+  /* Chart */
+  .chart-panel{padding:6px;margin-bottom:4px}
+  .chart-panel-title{font-size:11px}
+  .chart-select{font-size:10px;padding:3px 6px}
+  .chart-container{height:200px}
+  .chart-info{gap:8px;font-size:10px}
+  
+  /* Heatmap */
+  .heatmap-panel{padding:6px;margin-bottom:4px}
+  .heatmap-grid{grid-template-columns:repeat(2,1fr);gap:3px}
+  .heatmap-cell{padding:6px}
+  .heatmap-cell .hm-name{font-size:9px}
+  .heatmap-cell .hm-price{font-size:11px}
+  .heatmap-cell .hm-chg{font-size:9px}
+  
+  /* Comparison table — horizontal scroll */
+  .compare-panel{padding:6px;margin-bottom:4px}
+  .compare-tbl{font-size:9px}
+  .compare-tbl th{font-size:8px;padding:3px 5px}
+  .compare-tbl td{padding:2px 5px}
+  
+  /* Footer */
+  .foot{font-size:9px;padding:4px 6px}
+  
+  /* AI Panel — full screen on mobile */
+  .ai-fab{bottom:12px;right:12px;width:40px;height:40px;font-size:16px}
+  .ai-fab .ai-badge{width:12px;height:12px;font-size:6px}
+  .ai-panel{width:calc(100vw - 16px);right:8px;bottom:56px;height:calc(100vh - 80px);max-height:500px}
+  .ai-hdr{padding:8px 10px}
+  .ai-avatar{width:24px;height:24px;font-size:12px}
+  .ai-hdr-name{font-size:12px}
+  .ai-hdr-status{font-size:9px}
+  .ai-msg{font-size:11px;padding:7px 10px}
+  .ai-input{font-size:11px;height:34px;padding:6px 8px}
+  .ai-send{width:34px;height:34px;font-size:14px}
+  .ai-quick button{font-size:9px;padding:3px 6px}
+  .ai-input-row{padding:6px 10px;gap:4px}
+}
+
+/* ===== SMALL MOBILE (≤380px) — Ultra-compact ===== */
+@media(max-width:380px){
+  .neon-wrap{padding:2px}
+  .brand-title{font-size:10px}
+  .idx-info .idx-val{font-size:11px}
+  .sc-name{font-size:11px}
+  .sc-price{font-size:13px}
+  .tbl{font-size:9px}
+  .tbl th{font-size:7px}
+  .mini-v{font-size:9px}
+  .sl-tp .val{font-size:10px}
+  .heatmap-grid{grid-template-columns:1fr}
+  .sentimeter-stats{grid-template-columns:repeat(2,1fr)}
+  .sentimeter-gauge{width:140px;height:70px}
+  .sentimeter-gauge canvas{width:140px!important;height:70px!important}
+  .chart-container{height:180px}
+}
+
 </style>
 </head>
 <body>
@@ -307,7 +497,8 @@ body{background:var(--bg);color:var(--white);font-family:'Courier New',Consolas,
 
 
 <!-- ===== TOP 10 MOVERS ===== -->
-<div class="divider"><span class="divider-text">🔥 TOP 10 MOVERS — ≥3% / ≤-3% + Volume Surge</span><span class="divider-line"></span></div>
+<div id="moversSec"></div>
+<div class="divider"><span class="divider-text">TOP 10 MOVERS</span><span class="divider-line"></span></div>
 <div class="movers-row">
   <div class="panel p-vol">
     <div class="panel-hdr"><span class="panel-name">🟢 Top Gainers — ≥+3%</span><span class="panel-count" id="vgCount"></span></div>
@@ -320,7 +511,7 @@ body{background:var(--bg);color:var(--white);font-family:'Courier New',Consolas,
 </div>
 
 <!-- ===== COMBINED SCREENER ===== -->
-<div class="divider"><span class="divider-text">📊 SCREENERS</span><span class="divider-line"></span></div>
+<div class="divider"><span class="divider-text">SCREENERS</span><span class="divider-line"></span></div>
 
 <!-- Combined: Breakout + Chart Pattern + EMA Stack + Price Action -->
 <div class="panel" style="border:1px solid rgba(0,240,255,.2);margin-bottom:12px">
@@ -345,6 +536,7 @@ body{background:var(--bg);color:var(--white);font-family:'Courier New',Consolas,
 </div>
 
 <!-- ===== SIGNAL CARDS ===== -->
+<div id="signalSec"></div>
 <div class="sig-section buy">🟢 BUY SIGNALS</div>
 <div class="sig-grid" id="buyCards"><div class="loading"><div class="spinner"></div><br>Loading...</div></div>
 <div class="sig-section sell">🔴 SELL SIGNALS</div>
@@ -353,7 +545,7 @@ body{background:var(--bg);color:var(--white);font-family:'Courier New',Consolas,
 <div class="sig-grid" id="holdCards"><div class="loading"><div class="spinner"></div><br>Loading...</div></div>
 
 <!-- ===== GAINERS / LOSERS ===== -->
-<div class="divider"><span class="divider-text">📈 GAINERS & LOSERS</span><span class="divider-line"></span></div>
+<div class="divider"><span class="divider-text">GAINERS & LOSERS</span><span class="divider-line"></span></div>
 <div class="gl-row">
   <div class="panel" style="border:1px solid rgba(0,255,136,.15)">
     <div class="panel-hdr"><span class="panel-name" style="color:var(--green)">🟢 Top 10 Gainers — ≥+3% + Vol Surge</span></div>
@@ -367,7 +559,8 @@ body{background:var(--bg);color:var(--white);font-family:'Courier New',Consolas,
 
 
 <!-- ===== MARKET SENTIMENT METER ===== -->
-<div class="divider"><span class="divider-text">🌐 MARKET SENTIMENT METER</span><span class="divider-line"></span></div>
+<div id="sentiSec"></div>
+<div class="divider"><span class="divider-text">MARKET SENTIMENT METER</span><span class="divider-line"></span></div>
 <div class="sentimeter-wrap">
   <div class="sentimeter-title">📊 Aggregated Signal Strength — All Tracked Stocks</div>
   <div class="sentimeter-body">
@@ -387,7 +580,8 @@ body{background:var(--bg);color:var(--white);font-family:'Courier New',Consolas,
 </div>
 
 <!-- ===== LIVE CHART ===== -->
-<div class="divider"><span class="divider-text">📈 LIVE PRICE CHART</span><span class="divider-line"></span></div>
+<div id="chartSec"></div>
+<div class="divider"><span class="divider-text">LIVE PRICE CHART</span><span class="divider-line"></span></div>
 <div class="chart-panel">
   <div class="chart-panel-hdr">
     <span class="chart-panel-title">📉 Price Action</span>
@@ -449,6 +643,16 @@ body{background:var(--bg);color:var(--white);font-family:'Courier New',Consolas,
 <div class="foot">Real data from Yahoo Finance via Base44 backend. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
 </div>
 
+
+<!-- ===== MOBILE BOTTOM NAV ===== -->
+<div class="mobile-nav">
+  <button onclick="scrollToSec('idxStrip')" class="active"><span class="mn-icon">▤</span>HOME</button>
+  <button onclick="scrollToSec('moversSec')"><span class="mn-icon">↕</span>MOVERS</button>
+  <button onclick="scrollToSec('chartSec')"><span class="mn-icon">📈</span>CHART</button>
+  <button onclick="scrollToSec('sentiSec')"><span class="mn-icon">◉</span>SENTI</button>
+  <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
+  <button onclick="aiToggle()"><span class="mn-icon">AI</span>ELARA</button>
+</div>
 
 <!-- ===== ELARA AI AGENT ===== -->
 <button class="ai-fab" id="aiFab" onclick="aiToggle()">⚡<span class="ai-badge">AI</span></button>
@@ -805,6 +1009,16 @@ async function aiProcess(q){
   document.getElementById('aiSendBtn').disabled=false;
 }
 
+
+
+// ===== MOBILE NAV SCROLL =====
+function scrollToSec(id){
+  var el=document.getElementById(id);
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  // Update active nav button
+  document.querySelectorAll('.mobile-nav button').forEach(function(b){b.classList.remove('active');});
+  event.currentTarget.classList.add('active');
+}
 
 // ===== MARKET SENTIMENT METER =====
 var sentiChart=null;
