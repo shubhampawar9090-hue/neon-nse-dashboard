@@ -2323,17 +2323,20 @@ function doLogout(){
 
 function skipAuth(){
   document.getElementById('authOverlay').classList.add('hidden');
-  localStorage.setItem('sb_session','skip');
 }
 
-// Check existing session on load
+// Check existing session on load — ALWAYS show login unless valid session
 if(sb){
   sb.auth.getSession().then(function(res){
     if(res.data&&res.data.session&&res.data.user){
       onAuthSuccess(res.data.user);
-    }else if(localStorage.getItem('sb_session')==='skip'){
-      document.getElementById('authOverlay').classList.add('hidden');
+    }else{
+      // No valid session — show login modal
+      localStorage.removeItem('sb_session');
+      document.getElementById('authOverlay').classList.remove('hidden');
     }
+  }).catch(function(){
+    document.getElementById('authOverlay').classList.remove('hidden');
   });
   sb.auth.onAuthStateChange(function(event,session){
     if(event==='SIGNED_OUT'){
@@ -2345,6 +2348,10 @@ if(sb){
       onAuthSuccess(session.user);
     }
   });
+}else{
+  // Supabase SDK failed to load — still show the page
+  console.warn('Supabase SDK not loaded');
+  document.getElementById('authOverlay').classList.add('hidden');
 }
 
 
