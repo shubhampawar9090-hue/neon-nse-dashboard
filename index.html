@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NSE Terminal">
 <title>NSE TERMINAL — Redesigned Trading Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root {
@@ -1628,9 +1629,78 @@ body {
     margin-bottom: 60px;
   }
 }
+
+/* ===== SUPABASE AUTH ===== */
+.auth-overlay{position:fixed;inset:0;background:rgba(10,15,30,.92);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s}
+.auth-overlay.hidden{display:none}
+.auth-box{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:24px;width:380px;max-width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.auth-logo{font-size:18px;font-weight:700;color:var(--amber);text-align:center;margin-bottom:4px;letter-spacing:2px;font-family:'Courier New',monospace;text-transform:uppercase}
+.auth-sub{font-size:11px;color:var(--grey);text-align:center;margin-bottom:20px;font-family:'Courier New',monospace}
+.auth-tabs{display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
+.auth-tab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;background:var(--card);color:var(--grey);border:none;font-family:'Courier New',monospace;text-transform:uppercase;transition:all .15s}
+.auth-tab.active{background:rgba(255,136,0,.1);color:var(--amber)}
+.auth-field{margin-bottom:12px}
+.auth-label{font-size:10px;color:var(--amber2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-family:'Courier New',monospace;font-weight:700}
+.auth-input{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);color:var(--white);font-size:13px;border-radius:6px;outline:none;font-family:'Courier New',monospace;transition:border .15s}
+.auth-input:focus{border-color:var(--amber)}
+.auth-btn{width:100%;padding:10px;background:var(--amber);color:#000;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:1px;transition:all .15s}
+.auth-btn:hover{background:#ffaa00}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed}
+.auth-err{font-size:11px;color:var(--red);text-align:center;margin-top:8px;font-family:'Courier New',monospace;min-height:16px}
+.auth-skip{text-align:center;margin-top:12px;font-size:10px;color:var(--grey);cursor:pointer;font-family:'Courier New',monospace}
+.auth-skip:hover{color:var(--amber)}
+
+/* User badge in header */
+.user-badge{display:flex;align-items:center;gap:6px;padding:2px 10px;border:1px solid var(--amber-dim);background:rgba(255,136,0,.06);border-radius:4px;font-size:10px;font-family:'Courier New',monospace;cursor:pointer;transition:all .15s}
+.user-badge:hover{border-color:var(--amber);background:rgba(255,136,0,.1)}
+.user-badge .ub-icon{width:18px;height:18px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#000}
+.user-badge .ub-name{color:var(--amber2)}
+.user-badge .ub-logout{color:var(--grey);font-size:9px;margin-left:4px}
+
 </style>
 </head>
 <body>
+<!-- ===== AUTH MODAL ===== -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-logo">NSE TERMINAL</div>
+    <div class="auth-sub">Sign in to save watchlists & signals</div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabLogin" onclick="authTab('login')">LOGIN</button>
+      <button class="auth-tab" id="tabSignup" onclick="authTab('signup')">SIGN UP</button>
+    </div>
+    <div id="authFormLogin">
+      <div class="auth-field">
+        <div class="auth-label">EMAIL</div>
+        <input class="auth-input" type="email" id="loginEmail" placeholder="trader@example.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <div class="auth-label">PASSWORD</div>
+        <input class="auth-input" type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="auth-btn" id="loginBtn" onclick="doLogin()">LOGIN</button>
+      <div class="auth-err" id="loginErr"></div>
+    </div>
+    <div id="authFormSignup" style="display:none">
+      <div class="auth-field">
+        <div class="auth-label">FULL NAME</div>
+        <input class="auth-input" type="text" id="signupName" placeholder="Shubham Pawar">
+      </div>
+      <div class="auth-field">
+        <div class="auth-label">EMAIL</div>
+        <input class="auth-input" type="email" id="signupEmail" placeholder="trader@example.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <div class="auth-label">PASSWORD</div>
+        <input class="auth-input" type="password" id="signupPass" placeholder="Min 6 characters" autocomplete="new-password">
+      </div>
+      <button class="auth-btn" id="signupBtn" onclick="doSignup()">CREATE ACCOUNT</button>
+      <div class="auth-err" id="signupErr"></div>
+    </div>
+    <div class="auth-skip" onclick="skipAuth()">Continue without login →</div>
+  </div>
+</div>
+
 
   <!-- TOP HEADER -->
   <header class="top-header">
@@ -1648,6 +1718,7 @@ body {
         <span class="pill" id="statusPill"><span class="pill-dot" id="pillDot"></span><span id="pillText">CONNECTING</span></span>
         <span class="clock">Yahoo Finance | <b id="clock">--:--:--</b> IST</span>
         <button class="btn-refresh" onclick="loadAll()">↻ Refresh</button>
+    <div class="user-badge" id="userBadge" style="display:none" onclick="doLogout()"><span class="ub-icon" id="ubIcon">S</span><span class="ub-name" id="ubName">User</span><span class="ub-logout">LOGOUT</span></div>
         <button class="btn-watchlist-add">+ WATCHLIST</button>
       </div>
     </div>
@@ -2175,6 +2246,107 @@ async function loadAll(){
 setMode('intraday');
 function sched(){var iv=mktOpen()?(currentMode==='intraday'?15000:30000):300000;setTimeout(function(){loadAll().then(sched);},iv);}
 sched();
+
+
+// ===== SUPABASE AUTH =====
+const SUPABASE_URL='https://vpjbjzrcbxgdrfjbyfiu.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwamJqenJjYnhnZHJmamJ5Zml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0Mzk2MzUsImV4cCI6MjEwMDAxNTYzNX0.8p5JYClZwNoTctvMO0xeLohO-Kg9UqNrGK5UBK8hDSY';
+const sb=window.supabase?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+var currentUser=null;
+
+function authTab(t){
+  if(t==='login'){
+    document.getElementById('tabLogin').classList.add('active');document.getElementById('tabSignup').classList.remove('active');
+    document.getElementById('authFormLogin').style.display='block';document.getElementById('authFormSignup').style.display='none';
+  }else{
+    document.getElementById('tabSignup').classList.add('active');document.getElementById('tabLogin').classList.remove('active');
+    document.getElementById('authFormLogin').style.display='none';document.getElementById('authFormSignup').style.display='block';
+  }
+}
+
+async function doLogin(){
+  var btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='LOGGING IN...';
+  document.getElementById('loginErr').textContent='';
+  try{
+    var email=document.getElementById('loginEmail').value.trim();
+    var pass=document.getElementById('loginPass').value;
+    var{data,error}=await sb.auth.signInWithPassword({email:email,password:pass});
+    if(error)throw error;
+    onAuthSuccess(data.user);
+  }catch(e){
+    document.getElementById('loginErr').textContent=e.message||'Login failed';
+  }
+  btn.disabled=false;btn.textContent='LOGIN';
+}
+
+async function doSignup(){
+  var btn=document.getElementById('signupBtn');btn.disabled=true;btn.textContent='CREATING...';
+  document.getElementById('signupErr').textContent='';
+  try{
+    var name=document.getElementById('signupName').value.trim();
+    var email=document.getElementById('signupEmail').value.trim();
+    var pass=document.getElementById('signupPass').value;
+    if(!name||!email||pass.length<6)throw{message:'Fill all fields. Password min 6 chars.'};
+    var{data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{full_name:name}}});
+    if(error)throw error;
+    if(data.user){
+      if(!data.session){
+        document.getElementById('signupErr').style.color='var(--green)';
+        document.getElementById('signupErr').textContent='Check your email to confirm account.';
+      }else{
+        onAuthSuccess(data.user);
+      }
+    }
+  }catch(e){
+    document.getElementById('signupErr').textContent=e.message||'Signup failed';
+  }
+  btn.disabled=false;btn.textContent='CREATE ACCOUNT';
+}
+
+function onAuthSuccess(user){
+  currentUser=user;
+  document.getElementById('authOverlay').classList.add('hidden');
+  var name=(user.user_metadata&&user.user_metadata.full_name)||user.email.split('@')[0];
+  document.getElementById('ubName').textContent=name;
+  document.getElementById('ubIcon').textContent=name.charAt(0).toUpperCase();
+  document.getElementById('userBadge').style.display='flex';
+  localStorage.setItem('sb_session','true');
+}
+
+function doLogout(){
+  if(sb)sb.auth.signOut();
+  currentUser=null;
+  document.getElementById('userBadge').style.display='none';
+  document.getElementById('authOverlay').classList.remove('hidden');
+  localStorage.removeItem('sb_session');
+}
+
+function skipAuth(){
+  document.getElementById('authOverlay').classList.add('hidden');
+  localStorage.setItem('sb_session','skip');
+}
+
+// Check existing session on load
+if(sb){
+  sb.auth.getSession().then(function(res){
+    if(res.data&&res.data.session&&res.data.user){
+      onAuthSuccess(res.data.user);
+    }else if(localStorage.getItem('sb_session')==='skip'){
+      document.getElementById('authOverlay').classList.add('hidden');
+    }
+  });
+  sb.auth.onAuthStateChange(function(event,session){
+    if(event==='SIGNED_OUT'){
+      currentUser=null;
+      document.getElementById('userBadge').style.display='none';
+      document.getElementById('authOverlay').classList.remove('hidden');
+      localStorage.removeItem('sb_session');
+    }else if(event==='SIGNED_IN'&&session&&session.user){
+      onAuthSuccess(session.user);
+    }
+  });
+}
+
 
 // ===== ELARA AI AGENT =====
 var AI_API='https://base44.app/api/apps/6a5b3772e2193d1b5140a8e3/functions/aiAgent';
