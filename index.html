@@ -1726,7 +1726,7 @@ body {
       <div class="status-cluster">
         <span class="pill" id="statusPill"><span class="pill-dot" id="pillDot"></span><span id="pillText">CONNECTING</span></span>
         <span class="clock">Yahoo Finance | <b id="clock">--:--:--</b> IST</span>
-        <button class="btn-refresh" onclick="loadAll()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadAll();loadAllNsePrices()">↻ Refresh</button>
     <div class="user-badge" id="userBadge" style="display:none" onclick="doLogout()"><span class="ub-icon" id="ubIcon">S</span><span class="ub-name" id="ubName">User</span><span class="ub-logout">LOGOUT</span></div>
         <button class="btn-watchlist-add">+ WATCHLIST</button>
       </div>
@@ -1804,11 +1804,11 @@ body {
       <div class="divider"><span class="divider-text">TOP 10 MOVERS</span><span class="divider-line"></span></div>
       <div class="movers-row">
         <div class="panel p-vol">
-          <div class="panel-hdr"><span class="panel-name">🟢 Top Gainers — ≥+3%</span><span class="panel-count" id="vgCount"></span></div>
+          <div class="panel-hdr"><span class="panel-name">🟢 Top Gainers</span><span class="panel-count" id="vgCount"></span></div>
           <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Vol×</th><th>Signal</th><th>Pattern</th></tr></thead><tbody id="vgBody"></tbody></table></div>
         </div>
         <div class="panel p-vol" style="border-color:rgba(255,45,85,.2)">
-          <div class="panel-hdr"><span class="panel-name" style="color:var(--red)">🔴 Top Losers — ≤-3%</span><span class="panel-count" id="vlCount"></span></div>
+          <div class="panel-hdr"><span class="panel-name" style="color:var(--red)">🔴 Top Losers</span><span class="panel-count" id="vlCount"></span></div>
           <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Vol×</th><th>Signal</th><th>Pattern</th></tr></thead><tbody id="vlBody"></tbody></table></div>
         </div>
       </div>
@@ -1853,11 +1853,11 @@ body {
       <div class="divider"><span class="divider-text">GAINERS & LOSERS</span><span class="divider-line"></span></div>
       <div class="gl-row">
         <div class="panel" style="border:1px solid rgba(0,255,136,.15)">
-          <div class="panel-hdr"><span class="panel-name" style="color:var(--green)">🟢 Top 10 Gainers — ≥+3% + Vol Surge</span></div>
+          <div class="panel-hdr"><span class="panel-name" style="color:var(--green)">🟢 Top 10 Gainers + Vol Surge</span></div>
           <div class="tbl-wrap" style="max-height:none"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Vol×</th></tr></thead><tbody id="gBody"></tbody></table></div>
         </div>
         <div class="panel" style="border:1px solid rgba(255,45,85,.15)">
-          <div class="panel-hdr"><span class="panel-name" style="color:var(--red)">🔴 Top 10 Losers — ≤-3% + Vol Surge</span></div>
+          <div class="panel-hdr"><span class="panel-name" style="color:var(--red)">🔴 Top 10 Losers + Vol Surge</span></div>
           <div class="tbl-wrap" style="max-height:none"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Vol×</th></tr></thead><tbody id="lBody"></tbody></table></div>
         </div>
       </div>
@@ -2181,6 +2181,8 @@ async function fetchTA(symbol,timeframe){
 var currentMode='intraday';
 var taSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TATAMOTORS.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS','HCLTECH.NS','BAJFINANCE.NS','ASIANPAINT.NS','NESTLEIND.NS','ONGC.NS','NTPC.NS','POWERGRID.NS','COALINDIA.NS','ADANIENT.NS','ADANIPORTS.NS','TATASTEEL.NS','JSWSTEEL.NS'];
 var pxSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TATAMOTORS.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS'];
+var allNseSymbols=[];
+var allPriceData=[];
 
 function f(n){return '₹'+Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function f0(n){return n!=null?Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
@@ -2260,20 +2262,19 @@ function schedHeaderIndices(){
 // TOP MOVERS
 
 function renderMovers(data){
-  var v=data.filter(function(d){return!d.error;});
-  var g=v.filter(function(d){return d.changePercent>=3}).sort(function(a,b){return b.changePercent-a.changePercent;});
-  var l=v.filter(function(d){return d.changePercent<=-3}).sort(function(a,b){return a.changePercent-b.changePercent;});
-  if(g.length<10){var m=v.filter(function(d){return d.changePercent>0&&d.changePercent<3}).sort(function(a,b){return b.changePercent-a.changePercent;});g=g.concat(m.slice(0,10-g.length));}
-  if(l.length<10){var m=v.filter(function(d){return d.changePercent<0&&d.changePercent>-3}).sort(function(a,b){return a.changePercent-b.changePercent;});l=l.concat(m.slice(0,10-l.length));}
-  g=g.slice(0,10);l=l.slice(0,10);
+  var v=data.filter(function(d){return!d.error&&d.changePercent!=null});
+  var g=v.filter(function(d){return d.changePercent>0}).sort(function(a,b){return b.changePercent-a.changePercent;}).slice(0,10);
+  var l=v.filter(function(d){return d.changePercent<0}).sort(function(a,b){return a.changePercent-b.changePercent;}).slice(0,10);
   document.getElementById('vgCount').textContent=g.length;
   document.getElementById('vlCount').textContent=l.length;
   document.getElementById('vgBody').innerHTML=g.length?g.map(function(d,i){
-    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="pos">+'+d.changePercent+'%</td><td>'+d.volumeRatio+'x</td><td>'+d.signal+'</td><td style="font-size:10px">'+d.chartPattern+'</td></tr>';
-  }).join(''):'<tr><td colspan="7" class="empty-row">No gainers ≥3%</td></tr>';
+    var vr=d.volumeRatio||1;
+    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="pos">+'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>'+(d.signal||'-')+'</td><td style="font-size:10px">'+(d.chartPattern||'-')+'</td></tr>';
+  }).join(''):'<tr><td colspan="7" class="empty-row">No gainers</td></tr>';
   document.getElementById('vlBody').innerHTML=l.length?l.map(function(d,i){
-    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="neg">'+d.changePercent+'%</td><td>'+d.volumeRatio+'x</td><td>'+d.signal+'</td><td style="font-size:10px">'+d.chartPattern+'</td></tr>';
-  }).join(''):'<tr><td colspan="7" class="empty-row">No losers ≤-3%</td></tr>';
+    var vr=d.volumeRatio||1;
+    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>'+(d.signal||'-')+'</td><td style="font-size:10px">'+(d.chartPattern||'-')+'</td></tr>';
+  }).join(''):'<tr><td colspan="7" class="empty-row">No losers</td></tr>';
 }
 
 // SCREENERS
@@ -2413,26 +2414,23 @@ function renderTA(data){
 }
 
 function renderGL(data){
-  var v=data.filter(function(d){return!d.error;});
-  // Gainers: ≥+3% with high volume (volumeRatio > 1.2x), top 10
-  var g=v.filter(function(d){return d.changePercent>=3&&(d.volumeRatio||1)>=1.2}).sort(function(a,b){return b.changePercent-a.changePercent;}).slice(0,10);
-  // Losers: ≤-3% with high volume (volumeRatio > 1.2x), top 10
-  var l=v.filter(function(d){return d.changePercent<=-3&&(d.volumeRatio||1)>=1.2}).sort(function(a,b){return a.changePercent-b.changePercent;}).slice(0,10);
-  // If not enough with volume filter, fill with just ±3% moves
-  if(g.length<10){var extra=v.filter(function(d){return d.changePercent>=3&&!g.find(function(x){return x.symbol===d.symbol;})}).sort(function(a,b){return b.changePercent-a.changePercent;});g=g.concat(extra.slice(0,10-g.length));}
-  if(l.length<10){var extra=v.filter(function(d){return d.changePercent<=-3&&!l.find(function(x){return x.symbol===d.symbol;})}).sort(function(a,b){return a.changePercent-b.changePercent;});l=l.concat(extra.slice(0,10-l.length));}
-  // If still not enough, fill with any positive/negative movers
+  var v=data.filter(function(d){return!d.error&&d.changePercent!=null});
+  // Gainers: positive change with high volume, top 10
+  var g=v.filter(function(d){return d.changePercent>0&&(d.volumeRatio||1)>=1.2}).sort(function(a,b){return b.changePercent-a.changePercent;}).slice(0,10);
+  // Losers: negative change with high volume, top 10
+  var l=v.filter(function(d){return d.changePercent<0&&(d.volumeRatio||1)>=1.2}).sort(function(a,b){return a.changePercent-b.changePercent;}).slice(0,10);
+  // If not enough with volume filter, fill with any positive/negative movers
   if(g.length<10){var extra=v.filter(function(d){return d.changePercent>0&&!g.find(function(x){return x.symbol===d.symbol;})}).sort(function(a,b){return b.changePercent-a.changePercent;});g=g.concat(extra.slice(0,10-g.length));}
   if(l.length<10){var extra=v.filter(function(d){return d.changePercent<0&&!l.find(function(x){return x.symbol===d.symbol;})}).sort(function(a,b){return a.changePercent-b.changePercent;});l=l.concat(extra.slice(0,10-l.length));}
   g=g.slice(0,10);l=l.slice(0,10);
   document.getElementById('gBody').innerHTML=g.length?g.map(function(d,i){
     var vr=d.volumeRatio||1;
     return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="pos">+'+d.changePercent.toFixed(2)+'%</td><td style="color:'+(vr>=1.5?'var(--amber)':'var(--grey)')+'">'+vr.toFixed(1)+'x</td></tr>';
-  }).join(''):'<tr><td colspan="5" class="empty-row">No gainers ≥+3%</td></tr>';
+  }).join(''):'<tr><td colspan="5" class="empty-row">No gainers</td></tr>';
   document.getElementById('lBody').innerHTML=l.length?l.map(function(d,i){
     var vr=d.volumeRatio||1;
     return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="neg">'+d.changePercent.toFixed(2)+'%</td><td style="color:'+(vr>=1.5?'var(--amber)':'var(--grey)')+'">'+vr.toFixed(1)+'x</td></tr>';
-  }).join(''):'<tr><td colspan="5" class="empty-row">No losers ≤-3%</td></tr>';
+  }).join(''):'<tr><td colspan="5" class="empty-row">No losers</td></tr>';
 }
 
 
@@ -2549,6 +2547,70 @@ function normalizeTA(merged){
   });
 }
 
+
+// Load all NSE symbols from JSON and fetch prices for movers panel
+async function loadAllNsePrices(){
+  try{
+    if(!allNseSymbols.length){
+      var resp=await fetch('https://raw.githubusercontent.com/shubhampawar9090-hue/neon-nse-dashboard/main/data/nse_symbols.json');
+      if(!resp.ok) throw new Error('Failed to load symbol list');
+      var raw=await resp.json();
+      allNseSymbols=raw.map(function(s){return s+'.NS';});
+      console.log('Loaded '+allNseSymbols.length+' NSE symbols for movers');
+    }
+    // Fetch all prices in one batch
+    var resp=await fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:allNseSymbols})});
+    if(!resp.ok) throw new Error('Price API '+resp.status);
+    var pd=await resp.json();
+    if(pd&&pd.success&&pd.data){
+      allPriceData=pd.data.filter(function(d){return!d.error;});
+      console.log('Fetched prices for '+allPriceData.length+' NSE stocks');
+      // Merge allPriceData into the main data for movers
+      updateMoversPanel();
+    }
+  }catch(e){
+    console.error('loadAllNsePrices failed:',e.message);
+  }
+}
+
+// Update movers panel with all NSE data
+function updateMoversPanel(){
+  if(!allPriceData.length) return;
+  // Sort by changePercent for top gainers/losers
+  var sorted=allPriceData.slice().sort(function(a,b){return b.changePercent-a.changePercent;});
+  var gainers=sorted.filter(function(d){return d.changePercent>0}).slice(0,10);
+  var losers=sorted.slice().reverse().filter(function(d){return d.changePercent<0}).slice(0,10);
+  
+  // Update movers panel
+  document.getElementById('vgCount').textContent=gainers.length;
+  document.getElementById('vlCount').textContent=losers.length;
+  document.getElementById('vgBody').innerHTML=gainers.length?gainers.map(function(d,i){
+    var vr=d.volumeRatio||1;
+    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="pos">+'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>-</td><td>-</td></tr>';
+  }).join(''):'<tr><td colspan="7" class="empty-row">No gainers</td></tr>';
+  document.getElementById('vlBody').innerHTML=losers.length?losers.map(function(d,i){
+    var vr=d.volumeRatio||1;
+    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>-</td><td>-</td></tr>';
+  }).join(''):'<tr><td colspan="7" class="empty-row">No losers</td></tr>';
+  
+  // Update gainers/losers with volume surge panel
+  var volG=allPriceData.filter(function(d){return d.changePercent>0&&(d.volumeRatio||1)>=1.2}).sort(function(a,b){return b.changePercent-a.changePercent;}).slice(0,10);
+  var volL=allPriceData.filter(function(d){return d.changePercent<0&&(d.volumeRatio||1)>=1.2}).sort(function(a,b){return a.changePercent-b.changePercent;}).slice(0,10);
+  if(volG.length<10){var extra=allPriceData.filter(function(d){return d.changePercent>0&&!volG.find(function(x){return x.symbol===d.symbol;})}).sort(function(a,b){return b.changePercent-a.changePercent;});volG=volG.concat(extra.slice(0,10-volG.length));}
+  if(volL.length<10){var extra=allPriceData.filter(function(d){return d.changePercent<0&&!volL.find(function(x){return x.symbol===d.symbol;})}).sort(function(a,b){return a.changePercent-b.changePercent;});volL=volL.concat(extra.slice(0,10-volL.length));}
+  volG=volG.slice(0,10);volL=volL.slice(0,10);
+  if(document.getElementById('gBody')){
+    document.getElementById('gBody').innerHTML=volG.length?volG.map(function(d,i){
+      var vr=d.volumeRatio||1;
+      return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="pos">+'+(d.changePercent||0).toFixed(2)+'%</td><td style="color:'+(vr>=1.5?'var(--amber)':'var(--grey)')+'">'+vr.toFixed(1)+'x</td></tr>';
+    }).join(''):'<tr><td colspan="5" class="empty-row">No gainers</td></tr>';
+    document.getElementById('lBody').innerHTML=volL.length?volL.map(function(d,i){
+      var vr=d.volumeRatio||1;
+      return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td style="color:'+(vr>=1.5?'var(--amber)':'var(--grey)')+'">'+vr.toFixed(1)+'x</td></tr>';
+    }).join(''):'<tr><td colspan="5" class="empty-row">No losers</td></tr>';
+  }
+}
+
 async function loadAll(){
   updStatus();
   ['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});
@@ -2628,7 +2690,10 @@ function showFetchError(msg){
 }
 
 setMode('intraday');
-function sched(){var iv=mktOpen()?(currentMode==='intraday'?15000:30000):300000;setTimeout(function(){loadAll().then(sched);},iv);}
+loadAllNsePrices();
+function sched(){var iv=mktOpen()?(currentMode==='intraday'?15000:30000):300000;setTimeout(function(){loadAll().then(function(){sched();});},iv);}
+// Refresh all NSE symbols every 2 minutes
+var allSymInterval=setInterval(loadAllNsePrices,120000);
 sched();
 
 
