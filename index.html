@@ -1667,6 +1667,32 @@ body {
 </style>
 </head>
 <body>
+<!-- DEBUG TEST -->
+<div id="dbgTest" style="position:fixed;top:5px;right:5px;background:#000;color:#0f0;font:10px Courier New;padding:8px;z-index:99999;border:1px solid #ff8800;max-width:350px;max-height:200px;overflow:auto;">DEBUG: Loading...</div>
+<script>
+(async function(){
+  var dbg=document.getElementById('dbgTest');
+  function log(msg){dbg.innerHTML+='<br>'+msg;}
+  try{
+    log('Testing Edge Function...');
+    var url='https://vpjbjzrcbxgdrfjbyfiu.supabase.co/functions/v1/get-nse-data';
+    log('URL: '+url);
+    var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:['RELIANCE.NS','TCS.NS','^NSEI']})});
+    log('Status: '+res.status);
+    log('OK: '+res.ok);
+    var text=await res.text();
+    log('Body length: '+text.length);
+    var j=JSON.parse(text);
+    log('Success: '+j.success);
+    log('Data count: '+(j.data?j.data.length:0));
+    if(j.data&&j.data[0])log('First: '+j.data[0].symbol+' ₹'+j.data[0].price);
+    log('✅ FETCH WORKS!');
+  }catch(e){
+    log('❌ ERROR: '+e.message);
+    log('Stack: '+e.stack.substring(0,100));
+  }
+})();
+</script>
 <!-- ===== AUTH MODAL ===== -->
 <div class="auth-overlay" id="authOverlay">
   <div class="auth-box">
@@ -2437,11 +2463,17 @@ function renderGL(data){
 
 async function loadAll(){
   updStatus();
+  var dbg=document.getElementById('dbgTest');
+  function dbgLog(msg){if(dbg)dbg.innerHTML+='<br>[loadAll] '+msg;}
+  dbgLog('START');
   ['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});
   var priceResults,taResults;
   
   // Primary: Supabase Edge Functions
   try{
+    dbgLog('Fetching Edge Functions...');
+    dbgLog('pxSyms: '+pxSyms.length+' taSyms: '+taSyms.length);
+    dbgLog('EDGE_PRICE_API: '+EDGE_PRICE_API);
     var t1=Date.now();
     var p1=fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:pxSyms})}).then(function(r){
       if(!r.ok)throw new Error('Price API '+r.status);
@@ -2453,22 +2485,24 @@ async function loadAll(){
     });
     var r=await Promise.all([p1,p2]);
     var pd=r[0],td=r[1];
+    dbgLog('Response pd.success='+pd.success+' pd.data='+(pd.data?pd.data.length:0));
+    dbgLog('Response td.success='+td.success+' td.data='+(td.data?td.data.length:0));
     if(pd&&pd.success&&pd.data&&pd.data.length){priceResults=pd.data;}
     if(td&&td.success&&td.data&&td.data.length){taResults=td.data;}
-    console.log('Edge Functions OK: '+(Date.now()-t1)+'ms | prices='+(priceResults?priceResults.length:0)+' ta='+(taResults?taResults.length:0));
+    dbgLog('Edge OK: '+(Date.now()-t1)+'ms prices='+(priceResults?priceResults.length:0)+' ta='+(taResults?taResults.length:0));
   }catch(e){
-    console.error('Edge Functions failed:',e.message);
+    dbgLog('❌ Edge FAIL: '+e.message);
     showFetchError('Backend connection failed: '+e.message);
   }
   
   // Fallback: try direct Yahoo Finance (may fail due to CORS)
   if(!priceResults||!priceResults.length){
-    console.log('Falling back to direct Yahoo Finance for prices...');
+    dbgLog('Falling back to YF prices...');
     try{
       priceResults=await Promise.all(pxSyms.map(fetchStockData));
       priceResults=priceResults.filter(function(d){return !d.error;});
-      console.log('Direct YF prices: '+priceResults.length+' OK');
-    }catch(e){console.error('YF price fallback failed:',e);}
+      dbgLog('YF prices: '+priceResults.length+' OK');
+    }catch(e){dbgLog('❌ YF price FAIL: '+e.message);}
   }
   if(!taResults||!taResults.length){
     console.log('Falling back to direct Yahoo Finance for TA...');
@@ -2495,10 +2529,13 @@ async function loadAll(){
     if(!merged.find(function(m){return m.symbol===p.symbol;})){merged.push(p);}
   });
   
+  dbgLog('Merged: '+merged.length+' items');
+  dbgLog('Rendering...');
   renderIndices(priceResults||[]);
   if(merged.length){renderGL(merged);renderMovers(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);}
   renderHeatmap(priceResults||[],taResults||[]);
   if(!priceChart)loadChart('^NSEI');
+  dbgLog('✅ DONE');
   updStatus();
 }
 
