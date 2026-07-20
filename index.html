@@ -2635,7 +2635,15 @@ sched();
 // ===== SUPABASE AUTH =====
 const SUPABASE_URL='https://vpjbjzrcbxgdrfjbyfiu.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwamJqenJjYnhnZHJmamJ5Zml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0Mzk2MzUsImV4cCI6MjEwMDAxNTYzNX0.8p5JYClZwNoTctvMO0xeLohO-Kg9UqNrGK5UBK8hDSY';
-const sb=window.supabase?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+const sb=window.supabase?supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
+    auth:{
+      persistSession:true,
+      autoRefreshToken:true,
+      detectSessionInUrl:false,
+      storage:window.localStorage,
+      storageKey:'sb-vpjbjzrcbxgdrfjbyfiu-auth-token'
+    }
+  }):null;
 var currentUser=null;
 
 function authTab(t){
@@ -2714,19 +2722,45 @@ function doLogout(){
   localStorage.removeItem('sb_session');
 }
 
-// Check existing session on load — ALWAYS show login unless valid session
+// Check existing session on load — persist login across refreshes
 if(sb){
+  // Method 1: Try getSession (reads from persisted storage)
   sb.auth.getSession().then(function(res){
     if(res.data&&res.data.session&&res.data.user){
       onAuthSuccess(res.data.user);
     }else{
-      // No valid session — show login modal
-      localStorage.removeItem('sb_session');
-      document.getElementById('authOverlay').classList.remove('hidden');
+      // Method 2: Check localStorage directly for Supabase token
+      var sbKey='sb-vpjbjzrcbxgdrfjbyfiu-auth-token';
+      var stored=localStorage.getItem(sbKey);
+      if(stored){
+        try{
+          var parsed=JSON.parse(stored);
+          if(parsed&&parsed.access_token){
+            // Token exists in storage — try to refresh and get user
+            sb.auth.getUser().then(function(u){
+              if(u.data&&u.data.user){
+                onAuthSuccess(u.data.user);
+              }else{
+                document.getElementById('authOverlay').classList.remove('hidden');
+              }
+            }).catch(function(){
+              document.getElementById('authOverlay').classList.remove('hidden');
+            });
+          }else{
+            document.getElementById('authOverlay').classList.remove('hidden');
+          }
+        }catch(e){
+          document.getElementById('authOverlay').classList.remove('hidden');
+        }
+      }else{
+        document.getElementById('authOverlay').classList.remove('hidden');
+      }
     }
   }).catch(function(){
     document.getElementById('authOverlay').classList.remove('hidden');
   });
+
+  // Method 3: Listen for auth state changes (catches INITIAL_SESSION, refreshes, etc.)
   sb.auth.onAuthStateChange(function(event,session){
     if(event==='SIGNED_OUT'){
       currentUser=null;
@@ -2735,8 +2769,25 @@ if(sb){
       localStorage.removeItem('sb_session');
     }else if(event==='SIGNED_IN'&&session&&session.user){
       onAuthSuccess(session.user);
+    }else if(event==='INITIAL_SESSION'&&session&&session.user){
+      // This fires when Supabase finishes loading the persisted session
+      onAuthSuccess(session.user);
+    }else if(event==='TOKEN_REFRESHED'&&session&&session.user){
+      onAuthSuccess(session.user);
     }
   });
+
+  // Method 4: Fallback — if overlay still visible after 2s, try one more getSession
+  setTimeout(function(){
+    var overlay=document.getElementById('authOverlay');
+    if(overlay&&!overlay.classList.contains('hidden')){
+      sb.auth.getSession().then(function(res){
+        if(res.data&&res.data.session&&res.data.user){
+          onAuthSuccess(res.data.user);
+        }
+      }).catch(function(){});
+    }
+  },2000);
 }else{
   // Supabase SDK failed to load — still show the page
   console.warn('Supabase SDK not loaded');
