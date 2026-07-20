@@ -2543,7 +2543,7 @@ function normalizeTA(merged){
     if(!item.dayMomentum)item.dayMomentum=0;
     
     // Volume ratio default
-    if(item.volumeRatio===undefined||item.volumeRatio===null)item.volumeRatio=1;
+    if(!item.volumeRatio)item.volumeRatio=1;
     
     return item;
   });
@@ -2597,10 +2597,10 @@ async function loadAll(){
     return;
   }
   
-  // Merge price + TA data by symbol
+  // Merge price + TA data by symbol (TA fields first, price data overrides for accuracy)
   var merged=(taResults||[]).map(function(t){
     var p=(priceResults||[]).find(function(x){return x.symbol===t.symbol;});
-    return p?Object.assign({},p,t):t;
+    return p?Object.assign({},t,p):t;
   });
   (priceResults||[]).forEach(function(p){
     if(!merged.find(function(m){return m.symbol===p.symbol;})){merged.push(p);}
