@@ -1397,6 +1397,7 @@ body {
   gap: 6px;
   font-size: 12px;
 }
+@keyframes blink {0%{opacity:1}50%{opacity:.3}100%{opacity:1}}
 .chart-info-item .ci-label {
   color: var(--text2);
   font-weight: 600;
@@ -1887,7 +1888,7 @@ body {
       <div class="divider"><span class="divider-text">LIVE PRICE CHART</span><span class="divider-line"></span></div>
       <div class="chart-panel">
         <div class="chart-panel-hdr">
-          <span class="chart-panel-title">📉 Price Action</span>
+          <span class="chart-panel-title">📉 Price Action</span> <span id="liveBadge" style="font-size:10px;color:#00ff00;background:rgba(0,255,0,.1);padding:2px 6px;border-radius:2px;margin-left:6px;animation:blink 1.5s infinite;">● LIVE</span>
           <select class="chart-select" id="chartSelect" onchange="loadChart(this.value)">
             <option value="^NSEI">NIFTY 50</option>
             <option value="RELIANCE.NS">RELIANCE</option>
@@ -2774,32 +2775,50 @@ function renderSentiment(data){
 // ===== LIVE PRICE CHART =====
 var priceChart=null;
 var chartData=null;
+var chartSym='^NSEI';
+var chartInterval=null;
+var lastTickPrice=null;
+
 async function loadChart(sym){
+  chartSym=sym;
+  // Stop any existing tick refresh
+  if(chartInterval){clearInterval(chartInterval);chartInterval=null;}
   try{
-    var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=5m&range=1d';
-    var res=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0'}});
+    document.getElementById('chartSelect').value=sym;
+  }catch(e){}
+  
+  // Show loading state
+  var cvs=document.getElementById('priceChart');
+  if(!cvs)return;
+  
+  try{
+    var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1m&range=1d';
+    var res=await fetch(url);
     var json=await res.json();
     var result=json.chart&&json.chart.result&&json.chart.result[0];
-    if(!result)return;
+    if(!result){console.log('Chart: no data for',sym);return;}
+    
     var meta=result.meta;
     var timestamps=result.timestamp||[];
     var quotes=result.indicators&&result.indicators.quote&&result.indicators.quote[0]||{};
-    var closes=quotes.close||[];
-    var highs=quotes.high||[];
-    var lows=quotes.low||[];
-    var volumes=quotes.volume||[];
+    var closes=(quotes.close||[]).filter(function(v){return v!=null;});
+    var highs=(quotes.high||[]).filter(function(v){return v!=null;});
+    var lows=(quotes.low||[]).filter(function(v){return v!=null;});
+    var volumes=(quotes.volume||[]).filter(function(v){return v!=null;});
+    
+    if(closes.length===0){console.log('Chart: empty closes for',sym);return;}
+    
     chartData={meta:meta,closes:closes,highs:highs,lows:lows,volumes:volumes,timestamps:timestamps,sym:sym};
-
-    // Render chart
-    var labels=timestamps.map(function(t){var d=new Date(t*1000);return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});});
+    lastTickPrice=meta.regularMarketPrice;
+    
+    // Build labels
+    var validTs=timestamps.filter(function(t,i){return closes[i]!=null;});
+    var labels=validTs.map(function(t){var d=new Date(t*1000);return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});});
+    
     var priceColor=meta.regularMarketPrice>=meta.chartPreviousClose?'#00ff00':'#ff0000';
 
     if(priceChart)priceChart.destroy();
-    var cvs=document.getElementById('priceChart');
-    if(!cvs)return;
     var ctx=cvs.getContext('2d');
-
-    // Gradient fill
     var gradient=ctx.createLinearGradient(0,0,0,260);
     gradient.addColorStop(0,priceColor+'40');
     gradient.addColorStop(1,priceColor+'00');
@@ -2813,6 +2832,7 @@ async function loadChart(sym){
       ]},
       options:{
         responsive:true,maintainAspectRatio:false,
+        animation:{duration:300},
         plugins:{legend:{display:false},tooltip:{
           backgroundColor:'rgba(0,0,0,.95)',borderColor:'rgba(255,136,0,.3)',borderWidth:1,
           titleColor:'#ff8800',bodyColor:'#e8e8e8',
@@ -2825,18 +2845,84 @@ async function loadChart(sym){
         interaction:{intersect:false,mode:'index'}
       }
     });
+    
+    updateChartInfoBar(meta);
+    
+    // Start tick-by-tick live updates every 3 seconds during market hours
+    if(mktOpen()){
+      chartInterval=setInterval(function(){tickUpdateChart();},3000);
+    }
+  }catch(e){
+    console.log('Chart load error:',e);
+    // Show error message on chart
+    if(cvs){
+      var ctx=cvs.getContext('2d');
+      ctx.clearRect(0,0,cvs.width,cvs.height);
+      ctx.fillStyle='#ff8800';
+      ctx.font='14px Courier New';
+      ctx.textAlign='center';
+      ctx.fillText('Chart data unavailable',cvs.width/2,cvs.height/2);
+    }
+  }
+}
 
-    // Update info bar
-    document.getElementById('ciOpen').textContent=f0(meta.regularMarketDayOpen||meta.chartPreviousClose);
-    document.getElementById('ciHigh').textContent=f0(meta.regularMarketDayHigh);
-    document.getElementById('ciLow').textContent=f0(meta.regularMarketDayLow);
-    document.getElementById('ciClose').textContent=f0(meta.regularMarketPrice);
-    document.getElementById('ciVol').textContent=fv(meta.regularMarketVolume);
-    var chg=meta.chartPreviousClose?((meta.regularMarketPrice-meta.chartPreviousClose)/meta.chartPreviousClose*100).toFixed(2):0;
-    var chgEl=document.getElementById('ciChg');
-    chgEl.textContent=(chg>=0?'+':'')+chg+'%';
-    chgEl.style.color=chg>=0?'var(--green)':'var(--red)';
-  }catch(e){console.log('Chart error:',e);}
+// Tick-by-tick update: fetch latest price and append to chart
+async function tickUpdateChart(){
+  if(!priceChart||!chartData)return;
+  try{
+    var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(chartSym)+'?interval=1m&range=1d';
+    var res=await fetch(url);
+    var json=await res.json();
+    var result=json.chart&&json.chart.result&&json.chart.result[0];
+    if(!result)return;
+    var meta=result.meta;
+    var timestamps=result.timestamp||[];
+    var quotes=result.indicators&&result.indicators.quote&&result.indicators.quote[0]||{};
+    var closes=(quotes.close||[]).filter(function(v){return v!=null;});
+    var highs=(quotes.high||[]).filter(function(v){return v!=null;});
+    var lows=(quotes.low||[]).filter(function(v){return v!=null;});
+    
+    if(closes.length===0)return;
+    var newPrice=closes[closes.length-1];
+    
+    // Only update if price changed
+    if(lastTickPrice&&newPrice===lastTickPrice)return;
+    lastTickPrice=newPrice;
+    
+    // Update chart data in place (smooth update)
+    var validTs=timestamps.filter(function(t,i){return closes[i]!=null;});
+    var labels=validTs.map(function(t){var d=new Date(t*1000);return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});});
+    
+    priceChart.data.labels=labels;
+    priceChart.data.datasets[0].data=closes;
+    priceChart.data.datasets[1].data=highs;
+    priceChart.data.datasets[2].data=lows;
+    priceChart.update('none'); // No animation for smooth tick update
+    
+    // Update info bar with latest data
+    updateChartInfoBar(meta);
+    
+    // Flash effect on price change
+    var closeEl=document.getElementById('ciClose');
+    if(closeEl){
+      closeEl.style.transition='color 0.3s';
+      var isUp=newPrice>(chartData.closes[chartData.closes.length-2]||newPrice);
+      closeEl.style.color=isUp?'#00ff00':'#ff0000';
+      setTimeout(function(){closeEl.style.color='';},300);
+    }
+  }catch(e){/* silent fail on tick update */}
+}
+
+function updateChartInfoBar(meta){
+  document.getElementById('ciOpen').textContent=f0(meta.regularMarketDayOpen||meta.chartPreviousClose);
+  document.getElementById('ciHigh').textContent=f0(meta.regularMarketDayHigh);
+  document.getElementById('ciLow').textContent=f0(meta.regularMarketDayLow);
+  document.getElementById('ciClose').textContent=f0(meta.regularMarketPrice);
+  document.getElementById('ciVol').textContent=fv(meta.regularMarketVolume);
+  var chg=meta.chartPreviousClose?((meta.regularMarketPrice-meta.chartPreviousClose)/meta.chartPreviousClose*100).toFixed(2):0;
+  var chgEl=document.getElementById('ciChg');
+  chgEl.textContent=(chg>=0?'+':'')+chg+'%';
+  chgEl.style.color=chg>=0?'var(--green)':'var(--red)';
 }
 
 // ===== SECTOR HEATMAP =====
