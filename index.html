@@ -2439,35 +2439,78 @@ async function loadAll(){
   updStatus();
   ['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});
   var priceResults,taResults;
+  
+  // Primary: Supabase Edge Functions
   try{
-    // Try Supabase Edge Functions first
-    var p1=fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:pxSyms})}).then(function(r){return r.json();});
-    var p2=fetch(EDGE_TA_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:taSyms,timeframe:currentMode})}).then(function(r){return r.json();});
+    var t1=Date.now();
+    var p1=fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:pxSyms})}).then(function(r){
+      if(!r.ok)throw new Error('Price API '+r.status);
+      return r.json();
+    });
+    var p2=fetch(EDGE_TA_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:taSyms,timeframe:currentMode})}).then(function(r){
+      if(!r.ok)throw new Error('TA API '+r.status);
+      return r.json();
+    });
     var r=await Promise.all([p1,p2]);
     var pd=r[0],td=r[1];
-    if(pd.success&&pd.data){priceResults=pd.data;}
-    if(td.success&&td.data){taResults=td.data;}
-  }catch(e){console.log('Edge Functions unavailable, using direct Yahoo Finance');}
-  // Fallback: fetch directly from Yahoo Finance if Edge Functions failed
+    if(pd&&pd.success&&pd.data&&pd.data.length){priceResults=pd.data;}
+    if(td&&td.success&&td.data&&td.data.length){taResults=td.data;}
+    console.log('Edge Functions OK: '+(Date.now()-t1)+'ms | prices='+(priceResults?priceResults.length:0)+' ta='+(taResults?taResults.length:0));
+  }catch(e){
+    console.error('Edge Functions failed:',e.message);
+    showFetchError('Backend connection failed: '+e.message);
+  }
+  
+  // Fallback: try direct Yahoo Finance (may fail due to CORS)
   if(!priceResults||!priceResults.length){
-    priceResults=await Promise.all(pxSyms.map(fetchStockData));
+    console.log('Falling back to direct Yahoo Finance for prices...');
+    try{
+      priceResults=await Promise.all(pxSyms.map(fetchStockData));
+      priceResults=priceResults.filter(function(d){return !d.error;});
+      console.log('Direct YF prices: '+priceResults.length+' OK');
+    }catch(e){console.error('YF price fallback failed:',e);}
   }
   if(!taResults||!taResults.length){
-    taResults=await Promise.all(taSyms.map(function(s){return fetchTA(s,currentMode);}));
+    console.log('Falling back to direct Yahoo Finance for TA...');
+    try{
+      taResults=await Promise.all(taSyms.map(function(s){return fetchTA(s,currentMode);}));
+      taResults=taResults.filter(function(d){return !d.error;});
+      console.log('Direct YF TA: '+taResults.length+' OK');
+    }catch(e){console.error('YF TA fallback failed:',e);}
   }
+  
+  // Check if we have any data
+  if((!priceResults||priceResults.length===0)&&(!taResults||taResults.length===0)){
+    showFetchError('Unable to fetch market data. Edge Functions and Yahoo Finance both failed.');
+    updStatus();
+    return;
+  }
+  
   // Merge price + TA data by symbol
-  var merged=taResults.map(function(t){
-    var p=priceResults.find(function(x){return x.symbol===t.symbol;});
+  var merged=(taResults||[]).map(function(t){
+    var p=(priceResults||[]).find(function(x){return x.symbol===t.symbol;});
     return p?Object.assign({},p,t):t;
   });
-  priceResults.forEach(function(p){
+  (priceResults||[]).forEach(function(p){
     if(!merged.find(function(m){return m.symbol===p.symbol;})){merged.push(p);}
   });
-  renderIndices(priceResults);
+  
+  renderIndices(priceResults||[]);
   if(merged.length){renderGL(merged);renderMovers(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);}
-  renderHeatmap(priceResults,taResults);
+  renderHeatmap(priceResults||[],taResults||[]);
   if(!priceChart)loadChart('^NSEI');
   updStatus();
+}
+
+function showFetchError(msg){
+  var existing=document.getElementById('fetchErr');
+  if(existing)existing.remove();
+  var div=document.createElement('div');
+  div.id='fetchErr';
+  div.style.cssText='position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#1a0000;color:#ff4444;padding:12px 20px;border:1px solid #ff4444;font-family:Courier New,monospace;font-size:12px;z-index:9999;border-radius:0;max-width:90%;text-align:center;';
+  div.textContent='⚠ '+msg;
+  document.body.appendChild(div);
+  setTimeout(function(){if(div.parentNode)div.remove();},8000);
 }
 
 setMode('intraday');
