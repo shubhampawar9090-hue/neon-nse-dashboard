@@ -2048,6 +2048,48 @@ function renderIndices(data){
   document.getElementById('idxStrip').innerHTML=h;
 }
 
+// === LIVE HEADER INDICES — fetches directly from Yahoo Finance ===
+var headerIdxSymbols={'^NSEI':'NIFTY 50','^BSESN':'SENSEX','^NSEBANK':'BANKNIFTY'};
+var headerIdxCache={};
+
+async function fetchHeaderIndices(){
+  var symbols=Object.keys(headerIdxSymbols);
+  var entries=await Promise.all(symbols.map(async function(sym){
+    try{
+      var url='https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d';
+      var res=await fetch(url);
+      var j=await res.json();
+      var meta=j.chart.result[0].meta;
+      var price=meta.regularMarketPrice;
+      var prev=meta.chartPreviousClose||meta.previousClose||price;
+      var chg=price-prev;
+      var pct=prev?((chg/prev)*100):0;
+      headerIdxCache[sym]={price:price,change:chg,changePercent:pct};
+      return sym;
+    }catch(e){return null;}
+  }));
+  renderHeaderIndices();
+}
+
+function renderHeaderIndices(){
+  var h='';
+  Object.keys(headerIdxSymbols).forEach(function(sym){
+    var d=headerIdxCache[sym];
+    if(!d)return;
+    var c=d.changePercent>=0?'pos':'neg';
+    var a=d.changePercent>=0?'▲':'▼';
+    h+='<div class="idx-card"><div class="idx-info"><div class="idx-name">'+headerIdxSymbols[sym]+'</div><div class="idx-val">'+d.price.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div></div><div class="idx-chg '+c+'">'+a+' '+Math.abs(d.changePercent).toFixed(2)+'%</div></div>';
+  });
+  document.getElementById('idxStrip').innerHTML=h;
+}
+
+// Fetch on load and refresh every 15 seconds during market hours
+function schedHeaderIndices(){
+  fetchHeaderIndices();
+  var iv=mktOpen()?15000:60000;
+  setTimeout(schedHeaderIndices,iv);
+}
+
 // TOP MOVERS
 
 function renderMovers(data){
