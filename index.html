@@ -1943,7 +1943,7 @@ body {
         </div>
       </div>
 
-      <div class="foot">Real data from Yahoo Finance. Powered by Supabase. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
+      <div class="foot">Real data from Yahoo Finance. Powered by Supabase Edge Functions. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
     </main>
   </div>
 
@@ -2009,7 +2009,11 @@ body {
   </div>
 
 <script>
-// === FULLY SELF-CONTAINED: Direct Yahoo Finance API (no backend needed) ===
+// === Supabase Edge Functions (primary) with Yahoo Finance fallback ===
+const SUPABASE_EDGE_BASE='https://vpjbjzrcbxgdrfjbyfiu.supabase.co/functions/v1';
+const EDGE_PRICE_API=SUPABASE_EDGE_BASE+'/get-nse-data';
+const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
+const EDGE_AI_API=SUPABASE_EDGE_BASE+'/ai-agent';
 const YF_BASE='https://query1.finance.yahoo.com/v8/finance/chart/';
 
 // === Technical Analysis Functions (computed client-side) ===
@@ -2433,20 +2437,31 @@ function renderGL(data){
 async function loadAll(){
   updStatus();
   ['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});
-  // Fetch all price data directly from Yahoo Finance
-  var priceResults=await Promise.all(pxSyms.map(fetchStockData));
-  // Fetch all TA data directly from Yahoo Finance
-  var taResults=await Promise.all(taSyms.map(function(s){return fetchTA(s,currentMode);}));
+  var priceResults,taResults;
+  try{
+    // Try Supabase Edge Functions first
+    var p1=fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:pxSyms})}).then(function(r){return r.json();});
+    var p2=fetch(EDGE_TA_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:taSyms,timeframe:currentMode})}).then(function(r){return r.json();});
+    var r=await Promise.all([p1,p2]);
+    var pd=r[0],td=r[1];
+    if(pd.success&&pd.data){priceResults=pd.data;}
+    if(td.success&&td.data){taResults=td.data;}
+  }catch(e){console.log('Edge Functions unavailable, using direct Yahoo Finance');}
+  // Fallback: fetch directly from Yahoo Finance if Edge Functions failed
+  if(!priceResults||!priceResults.length){
+    priceResults=await Promise.all(pxSyms.map(fetchStockData));
+  }
+  if(!taResults||!taResults.length){
+    taResults=await Promise.all(taSyms.map(function(s){return fetchTA(s,currentMode);}));
+  }
   // Merge price + TA data by symbol
   var merged=taResults.map(function(t){
     var p=priceResults.find(function(x){return x.symbol===t.symbol;});
     return p?Object.assign({},p,t):t;
   });
-  // Also add any price-only stocks
   priceResults.forEach(function(p){
     if(!merged.find(function(m){return m.symbol===p.symbol;})){merged.push(p);}
   });
-  // Render everything
   renderIndices(priceResults);
   if(merged.length){renderGL(merged);renderMovers(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);}
   renderHeatmap(priceResults,taResults);
