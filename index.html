@@ -1943,7 +1943,7 @@ body {
         </div>
       </div>
 
-      <div class="foot">Real data from Yahoo Finance via Base44 backend. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
+      <div class="foot">Real data from Yahoo Finance. Powered by Supabase. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
     </main>
   </div>
 
@@ -2009,8 +2009,170 @@ body {
   </div>
 
 <script>
-var PRICE_API='https://base44.app/api/apps/6a5b3772e2193d1b5140a8e3/functions/getNseData';
-var TA_API='https://base44.app/api/apps/6a5b3772e2193d1b5140a8e3/functions/getTechnicalAnalysis';
+// === FULLY SELF-CONTAINED: Direct Yahoo Finance API (no backend needed) ===
+const YF_BASE='https://query1.finance.yahoo.com/v8/finance/chart/';
+
+// === Technical Analysis Functions (computed client-side) ===
+function calcEMA(values,period){
+  var k=2/(period+1),ema=[values[0]];
+  for(var i=1;i<values.length;i++){ema.push(values[i]*k+ema[i-1]*(1-k));}
+  return ema;
+}
+function calcRSI(values,period){
+  period=period||14;
+  if(values.length<period+1)return 50;
+  var gains=0,losses=0;
+  for(var i=values.length-period;i<values.length;i++){
+    var chg=values[i]-values[i-1];
+    if(chg>=0)gains+=chg;else losses-=chg;
+  }
+  var avgGain=gains/period,avgLoss=losses/period;
+  if(avgLoss===0)return 100;
+  var rs=avgGain/avgLoss;return 100-100/(1+rs);
+}
+function calcATR(highs,lows,closes,period){
+  period=period||14;
+  if(closes.length<period+1)return 0;
+  var trs=[];
+  for(var i=1;i<closes.length;i++){
+    var tr=Math.max(highs[i]-lows[i],Math.abs(highs[i]-closes[i-1]),Math.abs(lows[i]-closes[i-1]));
+    trs.push(tr);
+  }
+  var recent=trs.slice(-period);
+  return recent.reduce(function(a,b){return a+b},0)/recent.length;
+}
+function calcVWAP(closes,volumes){
+  var pv=0,vv=0;
+  for(var i=0;i<Math.min(closes.length,volumes.length);i++){
+    if(volumes[i]){pv+=closes[i]*volumes[i];vv+=volumes[i];}
+  }
+  return vv?pv/vv:0;
+}
+
+// === Fetch stock data directly from Yahoo Finance ===
+async function fetchStockData(symbol){
+  try{
+    var url=YF_BASE+symbol+'?interval=1d&range=5d';
+    var res=await fetch(url);
+    var j=await res.json();
+    var meta=j.chart.result[0].meta;
+    var price=meta.regularMarketPrice;
+    var prev=meta.chartPreviousClose||meta.previousClose||price;
+    var change=price-prev;
+    var changePercent=prev?(change/prev)*100:0;
+    var volumes=(j.chart.result[0].indicators.quote[0].volume||[]).filter(function(v){return v!=null;});
+    var recentVol=volumes.slice(-5);
+    var avgVol=recentVol.length?recentVol.reduce(function(a,b){return a+b},0)/recentVol.length:0;
+    var latestVol=volumes.pop()||0;
+    var volumeRatio=avgVol?(latestVol/avgVol):0;
+    return{
+      symbol:symbol,price:Math.round(price*100)/100,
+      change:Math.round(change*100)/100,
+      changePercent:Math.round(changePercent*100)/100,
+      volume:latestVol,volumeRatio:Math.round(volumeRatio*100)/100,
+      previousClose:prev,
+      dayHigh:meta.regularMarketDayHigh||price,
+      dayLow:meta.regularMarketDayLow||price,
+      fiftyTwoWeekHigh:meta.fiftyTwoWeekHigh||0,
+      fiftyTwoWeekLow:meta.fiftyTwoWeekLow||0,
+      error:false
+    };
+  }catch(e){return{symbol:symbol,price:0,change:0,changePercent:0,volumeRatio:0,error:true};}
+}
+
+// === Fetch technical analysis directly from Yahoo Finance ===
+async function fetchTA(symbol,timeframe){
+  timeframe=timeframe||'intraday';
+  try{
+    var interval=timeframe==='intraday'?'5m':'1d';
+    var range=timeframe==='intraday'?'1mo':'6mo';
+    var url=YF_BASE+symbol+'?interval='+interval+'&range='+range;
+    var res=await fetch(url);
+    var j=await res.json();
+    var result=j.chart.result[0];
+    var candles=result.indicators.quote[0];
+    var closes=(candles.close||[]).filter(function(v){return v!=null;});
+    var highs=(candles.high||[]).filter(function(v){return v!=null;});
+    var lows=(candles.low||[]).filter(function(v){return v!=null;});
+    var volumes=(candles.volume||[]).filter(function(v){return v!=null;});
+    if(closes.length<5)return{symbol:symbol,error:true};
+    var price=closes[closes.length-1];
+    // EMA
+    var emaPeriods=timeframe==='intraday'?[5,13,26]:[9,21,50];
+    var emas={};
+    emaPeriods.forEach(function(p){
+      if(closes.length>=p){var e=calcEMA(closes,p);emas['ema'+p]=Math.round(e[e.length-1]*100)/100;}
+    });
+    // RSI
+    var rsi=Math.round(calcRSI(closes,14)*100)/100;
+    // ATR
+    var atr=Math.round(calcATR(highs,lows,closes,14)*100)/100;
+    // VWAP
+    var vwap=Math.round(calcVWAP(closes,volumes)*100)/100;
+    // S/R
+    var lookback=timeframe==='intraday'?5:20;
+    var recentHighs=highs.slice(-lookback),recentLows=lows.slice(-lookback);
+    var resistance=Math.round(Math.max.apply(null,recentHighs)*100)/100;
+    var support=Math.round(Math.min.apply(null,recentLows)*100)/100;
+    // Signal
+    var emaKeys=Object.keys(emas).map(function(k){return parseInt(k.replace('ema',''));});
+    var signal='NEUTRAL',buyScore=0,sellScore=0;
+    if(emaKeys.length>=2){
+      var shortEma=emas['ema'+emaKeys[0]],longEma=emas['ema'+emaKeys[1]];
+      if(shortEma>longEma){signal='BUY';buyScore+=30;}else{signal='SELL';sellScore+=30;}
+    }
+    if(rsi<30){buyScore+=25;signal='BUY';}
+    else if(rsi>70){sellScore+=25;signal='SELL';}
+    else{buyScore+=5;}
+    // SL/TP
+    var slMult=timeframe==='intraday'?1:1.5;
+    var tpMult=timeframe==='intraday'?[1.5,2]:[2,3];
+    var sl=Math.round((price-atr*slMult)*100)/100;
+    var tp1=Math.round((price+atr*tpMult[0])*100)/100;
+    var tp2=Math.round((price+atr*tpMult[1])*100)/100;
+    // EMA crossover
+    var emaCrossover={golden:false,death:false,cross:'none'};
+    if(emaKeys.length>=2&&closes.length>emaKeys[1]){
+      var shortArr=calcEMA(closes,emaKeys[0]);
+      var longArr=calcEMA(closes,emaKeys[1]);
+      var lastIdx=shortArr.length-1;
+      if(lastIdx>0){
+        var wasBelow=shortArr[lastIdx-1]<=longArr[lastIdx-1];
+        var nowAbove=shortArr[lastIdx]>longArr[lastIdx];
+        var wasAbove=shortArr[lastIdx-1]>=longArr[lastIdx-1];
+        var nowBelow=shortArr[lastIdx]<longArr[lastIdx];
+        if(wasBelow&&nowAbove){emaCrossover.golden=true;emaCrossover.cross='golden';buyScore+=20;}
+        else if(wasAbove&&nowBelow){emaCrossover.death=true;emaCrossover.cross='death';sellScore+=20;}
+      }
+    }
+    // pctFrom52WeekHigh
+    var meta=result.meta||{};
+    var fiftyTwoWeekHigh=meta.fiftyTwoWeekHigh||Math.max.apply(null,highs);
+    var fiftyTwoWeekLow=meta.fiftyTwoWeekLow||Math.min.apply(null,lows);
+    var pctFrom52WeekHigh=fiftyTwoWeekHigh?Math.round((1-price/fiftyTwoWeekHigh)*100):0;
+    buyScore=Math.min(100,buyScore);sellScore=Math.min(100,sellScore);
+    // Volume ratio
+    var recentVol=volumes.slice(-5);
+    var avgVol=recentVol.length?recentVol.reduce(function(a,b){return a+b},0)/recentVol.length:0;
+    var latestVol=volumes.pop()||0;
+    var volRatio=avgVol?Math.round((latestVol/avgVol)*100)/100:0;
+    return{
+      symbol:symbol,price:Math.round(price*100)/100,
+      emas:emas,rsi,atr,vwap,support,resistance,
+      signal,buyScore,sellScore,sl,tp1,tp2,
+      emaCrossover,error:false,
+      fiftyTwoWeekHigh,fiftyTwoWeekLow,pctFrom52WeekHigh,
+      volumeRatio:volRatio,
+      dayHigh:meta.regularMarketDayHigh||price,
+      dayLow:meta.regularMarketDayLow||price,
+      previousClose:meta.chartPreviousClose||meta.previousClose||price,
+      change:Math.round((price-(meta.chartPreviousClose||meta.previousClose||price))*100)/100,
+      changePercent:Math.round(((price-(meta.chartPreviousClose||meta.previousClose||price))/(meta.chartPreviousClose||meta.previousClose||price)*100)*100)/100,
+      chartPattern:'—',trend:closes.length>5&&closes[closes.length-1]>closes[closes.length-5]?'Up':(closes[closes.length-1]<closes[closes.length-5]?'Down':'Sideways'),
+      orbSignal:'None'
+    };
+  }catch(e){return{symbol:symbol,error:true};}
+}
 var currentMode='intraday';
 var taSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TATAMOTORS.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS','HCLTECH.NS','BAJFINANCE.NS','ASIANPAINT.NS','NESTLEIND.NS','ONGC.NS','NTPC.NS','POWERGRID.NS','COALINDIA.NS','ADANIENT.NS','ADANIPORTS.NS','TATASTEEL.NS','JSWSTEEL.NS'];
 var pxSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TATAMOTORS.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS'];
@@ -2271,24 +2433,23 @@ function renderGL(data){
 async function loadAll(){
   updStatus();
   ['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});
-  var p1=fetch(PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:pxSyms})}).then(function(r){return r.json();}).catch(function(){return{success:false};});
-  var p2=fetch(TA_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:taSyms,timeframe:currentMode})}).then(function(r){return r.json();}).catch(function(){return{success:false};});
-  var r=await Promise.all([p1,p2]);var pd=r[0],td=r[1];
-  // Merge price data and TA data by symbol so all fields available everywhere
-  var merged=[];
-  if(td.success&&td.data){
-    merged=td.data.map(function(t){
-      var p=pd.success&&pd.data?pd.data.find(function(x){return x.symbol===t.symbol;}):null;
-      return p?Object.assign({},p,t):t;
-    });
-  }else if(pd.success&&pd.data){
-    merged=pd.data;
-  }
-  if(pd.success&&pd.data){renderIndices(pd.data);}
+  // Fetch all price data directly from Yahoo Finance
+  var priceResults=await Promise.all(pxSyms.map(fetchStockData));
+  // Fetch all TA data directly from Yahoo Finance
+  var taResults=await Promise.all(taSyms.map(function(s){return fetchTA(s,currentMode);}));
+  // Merge price + TA data by symbol
+  var merged=taResults.map(function(t){
+    var p=priceResults.find(function(x){return x.symbol===t.symbol;});
+    return p?Object.assign({},p,t):t;
+  });
+  // Also add any price-only stocks
+  priceResults.forEach(function(p){
+    if(!merged.find(function(m){return m.symbol===p.symbol;})){merged.push(p);}
+  });
+  // Render everything
+  renderIndices(priceResults);
   if(merged.length){renderGL(merged);renderMovers(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);}
-  else if(td.success&&td.data){renderMovers(td.data);renderScreeners(td.data);renderTA(td.data);}
-  else if(pd.success&&pd.data){renderGL(pd.data);}
-  if(pd.success&&pd.data){renderHeatmap(pd.data,td.success?td.data:[]);}
+  renderHeatmap(priceResults,taResults);
   if(!priceChart)loadChart('^NSEI');
   updStatus();
 }
@@ -2411,7 +2572,40 @@ if(sb){
 
 
 // ===== ELARA AI AGENT =====
-var AI_API='https://base44.app/api/apps/6a5b3772e2193d1b5140a8e3/functions/aiAgent';
+// Elara AI — now fully client-side (no backend needed)
+var AI_ALIASES={
+  'reliance':'RELIANCE','rel':'RELIANCE','ril':'RELIANCE',
+  'tcs':'TCS','tata consultancy':'TCS',
+  'infosys':'INFY','infy':'INFY',
+  'hdfc bank':'HDFCBANK','hdfc':'HDFCBANK',
+  'icici bank':'ICICIBANK','icici':'ICICIBANK',
+  'sbi':'SBIN','state bank':'SBIN',
+  'bharti airtel':'BHARTIARTL','airtel':'BHARTIARTL',
+  'itc':'ITC','larsen toubro':'LT','lnt':'LT','lt':'LT',
+  'bajaj finance':'BAJFINANCE','bajfinance':'BAJFINANCE',
+  'maruti':'MARUTI','maruti suzuki':'MARUTI',
+  'tata motors':'TATAMOTORS','tatamotors':'TATAMOTORS',
+  'sun pharma':'SUNPHARMA','sunpharma':'SUNPHARMA',
+  'adani enterprises':'ADANIENT','adani':'ADANIENT',
+  'trent':'TRENT','zomato':'ZOMATO','food':'ZOMATO',
+  'dmart':'DMART','avenue supermarts':'DMART',
+  'tata steel':'TATASTEEL','tatasteel':'TATASTEEL',
+  'wipro':'WIPRO','axis bank':'AXISBANK','axis':'AXISBANK',
+  'kotak bank':'KOTAKBANK','kotak':'KOTAKBANK',
+  'asian paints':'ASIANPAINT',
+  'hindustan unilever':'HINDUNILVR','hul':'HINDUNILVR',
+  'ongc':'ONGC','ntpc':'NTPC','power grid':'POWERGRID',
+  'coal india':'COALINDIA','tech mahindra':'TECHM',
+  'jsw steel':'JSWSTEEL','cipla':'CIPLA',
+  'dr reddy':'DRREDDY','divis lab':'DIVISLAB',
+  'eicher motors':'EICHERMOT','indigo':'INDIGO',
+  'shriram finance':'SHRIRAMFIN','jio financial':'JIOFIN',
+  'bel':'BEL','bharat electronics':'BEL',
+  'nifty':'^NSEI','nifty 50':'^NSEI','nifty50':'^NSEI',
+  'bank nifty':'^NSEBANK','banknifty':'^NSEBANK',
+  'sensex':'^BSESN','nifty it':'^CNXIT',
+  'nifty auto':'^CNXAUTO','nifty fmcg':'^CNXFMCG'
+};
 var aiConvId=null;
 var aiGreeted=false;
 var aiBusy=false;
