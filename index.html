@@ -2377,26 +2377,50 @@ var ipcCache={};
 
 async function fetchIndexPriceCards(){
   var symbols=Object.keys(ipcSymbols);
-  await Promise.all(symbols.map(async function(sym){
-    try{
-      var url='https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d';
-      var res=await fetch(url);
-      var j=await res.json();
-      var meta=j.chart.result[0].meta;
-      var price=meta.regularMarketPrice;
-      var prev=meta.chartPreviousClose||meta.previousClose||price;
-      var open=meta.regularMarketOpen||price;
-      var high=meta.regularMarketDayHigh||price;
-      var low=meta.regularMarketDayLow||price;
-      var chg=price-prev;
-      var pct=prev?((chg/prev)*100):0;
-      ipcCache[sym]={price:price,prev:prev,open:open,high:high,low:low,chg:chg,pct:pct};
-      // Also update header cache
-      headerIdxCache[sym]={price:price,change:chg,changePercent:pct};
-    }catch(e){}
-  }));
+  try{
+    var res=await fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:symbols})});
+    if(!res.ok)throw new Error('Edge API '+res.status);
+    var j=await res.json();
+    if(!j.success||!j.data)throw new Error('No data');
+    j.data.forEach(function(d){
+      if(d.error)return;
+      var sym=d.symbol;
+      ipcCache[sym]={price:d.price,prev:d.previousClose||d.price,open:d.open||d.price,high:d.dayHigh||d.price,low:d.dayLow||d.price,chg:d.change||0,pct:d.changePercent||0};
+      headerIdxCache[sym]={price:d.price,change:d.change||0,changePercent:d.changePercent||0};
+    });
+  }catch(e){
+    console.error('Index cards fetch failed:',e.message);
+    // Fallback: try Yahoo Finance directly (may fail due to CORS)
+    await Promise.all(symbols.map(async function(sym){
+      try{
+        var url='https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d';
+        var res=await fetch(url);
+        var j=await res.json();
+        var meta=j.chart.result[0].meta;
+        var price=meta.regularMarketPrice;
+        var prev=meta.chartPreviousClose||meta.previousClose||price;
+        var open=meta.regularMarketOpen||price;
+        var high=meta.regularMarketDayHigh||price;
+        var low=meta.regularMarketDayLow||price;
+        var chg=price-prev;
+        var pct=prev?((chg/prev)*100):0;
+        ipcCache[sym]={price:price,prev:prev,open:open,high:high,low:low,chg:chg,pct:pct};
+        headerIdxCache[sym]={price:price,change:chg,changePercent:pct};
+      }catch(e2){}
+    }));
+  }
   renderIndexPriceCards();
   renderHeaderIndices();
+}
+
+// Also render cards from loadAll() price results
+function renderIndexCardsFromData(priceData){
+  ['^NSEI','^NSEBANK','^BSESN'].forEach(function(sym){
+    var d=(priceData||[]).filter(function(x){return x.symbol===sym&&!x.error;})[0];
+    if(!d)return;
+    ipcCache[sym]={price:d.price,prev:d.previousClose||d.price,open:d.open||d.price,high:d.dayHigh||d.price,low:d.dayLow||d.price,chg:d.change||0,pct:d.changePercent||0};
+  });
+  renderIndexPriceCards();
 }
 
 function renderIndexPriceCards(){
@@ -2818,6 +2842,7 @@ async function loadAll(){
   merged=normalizeTA(merged);
   
   renderIndices(priceResults||[]);
+  renderIndexCardsFromData(priceResults||[]);
   if(merged.length){renderGL(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);loadAllNsePrices();}
   renderHeatmap(priceResults||[],taResults||[]);
   if(!priceChart)loadChart('^NSEI');
