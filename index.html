@@ -2582,8 +2582,6 @@ function updateMoversPanel(){
   }).join(''):'<tr><td colspan="7" class="empty-row">No losers</td></tr>';
 }
 
-}
-
 async function loadAll(){
   updStatus();
   ['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});
