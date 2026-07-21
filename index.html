@@ -3051,6 +3051,12 @@ function tvConnect() {
           if (unique.length > 0) tvSubscribeStocks(unique);
         }, 2000); // Wait 2s for index symbols to resolve first
       }
+      
+      // Also try to subscribe to displayed stocks after a delay
+      setTimeout(function() {
+        var displayed = tvGetDisplayedStocks();
+        if (displayed.length > 0) tvAddStocks(displayed);
+      }, 3000);
       return;
     }
     
@@ -3171,8 +3177,20 @@ function startTradingViewTicks() {
         var unique = queue.filter(function(s) { return !tvStockSubscribed.has(s); });
         if (unique.length > 0) tvSubscribeStocks(unique);
       }
+      // Also check for new displayed stocks not yet subscribed
+      if (tvActive && tvWS && tvWS.readyState === 1 && tvChartId) {
+        var displayed = tvGetDisplayedStocks();
+        var notSubscribed = displayed.filter(function(s) { return !tvStockSubscribed.has(s) && !s.startsWith('^'); });
+        if (notSubscribed.length > 0) tvAddStocks(notSubscribed);
+      }
     }, 3000);
   }
+  // Try subscribing to displayed stocks after WebSocket connects
+  setTimeout(function() {
+    var displayed = tvGetDisplayedStocks();
+    if (displayed.length > 0) tvAddStocks(displayed);
+  }, 5000);
+  tvUpdateButton();
   console.log('TV: Starting real-time tick stream from TradingView...');
 }
 
@@ -3247,6 +3265,95 @@ function tvUpdateRow(symbol, price, chg, pct) {
       pctCell.classList.add(flashClass);
     }
   });
+  
+  // Re-sort top gainers/losers tables based on real-time change%
+  tvResortMovers();
+}
+
+// Re-sort movers tables based on real-time TV tick data
+var tvResortTimer = null;
+function tvResortMovers() {
+  if (tvResortTimer) return; // debounce
+  tvResortTimer = setTimeout(function() {
+    tvResortTimer = null;
+    tvDoResortMovers();
+  }, 1000); // Re-sort at most once per second
+}
+
+function tvDoResortMovers() {
+  // Gather real-time prices from tvStockCache
+  var gainers = [];
+  var losers = [];
+  
+  Object.keys(tvStockCache).forEach(function(sym) {
+    var c = tvStockCache[sym];
+    if (!c || !c.price) return;
+    var entry = { symbol: sym, price: c.price, changePercent: c.pct };
+    if (c.pct >= 0) gainers.push(entry);
+    else losers.push(entry);
+  });
+  
+  if (gainers.length === 0 && losers.length === 0) return;
+  
+  // Sort gainers descending, losers ascending
+  gainers.sort(function(a, b) { return b.changePercent - a.changePercent; });
+  losers.sort(function(a, b) { return a.changePercent - b.changePercent; });
+  
+  // Re-render gainers table if we have enough data
+  var vgBody = document.getElementById('vgBody');
+  var vlBody = document.getElementById('vlBody');
+  if (!vgBody || !vlBody) return;
+  
+  // Only re-sort if we have cached data for at least 5 stocks in each table
+  var vgRows = vgBody.querySelectorAll('tr[data-sym]');
+  var vlRows = vlBody.querySelectorAll('tr[data-sym]');
+  if (vgRows.length < 3 || vlRows.length < 3) return;
+  
+  // Get current rows as sortable data
+  var vgData = [];
+  vgRows.forEach(function(row) {
+    var sym = row.getAttribute('data-sym');
+    var pctCell = row.querySelector('.tv-pct');
+    var priceCell = row.querySelector('.tv-price');
+    var pct = tvStockCache[sym] ? tvStockCache[sym].pct : parseFloat(pctCell.textContent.replace('%','').replace('+','')) || 0;
+    var price = tvStockCache[sym] ? tvStockCache[sym].price : parseFloat(priceCell.textContent.replace(/,/g,'')) || 0;
+    var volCell = row.cells[4];
+    var turnCell = row.cells[5];
+    var seriesCell = row.cells[6];
+    vgData.push({ symbol: sym, pct: pct, price: price, vol: volCell.innerHTML, turnover: turnCell.innerHTML, series: seriesCell.innerHTML, rank: row.cells[0].innerHTML });
+  });
+  
+  var vlData = [];
+  vlRows.forEach(function(row) {
+    var sym = row.getAttribute('data-sym');
+    var pctCell = row.querySelector('.tv-pct');
+    var priceCell = row.querySelector('.tv-price');
+    var pct = tvStockCache[sym] ? tvStockCache[sym].pct : parseFloat(pctCell.textContent.replace('%','').replace('+','')) || 0;
+    var price = tvStockCache[sym] ? tvStockCache[sym].price : parseFloat(priceCell.textContent.replace(/,/g,'')) || 0;
+    var volCell = row.cells[4];
+    var turnCell = row.cells[5];
+    var seriesCell = row.cells[6];
+    vlData.push({ symbol: sym, pct: pct, price: price, vol: volCell.innerHTML, turnover: turnCell.innerHTML, series: seriesCell.innerHTML, rank: row.cells[0].innerHTML });
+  });
+  
+  // Sort gainers by change% descending
+  vgData.sort(function(a, b) { return b.pct - a.pct; });
+  // Sort losers by change% ascending (most negative first)
+  vlData.sort(function(a, b) { return a.pct - b.pct; });
+  
+  // Re-render gainers table
+  vgBody.innerHTML = vgData.map(function(d, i) {
+    var pctStr = (d.pct >= 0 ? '+' : '') + d.pct.toFixed(2) + '%';
+    var pctClass = d.pct >= 0 ? 'pos' : 'neg';
+    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="'+pctClass+' tv-pct">'+pctStr+'</td><td>'+d.vol+'</td><td>'+d.turnover+'</td><td>'+d.series+'</td></tr>';
+  }).join('');
+  
+  // Re-render losers table
+  vlBody.innerHTML = vlData.map(function(d, i) {
+    var pctStr = (d.pct >= 0 ? '+' : '') + d.pct.toFixed(2) + '%';
+    var pctClass = d.pct >= 0 ? 'pos' : 'neg';
+    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="'+pctClass+' tv-pct">'+pctStr+'</td><td>'+d.vol+'</td><td>'+d.turnover+'</td><td>'+d.series+'</td></tr>';
+  }).join('');
 }
 
 // Get all symbols currently displayed in tables
