@@ -1560,6 +1560,16 @@ body {
   .idx-pcard .ipc-details{grid-template-columns:repeat(4,1fr)}
 }
 
+/* Tick flash animation */
+@keyframes tickUp{0%{background:rgba(0,255,136,.18)}100%{background:transparent}}
+@keyframes tickDown{0%{background:rgba(255,45,85,.18)}100%{background:transparent}}
+.tick-flash-up{animation:tickUp .6s ease-out}
+.tick-flash-down{animation:tickDown .6s ease-out}
+/* Tick counter */
+.tick-counter{position:fixed;top:4px;right:8px;z-index:1000;font:9px 'Courier New',monospace;color:var(--muted,#777);display:flex;align-items:center;gap:5px;pointer-events:none}
+.tick-counter .pulse{width:5px;height:5px;border-radius:50%;background:#0f8;background:var(--green,#0f0)}
+@keyframes tickPulse{0%{transform:scale(1);opacity:1}50%{transform:scale(2.5);opacity:.3}100%{transform:scale(1);opacity:1}}
+
 /* ===== MOBILE BOTTOM NAV ===== */
 .mobile-nav {
   display: none;
@@ -1776,12 +1786,14 @@ body {
         <span class="pill" id="statusPill"><span class="pill-dot" id="pillDot"></span><span id="pillText">CONNECTING</span></span>
         <span class="clock">Yahoo Finance | <b id="clock">--:--:--</b> IST</span>
         <button class="btn-refresh" onclick="loadAll();loadAllNsePrices()">↻ Refresh</button>
+        <button class="btn-refresh" id="tvToggleBtn" onclick="toggleTradingView()" style="background:rgba(0,212,255,.15);border-color:#00d4ff;color:#00d4ff">TV: ON</button>
     <div class="user-badge" id="userBadge" style="display:none" onclick="doLogout()"><span class="ub-icon" id="ubIcon">S</span><span class="ub-name" id="ubName">User</span><span class="ub-logout">LOGOUT</span></div>
         <button class="btn-watchlist-add">+ WATCHLIST</button>
       </div>
     </div>
   </header>
   
+  <div class="tick-counter" id="tickCounter"><span class="pulse" id="tickPulse"></span><span id="tickText">TICK 0 · 00:00:00</span></div>
   <div class="idx-cards-row" id="idxCardsRow">
     <div class="idx-pcard" id="ipcNifty">
       <div class="ipc-head"><span class="ipc-name">NIFTY 50</span><span class="ipc-live"><span class="dot"></span>LIVE</span></div>
@@ -2423,6 +2435,33 @@ function renderIndexCardsFromData(priceData){
   renderIndexPriceCards();
 }
 
+var tickCount=0;
+var prevPrices={};
+
+function updateTickCounter(){
+  tickCount++;
+  var el=document.getElementById('tickText');
+  var pl=document.getElementById('tickPulse');
+  if(el){
+    var now=new Date();
+    var ts=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+    el.textContent='TICK '+tickCount+' · '+ts;
+  }
+  if(pl){pl.style.animation='none';void pl.offsetWidth;pl.style.animation='tickPulse .5s ease-out';}
+}
+
+function flashPrice(el,sym,newPrice){
+  if(!el)return;
+  var old=prevPrices[sym];
+  if(old!=null && newPrice!==old){
+    var cls=newPrice>old?'tick-flash-up':'tick-flash-down';
+    el.classList.remove('tick-flash-up','tick-flash-down');
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+  prevPrices[sym]=newPrice;
+}
+
 function renderIndexPriceCards(){
   Object.keys(ipcSymbols).forEach(function(sym){
     var d=ipcCache[sym];
@@ -2435,7 +2474,9 @@ function renderIndexPriceCards(){
     var c=isPos?'pos':'neg';
     var a=isPos?'+':'';
     var fmt=function(v){return v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})};
-    document.getElementById(pfx+'Price').textContent=fmt(d.price);
+    var priceEl=document.getElementById(pfx+'Price');
+    priceEl.textContent=fmt(d.price);
+    flashPrice(priceEl,sym,d.price);
     document.getElementById(pfx+'Chg').textContent=a+fmt(d.chg);
     document.getElementById(pfx+'Chg').className='ipc-chg-val '+c;
     document.getElementById(pfx+'Pct').textContent=a+d.pct.toFixed(2)+'%';
@@ -2444,17 +2485,17 @@ function renderIndexPriceCards(){
     document.getElementById(pfx+'High').textContent=fmt(d.high);
     document.getElementById(pfx+'Low').textContent=fmt(d.low);
     document.getElementById(pfx+'Prev').textContent=fmt(d.prev);
-    // Color the price based on trend
-    document.getElementById(pfx+'Price').style.color=isPos?'var(--green)':'var(--red)';
+    priceEl.style.color=isPos?'var(--green)':'var(--red)';
   });
+  updateTickCounter();
 }
 
 // Fetch on load and refresh every 15 seconds during market hours
 function schedHeaderIndices(){
   fetchHeaderIndices();
   fetchIndexPriceCards();
-  setInterval(fetchIndexPriceCards, 15000); // Refresh every 15 seconds
-  var iv=mktOpen()?15000:60000;
+  setInterval(fetchIndexPriceCards, 1000); // Tick every 1 second
+  var iv=mktOpen()?5000:30000;
   setTimeout(schedHeaderIndices,iv);
 }
 
@@ -2862,12 +2903,239 @@ function showFetchError(msg){
 
 setMode('intraday');
 loadAllNsePrices();
-function sched(){var iv=mktOpen()?(currentMode==='intraday'?15000:30000):300000;setTimeout(function(){loadAll().then(function(){sched();});},iv);}
+function sched(){var iv=mktOpen()?(currentMode==='intraday'?3000:10000):120000;setTimeout(function(){loadAll().then(function(){sched();});},iv);}
 // Refresh all NSE symbols every 2 minutes
-var allSymInterval=setInterval(loadAllNsePrices,120000);
+var allSymInterval=setInterval(loadAllNsePrices,15000);
 sched();
 schedHeaderIndices();
+  startTradingViewTicks();
 
+
+// ===== TRADINGVIEW WEBSOCKET — REAL-TIME TICK DATA =====
+var tvWS = null;
+var tvConnected = false;
+var tvChartId = null;
+var tvSymMap = {}; // symbol_id -> our_sym
+var tvSerMap = {}; // series_id -> our_sym
+var tvResolved = 0;
+var tvTotalSyms = 0;
+var tvActive = false;
+
+// Symbol mapping: our symbols -> TradingView symbols
+function tvGetSymbol(sym) {
+  if (sym === '^NSEI') return 'NSE:NIFTY';
+  if (sym === '^NSEBANK') return 'NSE:BANKNIFTY';
+  if (sym === '^BSESN') return 'BSE:SENSEX';
+  if (sym.endsWith('.NS')) return 'NSE:' + sym.replace('.NS', '');
+  if (sym.endsWith('.BO')) return 'BSE:' + sym.replace('.BO', '');
+  return 'NSE:' + sym;
+}
+
+function tvPack(jsonStr) {
+  return '~m~' + jsonStr.length + '~m~' + jsonStr;
+}
+
+function tvParse(text) {
+  var msgs = [];
+  var parts = text.split('~m~').filter(Boolean);
+  for (var i = 0; i < parts.length; i += 2) {
+    var jsonStr = parts[i + 1];
+    if (!jsonStr) continue;
+    if (jsonStr.indexOf('~h~') >= 0) continue;
+    if (jsonStr.indexOf('session_id') >= 0) continue;
+    try {
+      var p = JSON.parse(jsonStr);
+      if (p.m) msgs.push(p);
+    } catch(e) {}
+  }
+  return msgs;
+}
+
+function tvConnect() {
+  if (tvWS && (tvWS.readyState === 0 || tvWS.readyState === 1)) return;
+  
+  try {
+    tvWS = new WebSocket('wss://data.tradingview.com/socket.io/websocket?&type=chart');
+  } catch(e) {
+    console.error('TV: WebSocket init failed', e);
+    setTimeout(tvConnect, 5000);
+    return;
+  }
+  
+  var protocolReady = false;
+  
+  tvWS.onopen = function() {
+    console.log('TV: WebSocket connected, waiting for protocol...');
+  };
+  
+  tvWS.onmessage = function(event) {
+    var text = String(event.data);
+    
+    // Heartbeat
+    if (text.indexOf('~h~') >= 0) {
+      var m = text.match(/~m~(\d+)~m~~h~(\d+)/);
+      if (m) {
+        try { tvWS.send('~m~' + m[1] + '~m~~h~' + m[2]); } catch(e) {}
+      }
+      return;
+    }
+    
+    // Protocol negotiation
+    if (text.indexOf('session_id') >= 0 && !protocolReady) {
+      protocolReady = true;
+      console.log('TV: Protocol established');
+      
+      // Auth
+      tvWS.send(tvPack(JSON.stringify({m: 'set_auth_token', p: ['unauthorized_user_token']})));
+      tvWS.send(tvPack(JSON.stringify({m: 'set_locale', p: ['en', 'US']})));
+      
+      // Create chart session
+      tvChartId = 'chart_' + Date.now();
+      tvWS.send(tvPack(JSON.stringify({m: 'chart_create_session', p: [tvChartId]})));
+      
+      // Resolve all configured symbols
+      tvResolved = 0;
+      var symbols = Object.keys(ipcSymbols);
+      tvTotalSyms = symbols.length;
+      symbols.forEach(function(sym, i) {
+        var tvSym = tvGetSymbol(sym);
+        var symId = 'sym_' + i;
+        tvSymMap[symId] = sym;
+        tvWS.send(tvPack(JSON.stringify({
+          m: 'resolve_symbol',
+          p: [tvChartId, symId, tvSym]
+        })));
+      });
+      return;
+    }
+    
+    // Parse regular messages
+    var messages = tvParse(text);
+    messages.forEach(function(msg) {
+      var method = msg.m;
+      var params = msg.p || [];
+      
+      if (method === 'resolve_symbol') {
+        var symId = params[1];
+        var ourSym = tvSymMap[symId];
+        if (!ourSym) return;
+        
+        // Create series for daily data
+        var serId = 'ser_' + symId;
+        tvSerMap[serId] = ourSym;
+        tvWS.send(tvPack(JSON.stringify({
+          m: 'create_series',
+          p: [tvChartId, serId, serId, symId, '1D', 5, '']
+        })));
+      }
+      
+      if (method === 'du' || method === 'timescale_update') {
+        if (!Array.isArray(params) || params[0] !== tvChartId) return;
+        var seriesData = params[1];
+        if (!seriesData || typeof seriesData !== 'object') return;
+        
+        Object.keys(seriesData).forEach(function(serId) {
+          var ourSym = tvSerMap[serId];
+          if (!ourSym) return;
+          
+          var d = seriesData[serId];
+          var bars = d.s || d.ohlc || [];
+          if (!Array.isArray(bars) || bars.length === 0) return;
+          
+          var values = bars.map(function(b) { return b.v || b; }).filter(function(v) { return Array.isArray(v); });
+          if (values.length === 0) return;
+          
+          var lastBar = values[values.length - 1];
+          var prevBar = values.length > 1 ? values[values.length - 2] : lastBar;
+          
+          var price = lastBar[4] || lastBar[1] || 0;
+          var open = lastBar[1] || price;
+          var high = lastBar[2] || price;
+          var low = lastBar[3] || price;
+          var volume = lastBar[5] || 0;
+          var prevClose = prevBar[4] || prevBar[1] || price;
+          
+          var chg = price - prevClose;
+          var pct = prevClose ? (chg / prevClose) * 100 : 0;
+          
+          // Update index card cache
+          ipcCache[ourSym] = {
+            price: price, prev: prevClose, open: open,
+            high: high, low: low, chg: chg, pct: pct
+          };
+          headerIdxCache[ourSym] = {price: price, change: chg, changePercent: pct};
+          
+          // Render with flash
+          renderIndexPriceCards();
+          renderHeaderIndices();
+          
+          tvResolved++;
+          console.log('TV: ' + ourSym + ' = ' + price + ' (tick ' + tvResolved + ')');
+        });
+      }
+      
+      if (method === 'symbol_error' || method === 'series_error') {
+        console.error('TV: ' + method, params);
+        var symId = params[1];
+        var ourSym = tvSymMap[symId];
+        if (ourSym) {
+          tvResolved++;
+          console.error('TV: Failed to resolve ' + ourSym);
+        }
+      }
+      
+      if (method === 'protocol_error') {
+        console.error('TV: protocol_error', params);
+      }
+    });
+  };
+  
+  tvWS.onerror = function(e) {
+    console.error('TV: WebSocket error');
+    tvConnected = false;
+  };
+  
+  tvWS.onclose = function() {
+    console.log('TV: WebSocket closed, will reconnect in 5s');
+    tvConnected = false;
+    if (tvActive) setTimeout(tvConnect, 5000);
+  };
+}
+
+// Start TradingView tick stream
+function startTradingViewTicks() {
+  tvActive = true;
+  tvConnect();
+  console.log('TV: Starting real-time tick stream from TradingView...');
+}
+
+// Stop TradingView tick stream
+function stopTradingViewTicks() {
+  tvActive = false;
+  if (tvWS) {
+    try { tvWS.close(); } catch(e) {}
+  }
+}
+
+// Toggle TradingView on/off
+var tvEnabled = true;
+function toggleTradingView() {
+  if (tvEnabled) {
+    stopTradingViewTicks();
+    tvEnabled = false;
+    var btn = document.getElementById('tvToggleBtn');
+    if (btn) { btn.textContent = 'TV: OFF'; btn.style.background = 'rgba(255,255,255,.05)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--muted)'; }
+    console.log('TV: Disabled, falling back to Yahoo Finance polling');
+  } else {
+    startTradingViewTicks();
+    tvEnabled = true;
+    var btn = document.getElementById('tvToggleBtn');
+    if (btn) { btn.textContent = 'TV: ON'; btn.style.background = 'rgba(0,212,255,.15)'; btn.style.borderColor = '#00d4ff'; btn.style.color = '#00d4ff'; }
+    console.log('TV: Enabled, real-time tick stream from TradingView');
+  }
+}
+
+// ===== END TRADINGVIEW WEBSOCKET =====
 
 // ===== SUPABASE AUTH =====
 const SUPABASE_URL='https://vpjbjzrcbxgdrfjbyfiu.supabase.co';
@@ -3422,7 +3690,7 @@ async function loadChart(sym){
     
     // Start tick-by-tick live updates every 3 seconds during market hours
     if(mktOpen()){
-      chartInterval=setInterval(function(){tickUpdateChart();},3000);
+      chartInterval=setInterval(function(){tickUpdateChart();},1000);
     }
   }catch(e){
     console.log('Chart load error:',e);

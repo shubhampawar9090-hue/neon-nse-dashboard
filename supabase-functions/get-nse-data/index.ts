@@ -4,7 +4,18 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+// Server-side cache: 2-second TTL to support tick-by-tick frontend updates
+// without overwhelming Yahoo Finance with redundant requests
+const CACHE_TTL = 2000; // 2 seconds
+const priceCache = new Map<string, { data: any; ts: number }>();
+
 async function fetchSymbol(sym: string) {
+  // Check cache first
+  const cached = priceCache.get(sym);
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    return cached.data;
+  }
+
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=5d`;
     const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
@@ -25,7 +36,7 @@ async function fetchSymbol(sym: string) {
     const latestVol = volumes.length ? volumes[volumes.length - 1] : 0;
     const volumeRatio = avgVol ? latestVol / avgVol : 0;
 
-    return {
+    const result = {
       symbol: sym,
       price: Math.round(price * 100) / 100,
       change: Math.round(change * 100) / 100,
@@ -35,8 +46,16 @@ async function fetchSymbol(sym: string) {
       previousClose: prev,
       dayHigh: meta.regularMarketDayHigh || price,
       dayLow: meta.regularMarketDayLow || price,
+      open: meta.regularMarketOpen || price,
+      fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh || 0,
+      fiftyTwoWeekLow: meta.fiftyTwoWeekLow || 0,
+      timestamp: Date.now(),
       error: false,
     };
+
+    // Store in cache
+    priceCache.set(sym, { data: result, ts: Date.now() });
+    return result;
   } catch {
     return { symbol: sym, error: true };
   }
@@ -59,7 +78,12 @@ Deno.serve(async (req: Request) => {
       results.push(...batchResults);
     }
 
-    return Response.json({ success: true, data: results, count: results.length }, {
+    return Response.json({ 
+      success: true, 
+      data: results, 
+      count: results.length,
+      tick: Date.now(),
+    }, {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
