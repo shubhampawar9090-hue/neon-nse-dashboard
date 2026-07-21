@@ -1,10 +1,17 @@
 
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
+
+const SUPABASE_URL = "https://vpjbjzrcbxgdrfjbyfiu.supabase.co";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
+
+// In-memory symbol cache (TTL: 5 minutes)
+let symbolCache: string[] = [];
+let symbolCacheTime = 0;
+const CACHE_TTL = 5 * 60 * 1000;
 
 const ALIASES: Record<string, string> = {
   "reliance": "RELIANCE", "rel": "RELIANCE", "ril": "RELIANCE",
@@ -53,6 +60,46 @@ const ALIASES: Record<string, string> = {
   "nifty fmcg": "^CNXFMCG",
 };
 
+async function getSymbols(): Promise<string[]> {
+  const now = Date.now();
+  if (symbolCache.length > 0 && now - symbolCacheTime < CACHE_TTL) {
+    return symbolCache;
+  }
+
+  try {
+    // Fetch all active symbols from Supabase database
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/nse_symbols?select=symbol&is_active=eq.true&order=symbol`,
+      {
+        headers: {
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+    if (res.ok) {
+      const rows = await res.json();
+      symbolCache = rows.map((r: { symbol: string }) => r.symbol);
+      symbolCacheTime = now;
+      return symbolCache;
+    }
+  } catch (e) {
+    console.error("Failed to fetch symbols from Supabase:", e.message);
+  }
+
+  // Fallback: fetch from GitHub
+  try {
+    const symbolRes = await fetch("https://raw.githubusercontent.com/shubhampawar9090-hue/neon-nse-dashboard/main/data/nse_symbols.json");
+    const symbols = await symbolRes.json();
+    symbolCache = symbols;
+    symbolCacheTime = now;
+    return symbols;
+  } catch (e) {
+    console.error("Fallback also failed:", e.message);
+    return [];
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -68,26 +115,21 @@ Deno.serve(async (req: Request) => {
       if (query.includes(alias)) { ticker = sym; break; }
     }
 
-    // If no alias match, try fetching the full symbol list
+    // If no alias match, try fetching the full symbol list from Supabase
     if (!ticker) {
-      try {
-        const symbolRes = await fetch("https://raw.githubusercontent.com/shubhampawar9090-hue/neon-nse-dashboard/main/data/nse_symbols.json");
-        const symbols: string[] = await symbolRes.json();
-        
-        const words = query.split(/\s+/);
-        for (const word of words) {
-          const upper = word.toUpperCase();
-          if (symbols.includes(upper)) { ticker = upper; break; }
-        }
-        
-        // Try direct symbol search
-        if (!ticker) {
-          const upperQuery = query.toUpperCase();
-          const match = symbols.find(s => s === upperQuery);
-          if (match) ticker = match;
-        }
-      } catch (e) {
-        // Fall through to general overview
+      const symbols = await getSymbols();
+      
+      const words = query.split(/\s+/);
+      for (const word of words) {
+        const upper = word.toUpperCase();
+        if (symbols.includes(upper)) { ticker = upper; break; }
+      }
+      
+      // Try direct symbol search
+      if (!ticker) {
+        const upperQuery = query.toUpperCase();
+        const match = symbols.find(s => s === upperQuery);
+        if (match) ticker = match;
       }
     }
 

@@ -2643,7 +2643,7 @@ async function loadAll(){
   merged=normalizeTA(merged);
   
   renderIndices(priceResults||[]);
-  if(merged.length){renderGL(merged);renderMovers(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);}
+  if(merged.length){renderGL(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);loadAllNsePrices();}
   renderHeatmap(priceResults||[],taResults||[]);
   if(!priceChart)loadChart('^NSEI');
   updStatus();
