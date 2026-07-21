@@ -1805,11 +1805,11 @@ body {
       <div class="movers-row">
         <div class="panel p-vol">
           <div class="panel-hdr"><span class="panel-name">🟢 Top Gainers</span><span class="panel-count" id="vgCount"></span></div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Vol×</th><th>Signal</th><th>Pattern</th></tr></thead><tbody id="vgBody"></tbody></table></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Volume</th><th>Turnover</th><th>Series</th></tr></thead><tbody id="vgBody"></tbody></table></div>
         </div>
         <div class="panel p-vol" style="border-color:rgba(255,45,85,.2)">
           <div class="panel-hdr"><span class="panel-name" style="color:var(--red)">🔴 Top Losers</span><span class="panel-count" id="vlCount"></span></div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Vol×</th><th>Signal</th><th>Pattern</th></tr></thead><tbody id="vlBody"></tbody></table></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Volume</th><th>Turnover</th><th>Series</th></tr></thead><tbody id="vlBody"></tbody></table></div>
         </div>
       </div>
 
@@ -2014,6 +2014,7 @@ body {
 const SUPABASE_EDGE_BASE='https://vpjbjzrcbxgdrfjbyfiu.supabase.co/functions/v1';
 const EDGE_PRICE_API=SUPABASE_EDGE_BASE+'/get-nse-data';
 const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
+const EDGE_MOVERS_API=SUPABASE_EDGE_BASE+'/get-nse-movers';
 const EDGE_AI_API=SUPABASE_EDGE_BASE+'/ai-agent';
 const YF_BASE='https://query1.finance.yahoo.com/v8/finance/chart/';
 
@@ -2181,8 +2182,7 @@ async function fetchTA(symbol,timeframe){
 var currentMode='intraday';
 var taSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TATAMOTORS.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS','HCLTECH.NS','BAJFINANCE.NS','ASIANPAINT.NS','NESTLEIND.NS','ONGC.NS','NTPC.NS','POWERGRID.NS','COALINDIA.NS','ADANIENT.NS','ADANIPORTS.NS','TATASTEEL.NS','JSWSTEEL.NS'];
 var pxSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TATAMOTORS.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS'];
-var allNseSymbols=[];
-var allPriceData=[];
+var nseMovers=null;
 
 function f(n){return '₹'+Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function f0(n){return n!=null?Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}
@@ -2548,24 +2548,15 @@ function normalizeTA(merged){
 }
 
 
-// Load all NSE symbols from JSON and fetch prices for movers panel
+// Fetch top gainers/losers directly from NSE official API via Supabase Edge Function
 async function loadAllNsePrices(){
   try{
-    if(!allNseSymbols.length){
-      var resp=await fetch('https://raw.githubusercontent.com/shubhampawar9090-hue/neon-nse-dashboard/main/data/nse_symbols.json');
-      if(!resp.ok) throw new Error('Failed to load symbol list');
-      var raw=await resp.json();
-      allNseSymbols=raw.map(function(s){return s+'.NS';});
-      console.log('Loaded '+allNseSymbols.length+' NSE symbols for movers');
-    }
-    // Fetch all prices in one batch
-    var resp=await fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:allNseSymbols})});
-    if(!resp.ok) throw new Error('Price API '+resp.status);
+    var resp=await fetch(EDGE_MOVERS_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    if(!resp.ok) throw new Error('Movers API '+resp.status);
     var pd=await resp.json();
     if(pd&&pd.success&&pd.data){
-      allPriceData=pd.data.filter(function(d){return!d.error;});
-      console.log('Fetched prices for '+allPriceData.length+' NSE stocks');
-      // Merge allPriceData into the main data for movers
+      nseMovers=pd.data;
+      console.log('NSE movers: '+pd.data.gainers.length+' gainers, '+pd.data.losers.length+' losers, '+pd.data.fiftyTwoWeekHigh.length+' 52W high, '+pd.data.fiftyTwoWeekLow.length+' 52W low');
       updateMoversPanel();
     }
   }catch(e){
@@ -2573,42 +2564,24 @@ async function loadAllNsePrices(){
   }
 }
 
-// Update movers panel with all NSE data
 function updateMoversPanel(){
-  if(!allPriceData.length) return;
-  // Sort by changePercent for top gainers/losers
-  var sorted=allPriceData.slice().sort(function(a,b){return b.changePercent-a.changePercent;});
-  var gainers=sorted.filter(function(d){return d.changePercent>0}).slice(0,10);
-  var losers=sorted.slice().reverse().filter(function(d){return d.changePercent<0}).slice(0,10);
+  if(!nseMovers) return;
+  var gainers=nseMovers.gainers||[];
+  var losers=nseMovers.losers||[];
   
-  // Update movers panel
+  // Top Gainers panel (no 3% filter — show actual top from NSE)
   document.getElementById('vgCount').textContent=gainers.length;
   document.getElementById('vlCount').textContent=losers.length;
   document.getElementById('vgBody').innerHTML=gainers.length?gainers.map(function(d,i){
-    var vr=d.volumeRatio||1;
-    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="pos">+'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>-</td><td>-</td></tr>';
+    var vol=d.volume?(d.volume/100000).toFixed(1)+'L':'-';
+    return '<tr><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td>'+f0(d.price)+'</td><td class="pos">+'+(d.changePercent||0).toFixed(2)+'%</td><td>'+vol+'</td><td>'+(d.turnover?'₹'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+d.series+'</td></tr>';
   }).join(''):'<tr><td colspan="7" class="empty-row">No gainers</td></tr>';
   document.getElementById('vlBody').innerHTML=losers.length?losers.map(function(d,i){
-    var vr=d.volumeRatio||1;
-    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>-</td><td>-</td></tr>';
+    var vol=d.volume?(d.volume/100000).toFixed(1)+'L':'-';
+    return '<tr><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td>'+f0(d.price)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+vol+'</td><td>'+(d.turnover?'₹'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+d.series+'</td></tr>';
   }).join(''):'<tr><td colspan="7" class="empty-row">No losers</td></tr>';
-  
-  // Update gainers/losers with volume surge panel
-  var volG=allPriceData.filter(function(d){return d.changePercent>0&&(d.volumeRatio||1)>=1.2}).sort(function(a,b){return b.changePercent-a.changePercent;}).slice(0,10);
-  var volL=allPriceData.filter(function(d){return d.changePercent<0&&(d.volumeRatio||1)>=1.2}).sort(function(a,b){return a.changePercent-b.changePercent;}).slice(0,10);
-  if(volG.length<10){var extra=allPriceData.filter(function(d){return d.changePercent>0&&!volG.find(function(x){return x.symbol===d.symbol;})}).sort(function(a,b){return b.changePercent-a.changePercent;});volG=volG.concat(extra.slice(0,10-volG.length));}
-  if(volL.length<10){var extra=allPriceData.filter(function(d){return d.changePercent<0&&!volL.find(function(x){return x.symbol===d.symbol;})}).sort(function(a,b){return a.changePercent-b.changePercent;});volL=volL.concat(extra.slice(0,10-volL.length));}
-  volG=volG.slice(0,10);volL=volL.slice(0,10);
-  if(document.getElementById('gBody')){
-    document.getElementById('gBody').innerHTML=volG.length?volG.map(function(d,i){
-      var vr=d.volumeRatio||1;
-      return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="pos">+'+(d.changePercent||0).toFixed(2)+'%</td><td style="color:'+(vr>=1.5?'var(--amber)':'var(--grey)')+'">'+vr.toFixed(1)+'x</td></tr>';
-    }).join(''):'<tr><td colspan="5" class="empty-row">No gainers</td></tr>';
-    document.getElementById('lBody').innerHTML=volL.length?volL.map(function(d,i){
-      var vr=d.volumeRatio||1;
-      return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td style="color:'+(vr>=1.5?'var(--amber)':'var(--grey)')+'">'+vr.toFixed(1)+'x</td></tr>';
-    }).join(''):'<tr><td colspan="5" class="empty-row">No losers</td></tr>';
-  }
+}
+
 }
 
 async function loadAll(){
