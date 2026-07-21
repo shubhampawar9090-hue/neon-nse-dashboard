@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = "https://vpjbjzrcbxgdrfjbyfiu.supabase.co";
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
+const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 // In-memory symbol cache (TTL: 5 minutes)
 let symbolCache: string[] = [];
@@ -30,7 +30,7 @@ const ALIASES: Record<string, string> = {
   "adani enterprises": "ADANIENT", "adani": "ADANIENT",
   "adani total gas": "ATGL", "adani power": "ADANIPOWER",
   "trent": "TRENT",
-  "zomato": "ZOMATO", "food": "ZOMATO",
+  "zomato": "ETERNAL", "food": "ETERNAL", "eternal": "ETERNAL",
   "dmart": "DMART", "avenue supermarts": "DMART",
   "tata steel": "TATASTEEL", "tatasteel": "TATASTEEL",
   "wipro": "WIPRO",
@@ -72,8 +72,8 @@ async function getSymbols(): Promise<string[]> {
       `${SUPABASE_URL}/rest/v1/nse_symbols?select=symbol&is_active=eq.true&order=symbol`,
       {
         headers: {
-          "apikey": SUPABASE_ANON_KEY,
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "apikey": SUPABASE_SERVICE_KEY,
+          "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
         },
       }
     );
