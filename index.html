@@ -1511,6 +1511,25 @@ body {
   line-height: 1.5;
 }
 
+
+/* ===== PRICE HISTORY ===== */
+.ph-panel{border:1px solid rgba(255,136,0,.15);border-radius:6px;padding:12px;margin-bottom:12px;background:rgba(255,136,0,.02)}
+.ph-search{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.ph-input{flex:1;min-width:180px;background:#000;border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:4px;font-family:'Courier New',monospace;font-size:13px;outline:none}
+.ph-input:focus{border-color:var(--orange)}
+.ph-btn{background:var(--orange);color:#000;border:none;padding:8px 16px;border-radius:4px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.5px}
+.ph-btn:hover{opacity:.85}
+.ph-stat{display:inline-block;background:rgba(255,136,0,.08);padding:4px 10px;border-radius:3px;margin-right:6px;font-size:11px;color:var(--text2)}
+.ph-stat b{color:var(--orange)}
+.ph-tbl{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:12px}
+.ph-tbl th{text-align:left;padding:6px 8px;color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+.ph-tbl td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03)}
+.ph-tbl tr:hover td{background:rgba(255,136,0,.04)}
+.ph-mini-chart{height:120px;margin:8px 0 12px;border:1px solid var(--border);border-radius:4px;position:relative;overflow:hidden}
+.ph-loading{text-align:center;padding:20px;color:var(--text2);font-size:12px}
+.ph-empty{text-align:center;padding:20px;color:var(--text2);font-size:12px}
+.pos{color:#00ff88}.neg{color:#ff2d55}
+
 /* ===== MOBILE BOTTOM NAV ===== */
 .mobile-nav {
   display: none;
@@ -1944,6 +1963,31 @@ body {
         </div>
       </div>
 
+      <!-- ===== PRICE HISTORY (from database) ===== -->
+      <div id="priceHistorySec"></div>
+      <div class="divider"><span class="divider-text">📋 PRICE HISTORY — DAILY CLOSE</span><span class="divider-line"></span></div>
+      <div class="ph-panel">
+        <div class="chart-panel-hdr">
+          <span class="chart-panel-title" style="color:var(--orange)">📊 Historical Daily Prices</span>
+          <span style="font-size:10px;color:var(--text2)">Powered by Supabase DB · Updated daily at 5PM IST</span>
+        </div>
+        <div class="ph-search">
+          <input type="text" class="ph-input" id="phSearch" placeholder="Enter NSE symbol (e.g. RELIANCE, TCS, INFY)..." onkeypress="if(event.key==='Enter')searchPriceHistory()">
+          <button class="ph-btn" onclick="searchPriceHistory()">SEARCH</button>
+          <button class="ph-btn" style="background:transparent;color:var(--orange);border:1px solid var(--orange)" onclick="loadTopMoversHistory()">TOP MOVERS</button>
+        </div>
+        <div id="phStats" style="margin-bottom:8px"></div>
+        <canvas class="ph-mini-chart" id="phChart"></canvas>
+        <div class="tbl-wrap" style="max-height:350px;overflow-y:auto">
+          <table class="ph-tbl">
+            <thead><tr><th>Date</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Chg%</th><th>Volume</th><th>Prev Close</th></tr></thead>
+            <tbody id="phBody">
+              <tr><td colspan="8" class="ph-empty">Search a stock symbol to view historical daily prices from the database.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="foot">Real data from Yahoo Finance. Powered by Supabase Edge Functions. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
     </main>
   </div>
@@ -1979,6 +2023,7 @@ body {
     <button onclick="scrollToSec('chartSec')"><span class="mn-icon">📈</span>CHART</button>
     <button onclick="scrollToSec('sentiSec')"><span class="mn-icon">◉</span>SENTI</button>
     <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
+    <button onclick="scrollToSec('priceHistorySec')"><span class="mn-icon">📋</span>HISTORY</button>
     <button onclick="aiToggle()"><span class="mn-icon">AI</span>ELARA</button>
   </div>
 
@@ -3015,6 +3060,133 @@ function renderSentiment(data){
   ctx.font='9px Courier New';ctx.fillStyle='#666';
   ctx.fillText('SENTIMENT',cx,cy-12);
 }
+
+// ===== PRICE HISTORY (Supabase DB) =====
+async function searchPriceHistory(){
+  var sym=document.getElementById('phSearch').value.trim().toUpperCase();
+  if(!sym){alert('Enter a stock symbol');return;}
+  loadPriceHistory(sym,30);
+}
+async function loadTopMoversHistory(){
+  // Load today's top 5 gainers and losers from the database
+  var tbody=document.getElementById('phBody');
+  tbody.innerHTML='<tr><td colspan="8" class="ph-loading">Loading today\'s top movers...</td></tr>';
+  try{
+    var today=new Date().toISOString().split('T')[0];
+    // Get top 5 gainers
+    var gRes=await fetch(SUPABASE_URL+'/rest/v1/stock_daily_prices?trade_date=eq.'+today+'&order=change_percent.desc&limit=5',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    var lRes=await fetch(SUPABASE_URL+'/rest/v1/stock_daily_prices?trade_date=eq.'+today+'&order=change_percent.asc&limit=5',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    var gainers=await gRes.json();
+    var losers=await lRes.json();
+    document.getElementById('phStats').innerHTML='<span class="ph-stat">📅 <b>'+today+'</b></span><span class="ph-stat">🟢 Top 5 Gainers</span><span class="ph-stat">🔴 Top 5 Losers</span>';
+    document.getElementById('phChart').getContext('2d').clearRect(0,0,9999,9999);
+    var h='<tr style="border-bottom:2px solid var(--orange)"><td colspan="8" style="color:#00ff88;font-size:11px;padding:6px 4px">🟢 TOP GAINERS — '+today+'</td></tr>';
+    gainers.forEach(function(d){
+      var c=d.change_percent>=0?'pos':'neg';
+      h+='<tr><td>'+d.trade_date+'</td><td>'+(d.open||'—')+'</td><td>'+(d.high||'—')+'</td><td>'+(d.low||'—')+'</td><td><b>'+d.close+'</b></td><td class="'+c+'">'+(d.change_percent>=0?'+':'')+d.change_percent+'%</td><td>'+fmtVol(d.volume)+'</td><td>'+(d.prev_close||'—')+'</td></tr>';
+    });
+    h+='<tr style="border-bottom:2px solid var(--orange)"><td colspan="8" style="color:#ff2d55;font-size:11px;padding:6px 4px">🔴 TOP LOSERS — '+today+'</td></tr>';
+    losers.forEach(function(d){
+      var c=d.change_percent>=0?'pos':'neg';
+      h+='<tr><td>'+d.trade_date+'</td><td>'+(d.open||'—')+'</td><td>'+(d.high||'—')+'</td><td>'+(d.low||'—')+'</td><td><b>'+d.close+'</b></td><td class="'+c+'">'+(d.change_percent>=0?'+':'')+d.change_percent+'%</td><td>'+fmtVol(d.volume)+'</td><td>'+(d.prev_close||'—')+'</td></tr>';
+    });
+    tbody.innerHTML=h;
+  }catch(e){
+    tbody.innerHTML='<tr><td colspan="8" class="ph-empty">Error: '+e.message+'</td></tr>';
+  }
+}
+function fmtVol(v){
+  if(!v)return'—';
+  if(v>=10000000)return (v/10000000).toFixed(2)+'Cr';
+  if(v>=100000)return (v/100000).toFixed(2)+'L';
+  if(v>=1000)return (v/1000).toFixed(1)+'K';
+  return v;
+}
+async function loadPriceHistory(sym,limit){
+  var tbody=document.getElementById('phBody');
+  var stats=document.getElementById('phStats');
+  tbody.innerHTML='<tr><td colspan="8" class="ph-loading">Fetching price history for '+sym+'...</td></tr>';
+  stats.innerHTML='';
+  try{
+    var res=await fetch(SUPABASE_URL+'/rest/v1/stock_daily_prices?symbol=eq.'+sym+'&order=trade_date.desc&limit='+limit,{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!res.ok)throw new Error('DB query failed: '+res.status);
+    var data=await res.json();
+    if(data.length===0){
+      tbody.innerHTML='<tr><td colspan="8" class="ph-empty">No price history found for '+sym+'. The daily auto-save runs at 5PM IST on weekdays.</td></tr>';
+      return;
+    }
+    // Stats
+    var latest=data[0];
+    var first=data[data.length-1];
+    var totalChg=((latest.close-first.close)/first.close*100).toFixed(2);
+    var avgVol=data.reduce(function(s,d){return s+(d.volume||0)},0)/data.length;
+    stats.innerHTML='<span class="ph-stat">📊 <b>'+sym+'</b></span><span class="ph-stat">📅 <b>'+data.length+'</b> days</span><span class="ph-stat">💰 ₹<b>'+latest.close+'</b> ('+(latest.change_percent>=0?'+':'')+latest.change_percent+'%)</span><span class="ph-stat">📈 '+totalChg+'% total</span><span class="ph-stat">🔊 Vol avg: <b>'+fmtVol(avgVol)+'</b></span>';
+    // Render table
+    var h='';
+    data.forEach(function(d){
+      var c=d.change_percent>=0?'pos':'neg';
+      h+='<tr><td>'+d.trade_date+'</td><td>'+(d.open||'—')+'</td><td>'+(d.high||'—')+'</td><td>'+(d.low||'—')+'</td><td><b>'+d.close+'</b></td><td class="'+c+'">'+(d.change_percent>=0?'+':'')+d.change_percent+'%</td><td>'+fmtVol(d.volume)+'</td><td>'+(d.prev_close||'—')+'</td></tr>';
+    });
+    tbody.innerHTML=h;
+    // Draw mini chart
+    drawPhMiniChart(data.reverse(),sym);
+  }catch(e){
+    tbody.innerHTML='<tr><td colspan="8" class="ph-empty">Error: '+e.message+'</td></tr>';
+  }
+}
+function drawPhMiniChart(data,sym){
+  var canvas=document.getElementById('phChart');
+  var ctx=canvas.getContext('2d');
+  var w=canvas.offsetWidth,h=120;
+  canvas.width=w*2;canvas.height=h*2;
+  canvas.style.height=h+'px';
+  ctx.scale(2,2);
+  ctx.clearRect(0,0,w,h);
+  if(data.length<2)return;
+  var prices=data.map(function(d){return d.close});
+  var min=Math.min.apply(null,prices),max=Math.max.apply(null,prices);
+  var range=max-min||1;
+  var pad=10;
+  // Grid lines
+  ctx.strokeStyle='rgba(255,255,255,.05)';ctx.lineWidth=1;
+  for(var i=0;i<4;i++){
+    var y=pad+(h-2*pad)*i/3;
+    ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-pad,y);ctx.stroke();
+  }
+  // Line chart
+  var firstChg=data[0].close>=data[data.length-1].close;
+  var color=data[0].close>=data[data.length-1].close?'#00ff88':'#ff2d55';
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.beginPath();
+  data.forEach(function(d,i){
+    var x=pad+(w-2*pad)*(i/(data.length-1));
+    var y=pad+(h-2*pad)*(1-(d.close-min)/range);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  // Fill under line
+  ctx.lineTo(w-pad,h-pad);
+  ctx.lineTo(pad,h-pad);
+  ctx.closePath();
+  ctx.fillStyle=color.replace(')',',0.08)').replace('#','rgba(').replace('ff88','136,255').replace('2d55','45,85');
+  // Gradient fill
+  var grad=ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,color.replace(')',',0.15)').replace('#','rgba(').replace('ff88','136,255').replace('2d55','45,85'));
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=grad;ctx.fill();
+  // Label
+  ctx.fillStyle='#ff8800';ctx.font='bold 11px Courier New';
+  ctx.fillText(sym+' — '+data.length+'d',pad+4,14);
+  ctx.fillStyle='#666';ctx.font='9px Courier New';
+  ctx.fillText('₹'+min.toFixed(1),pad+4,h-4);
+  ctx.fillText('₹'+max.toFixed(1),pad+4,14);
+}
+// ===== END PRICE HISTORY =====
 
 // ===== LIVE PRICE CHART =====
 var priceChart=null;
