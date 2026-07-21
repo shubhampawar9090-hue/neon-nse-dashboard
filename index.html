@@ -1530,6 +1530,36 @@ body {
 .ph-empty{text-align:center;padding:20px;color:var(--text2);font-size:12px}
 .pos{color:#00ff88}.neg{color:#ff2d55}
 
+/* ===== LIVE INDEX CARDS ===== */
+.idx-cards-row{display:flex;gap:10px;padding:10px 12px 0;flex-wrap:wrap}
+.idx-pcard{flex:1;min-width:260px;background:linear-gradient(135deg,rgba(255,136,0,.04),rgba(0,0,0,.8));border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:6px;padding:12px 14px;position:relative;overflow:hidden}
+.idx-pcard.banknifty{border-left-color:#00e5ff}
+.idx-pcard.sensex{border-left-color:#22c55e}
+.idx-pcard .ipc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.idx-pcard .ipc-name{font-size:13px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase}
+.idx-pcard.banknifty .ipc-name{color:#00e5ff}
+.idx-pcard.sensex .ipc-name{color:#22c55e}
+.idx-pcard .ipc-live{font-size:9px;color:var(--green);display:flex;align-items:center;gap:4px}
+.idx-pcard .ipc-live .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.idx-pcard .ipc-price{font-size:28px;font-weight:700;color:var(--text);font-family:'Courier New',monospace;letter-spacing:.5px}
+.idx-pcard .ipc-chg-row{display:flex;gap:10px;align-items:center;margin:4px 0 8px;font-family:'Courier New',monospace}
+.idx-pcard .ipc-chg-val{font-size:13px;font-weight:700}
+.idx-pcard .ipc-chg-pct{font-size:12px;font-weight:700;padding:2px 6px;border-radius:3px}
+.idx-pcard .ipc-chg-pct.pos{background:rgba(0,255,136,.1);color:var(--green)}
+.idx-pcard .ipc-chg-pct.neg{background:rgba(255,45,85,.1);color:var(--red)}
+.idx-pcard .ipc-details{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05)}
+.idx-pcard .ipc-det{display:flex;flex-direction:column}
+.idx-pcard .ipc-det .lbl{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.idx-pcard .ipc-det .val{font-size:12px;color:var(--text);font-family:'Courier New',monospace;font-weight:600}
+.idx-pcard .ipc-spark{position:absolute;bottom:0;right:0;width:80px;height:40px;opacity:.5}
+@media(max-width:767px){
+  .idx-cards-row{flex-direction:column;gap:8px;padding:8px}
+  .idx-pcard{min-width:100%}
+  .idx-pcard .ipc-price{font-size:24px}
+  .idx-pcard .ipc-details{grid-template-columns:repeat(4,1fr)}
+}
+
 /* ===== MOBILE BOTTOM NAV ===== */
 .mobile-nav {
   display: none;
@@ -1752,6 +1782,50 @@ body {
     </div>
   </header>
   
+  <div class="idx-cards-row" id="idxCardsRow">
+    <div class="idx-pcard" id="ipcNifty">
+      <div class="ipc-head"><span class="ipc-name">NIFTY 50</span><span class="ipc-live"><span class="dot"></span>LIVE</span></div>
+      <div class="ipc-price" id="ipcNiftyPrice">—</div>
+      <div class="ipc-chg-row">
+        <span class="ipc-chg-val" id="ipcNiftyChg">—</span>
+        <span class="ipc-chg-pct" id="ipcNiftyPct">—</span>
+      </div>
+      <div class="ipc-details">
+        <div class="ipc-det"><span class="lbl">OPEN</span><span class="val" id="ipcNiftyOpen">—</span></div>
+        <div class="ipc-det"><span class="lbl">HIGH</span><span class="val" id="ipcNiftyHigh">—</span></div>
+        <div class="ipc-det"><span class="lbl">LOW</span><span class="val" id="ipcNiftyLow">—</span></div>
+        <div class="ipc-det"><span class="lbl">PREV CLOSE</span><span class="val" id="ipcNiftyPrev">—</span></div>
+      </div>
+    </div>
+    <div class="idx-pcard banknifty" id="ipcBankNifty">
+      <div class="ipc-head"><span class="ipc-name">BANK NIFTY</span><span class="ipc-live"><span class="dot"></span>LIVE</span></div>
+      <div class="ipc-price" id="ipcBankNiftyPrice">—</div>
+      <div class="ipc-chg-row">
+        <span class="ipc-chg-val" id="ipcBankNiftyChg">—</span>
+        <span class="ipc-chg-pct" id="ipcBankNiftyPct">—</span>
+      </div>
+      <div class="ipc-details">
+        <div class="ipc-det"><span class="lbl">OPEN</span><span class="val" id="ipcBankNiftyOpen">—</span></div>
+        <div class="ipc-det"><span class="lbl">HIGH</span><span class="val" id="ipcBankNiftyHigh">—</span></div>
+        <div class="ipc-det"><span class="lbl">LOW</span><span class="val" id="ipcBankNiftyLow">—</span></div>
+        <div class="ipc-det"><span class="lbl">PREV CLOSE</span><span class="val" id="ipcBankNiftyPrev">—</span></div>
+      </div>
+    </div>
+    <div class="idx-pcard sensex" id="ipcSensex">
+      <div class="ipc-head"><span class="ipc-name">SENSEX</span><span class="ipc-live"><span class="dot"></span>LIVE</span></div>
+      <div class="ipc-price" id="ipcSensexPrice">—</div>
+      <div class="ipc-chg-row">
+        <span class="ipc-chg-val" id="ipcSensexChg">—</span>
+        <span class="ipc-chg-pct" id="ipcSensexPct">—</span>
+      </div>
+      <div class="ipc-details">
+        <div class="ipc-det"><span class="lbl">OPEN</span><span class="val" id="ipcSensexOpen">—</span></div>
+        <div class="ipc-det"><span class="lbl">HIGH</span><span class="val" id="ipcSensexHigh">—</span></div>
+        <div class="ipc-det"><span class="lbl">LOW</span><span class="val" id="ipcSensexLow">—</span></div>
+        <div class="ipc-det"><span class="lbl">PREV CLOSE</span><span class="val" id="ipcSensexPrev">—</span></div>
+      </div>
+    </div>
+  </div>
   <div class="app-layout">
     <!-- LEFT SIDEBAR -->
     <nav class="sidebar">
@@ -2297,9 +2371,65 @@ function renderHeaderIndices(){
   document.getElementById('idxStrip').innerHTML=h;
 }
 
+// ===== LIVE INDEX PRICE CARDS =====
+var ipcSymbols={'^NSEI':{name:'NIFTY 50',prefix:'ipcNifty'},'^NSEBANK':{name:'BANK NIFTY',prefix:'ipcBankNifty'},'^BSESN':{name:'SENSEX',prefix:'ipcSensex'}};
+var ipcCache={};
+
+async function fetchIndexPriceCards(){
+  var symbols=Object.keys(ipcSymbols);
+  await Promise.all(symbols.map(async function(sym){
+    try{
+      var url='https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d';
+      var res=await fetch(url);
+      var j=await res.json();
+      var meta=j.chart.result[0].meta;
+      var price=meta.regularMarketPrice;
+      var prev=meta.chartPreviousClose||meta.previousClose||price;
+      var open=meta.regularMarketOpen||price;
+      var high=meta.regularMarketDayHigh||price;
+      var low=meta.regularMarketDayLow||price;
+      var chg=price-prev;
+      var pct=prev?((chg/prev)*100):0;
+      ipcCache[sym]={price:price,prev:prev,open:open,high:high,low:low,chg:chg,pct:pct};
+      // Also update header cache
+      headerIdxCache[sym]={price:price,change:chg,changePercent:pct};
+    }catch(e){}
+  }));
+  renderIndexPriceCards();
+  renderHeaderIndices();
+}
+
+function renderIndexPriceCards(){
+  Object.keys(ipcSymbols).forEach(function(sym){
+    var d=ipcCache[sym];
+    var pfx=ipcSymbols[sym].prefix;
+    if(!d){
+      document.getElementById(pfx+'Price').textContent='—';
+      return;
+    }
+    var isPos=d.chg>=0;
+    var c=isPos?'pos':'neg';
+    var a=isPos?'+':'';
+    var fmt=function(v){return v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})};
+    document.getElementById(pfx+'Price').textContent=fmt(d.price);
+    document.getElementById(pfx+'Chg').textContent=a+fmt(d.chg);
+    document.getElementById(pfx+'Chg').className='ipc-chg-val '+c;
+    document.getElementById(pfx+'Pct').textContent=a+d.pct.toFixed(2)+'%';
+    document.getElementById(pfx+'Pct').className='ipc-chg-pct '+(isPos?'pos':'neg');
+    document.getElementById(pfx+'Open').textContent=fmt(d.open);
+    document.getElementById(pfx+'High').textContent=fmt(d.high);
+    document.getElementById(pfx+'Low').textContent=fmt(d.low);
+    document.getElementById(pfx+'Prev').textContent=fmt(d.prev);
+    // Color the price based on trend
+    document.getElementById(pfx+'Price').style.color=isPos?'var(--green)':'var(--red)';
+  });
+}
+
 // Fetch on load and refresh every 15 seconds during market hours
 function schedHeaderIndices(){
   fetchHeaderIndices();
+  fetchIndexPriceCards();
+  setInterval(fetchIndexPriceCards, 15000); // Refresh every 15 seconds
   var iv=mktOpen()?15000:60000;
   setTimeout(schedHeaderIndices,iv);
 }
@@ -2711,6 +2841,7 @@ function sched(){var iv=mktOpen()?(currentMode==='intraday'?15000:30000):300000;
 // Refresh all NSE symbols every 2 minutes
 var allSymInterval=setInterval(loadAllNsePrices,120000);
 sched();
+schedHeaderIndices();
 
 
 // ===== SUPABASE AUTH =====
