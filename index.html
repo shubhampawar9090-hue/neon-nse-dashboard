@@ -2941,7 +2941,6 @@ function sched(){var iv=mktOpen()?(currentMode==='intraday'?3000:10000):120000;s
 var allSymInterval=setInterval(loadAllNsePrices,15000);
 sched();
 schedHeaderIndices();
-  startTradingViewTicks();
 
 
 // ===== TRADINGVIEW WEBSOCKET — REAL-TIME TICK DATA =====
@@ -3168,7 +3167,6 @@ function startTradingViewTicks() {
   if (!window._tvQueueInterval) {
     window._tvQueueInterval = setInterval(function() {
       if (tvActive && tvWS && tvWS.readyState === 1 && tvChartId && tvStockQueue.length > 0) {
-        console.log('TV: Queue flush -', tvStockQueue.length, 'queued stocks');
         var queue = tvStockQueue.splice(0, 30);
         var unique = queue.filter(function(s) { return !tvStockSubscribed.has(s); });
         if (unique.length > 0) tvSubscribeStocks(unique);
@@ -3188,7 +3186,6 @@ function stopTradingViewTicks() {
 
 // Add stock symbols to TradingView stream (called after tables render)
 function tvAddStocks(symbols) {
-  console.log('TV: tvAddStocks called with', symbols ? symbols.length : 0, 'symbols, tvActive=', tvActive, 'tvWS=', tvWS ? tvWS.readyState : 'null', 'tvChartId=', tvChartId);
   if (!tvActive) return;
   var newSyms = symbols.filter(function(s) {
     return s && !tvStockSubscribed.has(s) && !s.startsWith('^');
@@ -3212,7 +3209,6 @@ function tvAddStocks(symbols) {
 }
 
 function tvSubscribeStocks(syms) {
-  console.log('TV: Subscribing to', syms.length, 'stocks:', syms.slice(0,5).join(','), '...');
   syms.forEach(function(sym) {
     tvStockSubscribed.add(sym);
     var symId = 'stk_' + (tvStockSymCounter++);
@@ -3259,9 +3255,7 @@ function tvGetDisplayedStocks() {
   document.querySelectorAll('tr[data-sym]').forEach(function(row) {
     syms.add(row.getAttribute('data-sym'));
   });
-  var result = Array.from(syms);
-  console.log('TV: tvGetDisplayedStocks found', result.length, 'symbols in DOM:', result.slice(0,5).join(','), '...');
-  return result;
+  return Array.from(syms);
 
 // Toggle TradingView on/off
 var tvEnabled = true;
@@ -3991,6 +3985,9 @@ function renderCompare(data){
 
 
 // ===== END ELARA AI =====
+
+// Start TradingView WebSocket AFTER all variables are initialized
+startTradingViewTicks();
 </script>
 </body>
 </html>
