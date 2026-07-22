@@ -1958,11 +1958,11 @@ body {
       <div class="divider" style="margin-top:14px"><span class="divider-text">LIVE TICK MOVERS</span><span class="divider-line"></span></div>
       <div class="movers-row">
         <div class="lt-panel">
-          <div class="lt-hdr"><span style="color:var(--green)">🟢 TOP 10 GAINERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeG">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountG"></span></div>
+          <div class="lt-hdr"><span style="color:var(--green)">🟢 TOP 10 F&O GAINERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeG">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountG"></span></div>
           <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltGBody"></tbody></table></div>
         </div>
         <div class="lt-panel loser">
-          <div class="lt-hdr"><span style="color:var(--red)">🔴 TOP 10 LOSERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeL">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountL"></span></div>
+          <div class="lt-hdr"><span style="color:var(--red)">🔴 TOP 10 F&O LOSERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeL">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountL"></span></div>
           <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltLBody"></tbody></table></div>
         </div>
       </div>
@@ -2867,33 +2867,75 @@ function normalizeTA(merged){
 // Fetch top gainers/losers directly from NSE official API via Supabase Edge Function
 // ===== LIVE TICK MOVERS — render with LTP, Open, PrevClose, Chg% =====
 var ltPrevPrices={}; // sym -> previous price for flash detection
-function renderLiveTickMovers(){
-  if(!nseMovers) return;
-  var g=(nseMovers.gainers||[]).slice(0,10);
-  var l=(nseMovers.losers||[]).slice(0,10);
-  document.getElementById('ltCountG').textContent=g.length;
-  document.getElementById('ltCountL').textContent=l.length;
+var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIGREEN", "ADANIPORTS", "ADANIPOWER", "ALKEM", "AMBER", "AMBUJACEM", "ANGELONE", "APLAPOLLO", "APOLLOHOSP", "ASHOKLEY", "ASIANPAINT", "ASTRAL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJAJHLDNG", "BAJFINANCE", "BANDHANBNK", "BANKBARODA", "BANKINDIA", "BDL", "BEL", "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BLUESTARCO", "BOSCHLTD", "BPCL", "BRITANNIA", "BSE", "CAMS", "CANBK", "CDSL", "CGPOWER", "CHOLAFIN", "CIPLA", "COALINDIA", "COCHINSHIP", "COFORGE", "COLPAL", "CONCOR", "CROMPTON", "CUMMINSIND", "DABUR", "DALBHARAT", "DELHIVERY", "DIVISLAB", "DIXON", "DLF", "DMART", "DRREDDY", "EICHERMOT", "ETERNAL", "EXIDEIND", "FEDERALBNK", "FORCEMOT", "FORTIS", "GAIL", "GLENMARK", "GMRAIRPORT", "GODFRYPHLP", "GODREJCP", "GODREJPROP", "GRASIM", "GVT&D", "HAL", "HAVELLS", "HCLTECH", "HDFCAMC", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO", "HINDPETRO", "HINDUNILVR", "HINDZINC", "HYUNDAI", "ICICIBANK", "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IEX", "INDHOTEL", "INDIANB", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "INOXWIND", "IOC", "IREDA", "IRFC", "ITC", "JINDALSTEL", "JIOFIN", "JSWENERGY", "JSWSTEEL", "JUBLFOOD", "KALYANKJIL", "KAYNES", "KEI", "KFINTECH", "KOTAKBANK", "KPITTECH", "LAURUSLABS", "LICHSGFIN", "LICI", "LODHA", "LT", "LTF", "LTM", "LUPIN", "M&M", "MANAPPURAM", "MANKIND", "MARICO", "MARUTI", "MAXHEALTH", "MAZDOCK", "MCX", "MFSL", "MOTHERSON", "MOTILALOFS", "MPHASIS", "MUTHOOTFIN", "NAM-INDIA", "NATIONALUM", "NAUKRI", "NBCC", "NESTLEIND", "NHPC", "NMDC", "NTPC", "NUVAMA", "NYKAA", "OBEROIRLTY", "OFSS", "OIL", "ONGC", "PAGEIND", "PATANJALI", "PAYTM", "PERSISTENT", "PETRONET", "PFC", "PGEL", "PHOENIXLTD", "PIDILITIND", "PIIND", "PNB", "PNBHOUSING", "POLICYBZR", "POLYCAB", "POWERGRID", "POWERINDIA", "PREMIERENE", "PRESTIGE", "RADICO", "RBLBANK", "RECLTD", "RELIANCE", "RVNL", "SAIL", "SBICARD", "SBILIFE", "SBIN", "SHREECEM", "SHRIRAMFIN", "SIEMENS", "SOLARINDS", "SONACOMS", "SRF", "SUNPHARMA", "SUPREMEIND", "SUZLON", "SWIGGY", "TATACONSUM", "TATAELXSI", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TIINDIA", "TITAN", "TMPV", "TORNTPHARM", "TRENT", "TVSMOTOR", "ULTRACEMCO", "UNIONBANK", "UNITDSPR", "UNOMINDA", "UPL", "VBL", "VEDL", "VMM", "VOLTAS", "WAAREEENER", "WIPRO", "YESBANK", "ZYDUSLIFE"];
+  function renderLiveTickMovers(){
+  // Fetch F&O stocks from stock_ticks table (latest snapshot)
+  var fnoList = FNO_SYMBOLS;
+  var url = SUPABASE_URL + '/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_high,day_low,day_open&order=created_at.desc&limit=2400';
   
-  function fmtRow(d,i){
-    var ltp=d.price||0;
-    var open=d.open||d.dayOpen||0;
-    var prevC=d.prevClose||(d.changeAbs!=null&&d.price!=null?d.price-d.changeAbs:0);
-    var chgPct=d.changePercent||d.changePct||0;
-    var dir=ltp>=prevC?'up':'down';
-    var dirClass=dir==='up'?'lt-up':'lt-down';
-    var chgSign=chgPct>=0?'+':'';
-    var prevPrice=ltPrevPrices[d.symbol];
-    var flashClass='';
-    if(prevPrice!=null){
-      if(ltp>prevPrice) flashClass='lt-flash-up';
-      else if(ltp<prevPrice) flashClass='lt-flash-down';
-    }
-    ltPrevPrices[d.symbol]=ltp;
-    return '<tr data-ltSym="'+d.symbol+'" class="'+flashClass+'"><td>'+(i+1)+'</td><td class="'+dirClass+'" style="font-weight:600">'+d.symbol+'</td><td class="'+dirClass+'" data-ltp="'+ltp+'">'+f0(ltp)+'</td><td style="color:var(--text2)">'+f0(open)+'</td><td style="color:var(--text2)">'+f0(prevC)+'</td><td class="'+dirClass+'">'+chgSign+chgPct.toFixed(2)+'%</td></tr>';
-  }
-  
-  document.getElementById('ltGBody').innerHTML=g.length?g.map(fmtRow).join(''):'<tr><td colspan="6" class="empty-row">No gainers</td></tr>';
-  document.getElementById('ltLBody').innerHTML=l.length?l.map(fmtRow).join(''):'<tr><td colspan="6" class="empty-row">No losers</td></tr>';
+  fetch(url, {headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}})
+    .then(function(r){return r.json();})
+    .then(function(rows){
+      // Filter to F&O only, keep latest tick per symbol
+      var seen = {};
+      var fnoRows = [];
+      for(var i=0; i<rows.length; i++){
+        var sym = rows[i].symbol;
+        if(fnoList.indexOf(sym) < 0) continue;
+        if(seen[sym]) continue;
+        seen[sym] = true;
+        fnoRows.push(rows[i]);
+      }
+      
+      // Calculate change % and sort
+      fnoRows = fnoRows.map(function(r){
+        return {
+          symbol: r.symbol,
+          price: r.price,
+          changePercent: r.change_pct || 0,
+          changeAbs: r.change_abs || 0,
+          volume: r.volume || 0,
+          open: r.day_open || 0,
+          prevClose: r.price && r.change_abs ? (r.price - r.change_abs) : 0
+        };
+      });
+      
+      var g = fnoRows.filter(function(d){return d.changePercent > 0;})
+        .sort(function(a,b){return b.changePercent - a.changePercent;})
+        .slice(0, 10);
+      var l = fnoRows.filter(function(d){return d.changePercent < 0;})
+        .sort(function(a,b){return a.changePercent - b.changePercent;})
+        .slice(0, 10);
+      
+      document.getElementById('ltCountG').textContent = g.length;
+      document.getElementById('ltCountL').textContent = l.length;
+      
+      function fmtRow(d, i){
+        var ltp = d.price || 0;
+        var open = d.open || 0;
+        var prevC = d.prevClose || 0;
+        var chgPct = d.changePercent || 0;
+        var dir = ltp >= prevC ? 'up' : 'down';
+        var dirClass = dir === 'up' ? 'lt-up' : 'lt-down';
+        var chgSign = chgPct >= 0 ? '+' : '';
+        var prevPrice = ltPrevPrices[d.symbol];
+        var flashClass = '';
+        if(prevPrice != null){
+          if(ltp > prevPrice) flashClass = 'lt-flash-up';
+          else if(ltp < prevPrice) flashClass = 'lt-flash-down';
+        }
+        ltPrevPrices[d.symbol] = ltp;
+        return '<tr data-ltSym="' + d.symbol + '" class="' + flashClass + '"><td>' + (i+1) + '</td><td class="' + dirClass + '" style="font-weight:600">' + d.symbol + '</td><td class="' + dirClass + '" data-ltp="' + ltp + '">' + f0(ltp) + '</td><td style="color:var(--text2)">' + f0(open) + '</td><td style="color:var(--text2)">' + f0(prevC) + '</td><td class="' + dirClass + '">' + chgSign + chgPct.toFixed(2) + '%</td></tr>';
+      }
+      
+      document.getElementById('ltGBody').innerHTML = g.length ? g.map(fmtRow).join('') : '<tr><td colspan="6" class="empty-row">No F&O gainers</td></tr>';
+      document.getElementById('ltLBody').innerHTML = l.length ? l.map(fmtRow).join('') : '<tr><td colspan="6" class="empty-row">No F&O losers</td></tr>';
+    })
+    .catch(function(err){
+      console.error('Live Tick Movers fetch error:', err);
+      document.getElementById('ltGBody').innerHTML = '<tr><td colspan="6" class="empty-row">Loading F&O data...</td></tr>';
+      document.getElementById('ltLBody').innerHTML = '<tr><td colspan="6" class="empty-row">Loading F&O data...</td></tr>';
+    });
 }
 
 // Update LTP in live tick panels from TradingView poll data
@@ -3057,6 +3099,7 @@ function updateMoversPanel(live){
   }).join(''):'<tr><td colspan="8" class="empty-row">No losers</td></tr>';
 
 renderLiveTickMovers();
+  setInterval(renderLiveTickMovers, 10000); // F&O panel refresh every 10s
 }
 
 function fmtVol(v){
