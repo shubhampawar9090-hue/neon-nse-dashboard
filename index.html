@@ -2848,8 +2848,8 @@ function updateMoversPanel(){
     return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="neg tv-pct">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+vol+'</td><td>'+(d.turnover?'₹'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+d.series+'</td></tr>';
   }).join(''):'<tr><td colspan="7" class="empty-row">No losers</td></tr>';
   
-  // Subscribe to displayed stocks on TradingView
-  tvAddStocks(tvGetDisplayedStocks());
+  // Trigger TradingView poll for newly displayed stocks
+  if (tvActive) tvPollScanner();
 }
 
 async function loadAll(){
@@ -2915,8 +2915,8 @@ async function loadAll(){
   renderIndices(priceResults||[]);
   renderIndexCardsFromData(priceResults||[]);
   if(merged.length){renderGL(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);loadAllNsePrices();
-    // Subscribe to all displayed stocks on TradingView
-    setTimeout(function(){tvAddStocks(tvGetDisplayedStocks());},500);
+    // Trigger TradingView poll for newly displayed stocks
+    setTimeout(function(){ if (tvActive) tvPollScanner(); }, 500);
   }
   renderHeatmap(priceResults||[],taResults||[]);
   if(!priceChart)loadChart('^NSEI');
@@ -2943,352 +2943,180 @@ sched();
 schedHeaderIndices();
 
 
-// ===== TRADINGVIEW WEBSOCKET — REAL-TIME TICK DATA =====
-var tvWS = null;
-var tvConnected = false;
-var tvChartId = null;
-var tvSymMap = {}; // symbol_id -> our_sym
-var tvSerMap = {}; // series_id -> our_sym
-var tvResolved = 0;
-var tvTotalSyms = 0;
+// ===== TRADINGVIEW REST POLLING — REAL-TIME TICK DATA =====
+// Uses TradingView scanner API (CORS-enabled) for real-time price updates
+// Replaces the blocked WebSocket approach
+
 var tvActive = false;
-var tvStockSubscribed = new Set(); // symbols already subscribed
-var tvStockQueue = []; // symbols waiting to be subscribed
-var tvStockCache = {}; // symbol -> {price, chg, pct, open, high, low, prevClose}
-var tvStockSymCounter = 1000; // unique ID counter for stock symbols
+var tvEnabled = true;
+var tvPollInterval = null;
+var tvStockCache = {}; // sym -> {price, chg, pct, open, high, low, prevClose, volume}
+var tvStockSubscribed = new Set(); // tracks which symbols we're polling
+var tvLastResort = 0; // timestamp of last re-sort
 
-// Symbol mapping: our symbols -> TradingView symbols
-function tvGetSymbol(sym) {
-  if (sym === '^NSEI') return 'NSE:NIFTY';
-  if (sym === '^NSEBANK') return 'NSE:BANKNIFTY';
-  if (sym === '^BSESN') return 'BSE:SENSEX';
-  if (sym.endsWith('.NS')) return 'NSE:' + sym.replace('.NS', '');
-  if (sym.endsWith('.BO')) return 'BSE:' + sym.replace('.BO', '');
-  return 'NSE:' + sym;
+// TradingView scanner API endpoint
+var TV_SCAN_URL = 'https://scanner.tradingview.com/india/scan';
+var TV_COLUMNS = ['close', 'change', 'change_abs', 'volume', 'high', 'low', 'open', 'Recommend.All'];
+
+// Index symbol mapping: TradingView ticker -> Yahoo Finance symbol (for ipcCache)
+var tvIndexMap = {
+  'NSE:NIFTY': '^NSEI',
+  'BSE:SENSEX': '^BSESN',
+  'NSE:BANKNIFTY': '^NSEBANK'
+};
+
+// Get displayed stock symbols from the movers tables
+function tvGetDisplayedStocks() {
+  var syms = new Set();
+  document.querySelectorAll('tr[data-sym]').forEach(function(row) {
+    var s = row.getAttribute('data-sym');
+    if (s && !s.startsWith('^')) syms.add(s);
+  });
+  return Array.from(syms);
 }
 
-function tvPack(jsonStr) {
-  return '~m~' + jsonStr.length + '~m~' + jsonStr;
+// Build the tickers list for the API call
+function tvGetTickers() {
+  var stocks = tvGetDisplayedStocks();
+  var tickers = stocks.map(function(s) { return 'NSE:' + s; });
+  // Add indices (TradingView tickers)
+  Object.keys(tvIndexMap).forEach(function(t) { tickers.push(t); });
+  return { tickers: tickers, stocks: stocks };
 }
 
-function tvParse(text) {
-  var msgs = [];
-  var parts = text.split('~m~').filter(Boolean);
-  for (var i = 0; i < parts.length; i += 2) {
-    var jsonStr = parts[i + 1];
-    if (!jsonStr) continue;
-    if (jsonStr.indexOf('~h~') >= 0) continue;
-    if (jsonStr.indexOf('session_id') >= 0) continue;
-    try {
-      var p = JSON.parse(jsonStr);
-      if (p.m) msgs.push(p);
-    } catch(e) {}
-  }
-  return msgs;
-}
-
-function tvConnect() {
-  if (tvWS && (tvWS.readyState === 0 || tvWS.readyState === 1)) return;
+// Poll TradingView scanner API for real-time data
+function tvPollScanner() {
+  if (!tvActive) return;
   
-  try {
-    tvWS = new WebSocket('wss://data.tradingview.com/socket.io/websocket?&type=chart');
-  } catch(e) {
-    console.error('TV: WebSocket init failed', e);
-    setTimeout(tvConnect, 5000);
-    return;
-  }
+  var info = tvGetTickers();
+  if (info.tickers.length === 0) return;
   
-  var protocolReady = false;
+  // Mark stocks as subscribed
+  info.stocks.forEach(function(s) { tvStockSubscribed.add(s); });
+  tvUpdateButton();
   
-  tvWS.onopen = function() {
-    console.log('TV: WebSocket connected, waiting for protocol...');
-    tvConnected = true;
-    tvUpdateButton();
-  };
+  var body = JSON.stringify({
+    symbols: { tickers: info.tickers, query: { types: [] } },
+    columns: TV_COLUMNS
+  });
   
-  tvWS.onmessage = function(event) {
-    var text = String(event.data);
+  fetch(TV_SCAN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (!data || !data.data) return;
     
-    // Heartbeat
-    if (text.indexOf('~h~') >= 0) {
-      var m = text.match(/~m~(\d+)~m~~h~(\d+)/);
-      if (m) {
-        try { tvWS.send('~m~' + m[1] + '~m~~h~' + m[2]); } catch(e) {}
-      }
-      return;
-    }
-    
-    // Protocol negotiation
-    if (text.indexOf('session_id') >= 0 && !protocolReady) {
-      protocolReady = true;
-      console.log('TV: Protocol established');
+    data.data.forEach(function(item) {
+      var ticker = item.s; // e.g. "NSE:RELIANCE" or "BSE:SENSEX"
+      var d = item.d;
+      if (!d || d.length < 7) return;
       
-      // Auth
-      tvWS.send(tvPack(JSON.stringify({m: 'set_auth_token', p: ['unauthorized_user_token']})));
-      tvWS.send(tvPack(JSON.stringify({m: 'set_locale', p: ['en', 'US']})));
+      var close = d[0];
+      var changePct = d[1];
+      var changeAbs = d[2];
+      var volume = d[3];
+      var high = d[4];
+      var low = d[5];
+      var open = d[6];
       
-      // Create chart session
-      tvChartId = 'chart_' + Date.now();
-      tvWS.send(tvPack(JSON.stringify({m: 'chart_create_session', p: [tvChartId]})));
-      tvUpdateButton();
-      
-      // Resolve all configured symbols (indices)
-      tvResolved = 0;
-      var symbols = Object.keys(ipcSymbols);
-      tvTotalSyms = symbols.length;
-      symbols.forEach(function(sym, i) {
-        var tvSym = tvGetSymbol(sym);
-        var symId = 'sym_' + i;
-        tvSymMap[symId] = sym;
-        tvWS.send(tvPack(JSON.stringify({
-          m: 'resolve_symbol',
-          p: [tvChartId, symId, tvSym]
-        })));
-      });
-      
-      // Flush queued stock subscriptions
-      console.log('TV: Protocol ready, chartId=' + tvChartId + ', queue=' + tvStockQueue.length);
-      if (tvStockQueue.length > 0) {
-        setTimeout(function() {
-          var queue = tvStockQueue.splice(0);
-          var unique = queue.filter(function(s) { return !tvStockSubscribed.has(s); });
-          console.log('TV: Flushing queue: ' + unique.length + ' stocks');
-          if (unique.length > 0) tvSubscribeStocks(unique);
-        }, 2000);
-      }
-      
-      // Also try to subscribe to displayed stocks after a delay
-      setTimeout(function() {
-        var displayed = tvGetDisplayedStocks();
-        console.log('TV: Displayed stocks: ' + displayed.length);
-        if (displayed.length > 0) tvAddStocks(displayed);
-      }, 3000);
-      return;
-    }
-    
-    // Parse regular messages
-    var messages = tvParse(text);
-    messages.forEach(function(msg) {
-      var method = msg.m;
-      var params = msg.p || [];
-      
-      if (method === 'resolve_symbol') {
-        var symId = params[1];
-        var ourSym = tvSymMap[symId];
-        if (!ourSym) return;
+      // Check if it's an index (TradingView ticker -> Yahoo Finance symbol)
+      if (tvIndexMap[ticker]) {
+        var yhSym = tvIndexMap[ticker]; // e.g. '^NSEI'
+        ipcCache[yhSym] = {
+          price: close, prev: close - changeAbs, open: open,
+          high: high, low: low, chg: changeAbs, pct: changePct
+        };
+        headerIdxCache[yhSym] = {
+          price: close, change: changeAbs, changePercent: changePct
+        };
+        renderIndexPriceCards();
+        renderHeaderIndices();
+      } else {
+        // Extract stock symbol from ticker (remove "NSE:" prefix)
+        var sym = ticker.replace('NSE:', '').replace('BSE:', '');
         
-        // Create series for daily data
-        var serId = 'ser_' + symId;
-        tvSerMap[serId] = ourSym;
-        tvWS.send(tvPack(JSON.stringify({
-          m: 'create_series',
-          p: [tvChartId, serId, serId, symId, '1D', 5, '']
-        })));
-      }
-      
-      if (method === 'du' || method === 'timescale_update') {
-        if (!Array.isArray(params) || params[0] !== tvChartId) return;
-        var seriesData = params[1];
-        if (!seriesData || typeof seriesData !== 'object') return;
+        // Update stock cache
+        tvStockCache[sym] = {
+          price: close,
+          chg: changeAbs,
+          pct: changePct,
+          open: open,
+          high: high,
+          low: low,
+          prevClose: close - changeAbs,
+          volume: volume
+        };
         
-        Object.keys(seriesData).forEach(function(serId) {
-          var ourSym = tvSerMap[serId];
-          if (!ourSym) return;
-          
-          var d = seriesData[serId];
-          var bars = d.s || d.ohlc || [];
-          if (!Array.isArray(bars) || bars.length === 0) return;
-          
-          var values = bars.map(function(b) { return b.v || b; }).filter(function(v) { return Array.isArray(v); });
-          if (values.length === 0) return;
-          
-          var lastBar = values[values.length - 1];
-          var prevBar = values.length > 1 ? values[values.length - 2] : lastBar;
-          
-          var price = lastBar[4] || lastBar[1] || 0;
-          var open = lastBar[1] || price;
-          var high = lastBar[2] || price;
-          var low = lastBar[3] || price;
-          var volume = lastBar[5] || 0;
-          var prevClose = prevBar[4] || prevBar[1] || price;
-          
-          var chg = price - prevClose;
-          var pct = prevClose ? (chg / prevClose) * 100 : 0;
-          
-          // Check if this is an index or a stock
-          var isIndex = ourSym.startsWith('^');
-          
-          if (isIndex) {
-            // Update index card cache
-            ipcCache[ourSym] = {
-              price: price, prev: prevClose, open: open,
-              high: high, low: low, chg: chg, pct: pct
-            };
-            headerIdxCache[ourSym] = {price: price, change: chg, changePercent: pct};
-            
-            // Render with flash
-            renderIndexPriceCards();
-            renderHeaderIndices();
-          } else {
-            // Stock tick — update cache and flash table rows
-            tvStockCache[ourSym] = {
-              price: price, chg: chg, pct: pct,
-              open: open, high: high, low: low, prevClose: prevClose
-            };
-            tvUpdateRow(ourSym, price, chg, pct);
-            renderHeaderStockTicker();
-            tvUpdateButton();
-          }
-          
-          tvResolved++;
-        });
-      }
-      
-      if (method === 'symbol_error' || method === 'series_error') {
-        console.error('TV: ' + method, params);
-        var symId = params[1];
-        var ourSym = tvSymMap[symId];
-        if (ourSym) {
-          tvResolved++;
-          console.error('TV: Failed to resolve ' + ourSym);
-        }
-      }
-      
-      if (method === 'protocol_error') {
-        console.error('TV: protocol_error', params);
+        // Update the table row
+        tvUpdateRow(sym, close, changeAbs, changePct);
       }
     });
-  };
-  
-  tvWS.onerror = function(e) {
-    console.error('TV: WebSocket error');
-    tvConnected = false;
-  };
-  
-  tvWS.onclose = function() {
-    console.log('TV: WebSocket closed, will reconnect in 5s');
-    tvConnected = false;
-    if (tvActive) setTimeout(tvConnect, 5000);
-  };
-}
-
-// Start TradingView tick stream
-function startTradingViewTicks() {
-  tvActive = true;
-  tvConnect();
-  // Periodically check for queued stocks and try to subscribe
-  if (!window._tvQueueInterval) {
-    window._tvQueueInterval = setInterval(function() {
-      if (tvActive && tvWS && tvWS.readyState === 1 && tvChartId && tvStockQueue.length > 0) {
-        var queue = tvStockQueue.splice(0, 30);
-        var unique = queue.filter(function(s) { return !tvStockSubscribed.has(s); });
-        if (unique.length > 0) tvSubscribeStocks(unique);
-      }
-      // Also check for new displayed stocks not yet subscribed
-      if (tvActive && tvWS && tvWS.readyState === 1 && tvChartId) {
-        var displayed = tvGetDisplayedStocks();
-        var notSubscribed = displayed.filter(function(s) { return !tvStockSubscribed.has(s) && !s.startsWith('^'); });
-        if (notSubscribed.length > 0) tvAddStocks(notSubscribed);
-      }
-    }, 3000);
-  }
-  // Try subscribing to displayed stocks after WebSocket connects
-  setTimeout(function() {
-    var displayed = tvGetDisplayedStocks();
-    if (displayed.length > 0) tvAddStocks(displayed);
-  }, 5000);
-  tvUpdateButton();
-  console.log('TV: Starting real-time tick stream from TradingView...');
-}
-
-// Stop TradingView tick stream
-function stopTradingViewTicks() {
-  tvActive = false;
-  if (tvWS) {
-    try { tvWS.close(); } catch(e) {}
-  }
-}
-
-// Add stock symbols to TradingView stream (called after tables render)
-function tvAddStocks(symbols) {
-  if (!tvActive) return;
-  var newSyms = symbols.filter(function(s) {
-    return s && !tvStockSubscribed.has(s) && !s.startsWith('^');
+    
+    // Re-sort movers tables based on updated data
+    tvResortMovers();
+    
+    // Render header ticker
+    renderHeaderStockTicker();
+  })
+  .catch(function(e) {
+    console.error('TV: Scanner poll failed', e);
   });
-  if (newSyms.length === 0) return;
-  
-  // Limit to 80 total stock subscriptions (TradingView rate limit)
-  if (tvStockSubscribed.size + newSyms.length > 80) {
-    newSyms = newSyms.slice(0, 80 - tvStockSubscribed.size);
-  }
-  if (newSyms.length === 0) return;
-  
-  // If WebSocket not ready, queue and subscribe when connected
-  if (!tvWS || tvWS.readyState !== 1 || !tvChartId) {
-    tvStockQueue = Array.from(new Set(tvStockQueue.concat(newSyms)));
-    console.log('TV: Queued ' + newSyms.length + ' stocks (WS not ready, queue: ' + tvStockQueue.length + ')');
-    return;
-  }
-  
-  tvSubscribeStocks(newSyms);
 }
 
-function tvSubscribeStocks(syms) {
-  syms.forEach(function(sym) {
-    tvStockSubscribed.add(sym);
-    var symId = 'stk_' + (tvStockSymCounter++);
-    tvSymMap[symId] = sym;
-    tvWS.send(tvPack(JSON.stringify({
-      m: 'resolve_symbol',
-      p: [tvChartId, symId, tvGetSymbol(sym)]
-    })));
-  });
-  console.log('TV: Subscribed to ' + syms.length + ' stocks (' + tvStockSubscribed.size + ' total)');
-  tvUpdateButton();
-}
-
-// Update table rows on tick (flash animation + price update)
-function tvUpdateRow(symbol, price, chg, pct) {
-  if (!symbol || !price) return;
-  var rows = document.querySelectorAll('tr[data-sym="'+symbol+'"]');
-  if (rows.length === 0) return;
-  
-  var flashClass = chg >= 0 ? 'tick-flash-up' : 'tick-flash-down';
-  var pctStr = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
-  var pctClass = pct >= 0 ? 'pos' : 'neg';
-  
+// Update a single stock row in the movers tables
+function tvUpdateRow(sym, price, chg, pct) {
+  var rows = document.querySelectorAll('tr[data-sym="' + sym + '"]');
   rows.forEach(function(row) {
-    var priceCell = row.querySelector('.tv-price');
-    var pctCell = row.querySelector('.tv-pct');
+    // Update price cell
+    var priceCell = row.querySelector('.price-cell, td:nth-child(3)');
     if (priceCell) {
-      priceCell.textContent = f0(price);
-      priceCell.classList.remove('tick-flash-up', 'tick-flash-down');
-      void priceCell.offsetWidth; // force reflow to restart animation
-      priceCell.classList.add(flashClass);
+      var oldPrice = parseFloat(priceCell.getAttribute('data-price') || priceCell.textContent.replace(/[^0-9.]/g, ''));
+      priceCell.textContent = formatNum(price);
+      priceCell.setAttribute('data-price', price);
+      
+      // Flash green/red
+      if (price > oldPrice) {
+        priceCell.style.color = '#00d084';
+        priceCell.style.transition = 'color 0s';
+        setTimeout(function() {
+          priceCell.style.transition = 'color 1s';
+          priceCell.style.color = '';
+        }, 100);
+      } else if (price < oldPrice) {
+        priceCell.style.color = '#d9304e';
+        priceCell.style.transition = 'color 0s';
+        setTimeout(function() {
+          priceCell.style.transition = 'color 1s';
+          priceCell.style.color = '';
+        }, 100);
+      }
     }
-    if (pctCell) {
-      pctCell.textContent = pctStr;
-      pctCell.className = pctClass + ' tv-pct';
-      pctCell.classList.add(flashClass);
+    
+    // Update change% cell
+    var chgCell = row.querySelector('.chg-cell, td:nth-child(4)');
+    if (chgCell) {
+      chgCell.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+      chgCell.style.color = pct >= 0 ? '#00d084' : '#d9304e';
+      chgCell.setAttribute('data-pct', pct);
     }
   });
-  
-  // Re-sort top gainers/losers tables based on real-time change%
-  tvResortMovers();
 }
 
-// Re-sort movers tables based on real-time TV tick data
+// Re-sort gainers/losers tables based on TradingView tick data
 var tvResortTimer = null;
 function tvResortMovers() {
   if (tvResortTimer) return; // debounce
   tvResortTimer = setTimeout(function() {
     tvResortTimer = null;
     tvDoResortMovers();
-  }, 1000); // Re-sort at most once per second
+  }, 800);
 }
 
 function tvDoResortMovers() {
-  // Gather real-time prices from tvStockCache
+  // Build gainers/losers from cached TV data
   var gainers = [];
   var losers = [];
   
@@ -3311,97 +3139,120 @@ function tvDoResortMovers() {
   var vlBody = document.getElementById('vlBody');
   if (!vgBody || !vlBody) return;
   
-  // Only re-sort if we have cached data for at least 5 stocks in each table
+  // Only re-sort if we have cached data for at least 3 stocks in each table
   var vgRows = vgBody.querySelectorAll('tr[data-sym]');
   var vlRows = vlBody.querySelectorAll('tr[data-sym]');
   if (vgRows.length < 3 || vlRows.length < 3) return;
   
-  // Get current rows as sortable data
+  // Re-sort gainers table
   var vgData = [];
   vgRows.forEach(function(row) {
     var sym = row.getAttribute('data-sym');
-    var pctCell = row.querySelector('.tv-pct');
-    var priceCell = row.querySelector('.tv-price');
-    var pct = tvStockCache[sym] ? tvStockCache[sym].pct : parseFloat(pctCell.textContent.replace('%','').replace('+','')) || 0;
-    var price = tvStockCache[sym] ? tvStockCache[sym].price : parseFloat(priceCell.textContent.replace(/,/g,'')) || 0;
-    var volCell = row.cells[4];
-    var turnCell = row.cells[5];
-    var seriesCell = row.cells[6];
-    vgData.push({ symbol: sym, pct: pct, price: price, vol: volCell.innerHTML, turnover: turnCell.innerHTML, series: seriesCell.innerHTML, rank: row.cells[0].innerHTML });
+    var cached = tvStockCache[sym];
+    if (cached) {
+      vgData.push({ row: row, pct: cached.pct, sym: sym });
+    } else {
+      var chgCell = row.querySelector('td:nth-child(4)');
+      var pct = chgCell ? parseFloat(chgCell.getAttribute('data-pct') || chgCell.textContent.replace(/[^0-9.-]/g, '')) : 0;
+      vgData.push({ row: row, pct: pct || 0, sym: sym });
+    }
   });
+  vgData.sort(function(a, b) { return b.pct - a.pct; });
   
+  // Re-sort losers table
   var vlData = [];
   vlRows.forEach(function(row) {
     var sym = row.getAttribute('data-sym');
-    var pctCell = row.querySelector('.tv-pct');
-    var priceCell = row.querySelector('.tv-price');
-    var pct = tvStockCache[sym] ? tvStockCache[sym].pct : parseFloat(pctCell.textContent.replace('%','').replace('+','')) || 0;
-    var price = tvStockCache[sym] ? tvStockCache[sym].price : parseFloat(priceCell.textContent.replace(/,/g,'')) || 0;
-    var volCell = row.cells[4];
-    var turnCell = row.cells[5];
-    var seriesCell = row.cells[6];
-    vlData.push({ symbol: sym, pct: pct, price: price, vol: volCell.innerHTML, turnover: turnCell.innerHTML, series: seriesCell.innerHTML, rank: row.cells[0].innerHTML });
+    var cached = tvStockCache[sym];
+    if (cached) {
+      vlData.push({ row: row, pct: cached.pct, sym: sym });
+    } else {
+      var chgCell = row.querySelector('td:nth-child(4)');
+      var pct = chgCell ? parseFloat(chgCell.getAttribute('data-pct') || chgCell.textContent.replace(/[^0-9.-]/g, '')) : 0;
+      vlData.push({ row: row, pct: pct || 0, sym: sym });
+    }
   });
-  
-  // Sort gainers by change% descending
-  vgData.sort(function(a, b) { return b.pct - a.pct; });
-  // Sort losers by change% ascending (most negative first)
   vlData.sort(function(a, b) { return a.pct - b.pct; });
   
-  // Re-render gainers table
-  vgBody.innerHTML = vgData.map(function(d, i) {
-    var pctStr = (d.pct >= 0 ? '+' : '') + d.pct.toFixed(2) + '%';
-    var pctClass = d.pct >= 0 ? 'pos' : 'neg';
-    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="'+pctClass+' tv-pct">'+pctStr+'</td><td>'+d.vol+'</td><td>'+d.turnover+'</td><td>'+d.series+'</td></tr>';
-  }).join('');
+  // Re-attach rows in sorted order (only if order actually changed)
+  var vgChanged = false;
+  var vlChanged = false;
   
-  // Re-render losers table
-  vlBody.innerHTML = vlData.map(function(d, i) {
-    var pctStr = (d.pct >= 0 ? '+' : '') + d.pct.toFixed(2) + '%';
-    var pctClass = d.pct >= 0 ? 'pos' : 'neg';
-    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="'+pctClass+' tv-pct">'+pctStr+'</td><td>'+d.vol+'</td><td>'+d.turnover+'</td><td>'+d.series+'</td></tr>';
-  }).join('');
-}
-
-// Get all symbols currently displayed in tables
-function tvGetDisplayedStocks() {
-  var syms = new Set();
-  document.querySelectorAll('tr[data-sym]').forEach(function(row) {
-    syms.add(row.getAttribute('data-sym'));
+  vgData.forEach(function(item, i) {
+    if (item.row !== vgRows[i]) vgChanged = true;
   });
-  return Array.from(syms);
-}
-
-// Toggle TradingView on/off
-var tvEnabled = true;
-function toggleTradingView() {
-  if (tvEnabled) {
-    stopTradingViewTicks();
-    tvEnabled = false;
-    tvStockSubscribed.clear();
-    var btn = document.getElementById('tvToggleBtn');
-    if (btn) { btn.textContent = 'TV: OFF'; btn.style.background = 'rgba(255,255,255,.05)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--muted)'; }
-    console.log('TV: Disabled, falling back to Yahoo Finance polling');
-  } else {
-    startTradingViewTicks();
-    tvEnabled = true;
-    var btn = document.getElementById('tvToggleBtn');
-    if (btn) { btn.textContent = 'TV: ON'; btn.style.background = 'rgba(0,212,255,.15)'; btn.style.borderColor = '#00d4ff'; btn.style.color = '#00d4ff'; }
-    setTimeout(function(){tvAddStocks(tvGetDisplayedStocks());},1000);
-    console.log('TV: Enabled, real-time tick stream from TradingView');
+  vlData.forEach(function(item, i) {
+    if (item.row !== vlRows[i]) vlChanged = true;
+  });
+  
+  if (vgChanged) {
+    vgData.forEach(function(item, i) {
+      var cells = item.row.querySelectorAll('td');
+      if (cells[0]) cells[0].textContent = i + 1; // Update rank number
+      vgBody.appendChild(item.row);
+    });
+    console.log('TV: Re-sorted gainers table');
+  }
+  
+  if (vlChanged) {
+    vlData.forEach(function(item, i) {
+      var cells = item.row.querySelectorAll('td');
+      if (cells[0]) cells[0].textContent = i + 1; // Update rank number
+      vlBody.appendChild(item.row);
+    });
+    console.log('TV: Re-sorted losers table');
   }
 }
 
+// Update the TV toggle button
 function tvUpdateButton() {
   var btn = document.getElementById('tvToggleBtn');
   if (!btn || !tvEnabled) return;
   var stockCount = tvStockSubscribed.size;
-  var total = stockCount + 3;
-  var wsState = tvWS ? tvWS.readyState : 'null';
-  btn.textContent = 'TV: ' + total + ' live [ws:' + wsState + ' ch:' + (tvChartId?'Y':'N') + ' q:' + tvStockQueue.length + ']';
+  btn.textContent = 'TV: ' + stockCount + ' live';
   btn.style.background = 'rgba(0,212,255,.15)';
   btn.style.borderColor = '#00d4ff';
   btn.style.color = '#00d4ff';
+}
+
+// Start TradingView real-time polling
+function startTradingViewTicks() {
+  tvActive = true;
+  // Initial poll immediately
+  tvPollScanner();
+  // Set up polling interval (every 2 seconds)
+  if (!tvPollInterval) {
+    tvPollInterval = setInterval(tvPollScanner, 2000);
+  }
+  tvUpdateButton();
+  console.log('TV: Starting real-time polling from TradingView scanner API...');
+}
+
+// Stop TradingView polling
+function stopTradingViewTicks() {
+  tvActive = false;
+  if (tvPollInterval) {
+    clearInterval(tvPollInterval);
+    tvPollInterval = null;
+  }
+  tvStockSubscribed.clear();
+  tvStockCache = {};
+  console.log('TV: Stopped real-time polling');
+}
+
+// Toggle TradingView on/off
+function toggleTradingView() {
+  if (tvEnabled) {
+    stopTradingViewTicks();
+    tvEnabled = false;
+    var btn = document.getElementById('tvToggleBtn');
+    if (btn) { btn.textContent = 'TV: OFF'; btn.style.background = 'rgba(255,255,255,.05)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--muted)'; }
+    console.log('TV: Disabled, falling back to Yahoo Finance polling');
+  } else {
+    tvEnabled = true;
+    startTradingViewTicks();
+    console.log('TV: Enabled, real-time polling from TradingView');
+  }
 }
 
 // ===== END TRADINGVIEW WEBSOCKET =====
@@ -4105,6 +3956,5 @@ function renderCompare(data){
 // Start TradingView WebSocket AFTER all variables are initialized
 startTradingViewTicks();
 </script>
-<div id="tvDebug" style="position:fixed;bottom:60px;right:10px;background:#000;color:#0f0;font-family:monospace;font-size:10px;padding:4px 8px;z-index:99999;border:1px solid #0f0;display:none"></div>
 </body>
 </html>
