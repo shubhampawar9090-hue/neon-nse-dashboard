@@ -36,7 +36,7 @@ async function fetchSymbols(): Promise<string[]> {
   return allSymbols;
 }
 
-async function fetchTvBatch(tickers: string[]): Promise<any[]> {
+async function fetchTvBatch(tickers: string[], tickTime: string): Promise<any[]> {
   const body = {
     symbols: { tickers, query: { types: [] } },
     columns: TV_COLUMNS,
@@ -50,10 +50,25 @@ async function fetchTvBatch(tickers: string[]): Promise<any[]> {
   
   if (!resp.ok) throw new Error(`TradingView API error: ${resp.status}`);
   const data = await resp.json();
-  return data.data || [];
+  return (data.data || []).map((item: any) => {
+    const d = item.d;
+    if (!d || d.length < 7) return null;
+    const symbol = item.s.replace("NSE:", "").replace("BSE:", "");
+    return {
+      symbol,
+      price: d[0],
+      change_pct: d[1],
+      change_abs: d[2],
+      volume: d[3],
+      day_high: d[4],
+      day_low: d[5],
+      day_open: d[6],
+      tick_time: tickTime,
+    };
+  }).filter((x: any) => x !== null);
 }
 
-async function fetchAllTvTicks(symbols: string[]): Promise<any[]> {
+async function fetchAllTvTicks(symbols: string[], tickTime: string): Promise<any[]> {
   const allTicks: any[] = [];
   const batches: string[][] = [];
   
@@ -65,26 +80,11 @@ async function fetchAllTvTicks(symbols: string[]): Promise<any[]> {
   const CONCURRENCY = 5;
   for (let i = 0; i < batches.length; i += CONCURRENCY) {
     const chunk = batches.slice(i, i + CONCURRENCY);
-    const results = await Promise.allSettled(chunk.map(b => fetchTvBatch(b)));
+    const results = await Promise.allSettled(chunk.map(b => fetchTvBatch(b, tickTime)));
     
     for (const result of results) {
       if (result.status === "fulfilled") {
-        for (const item of result.value) {
-          const d = item.d;
-          if (!d || d.length < 7) continue;
-          const symbol = item.s.replace("NSE:", "").replace("BSE:", "");
-          allTicks.push({
-            symbol,
-            price: d[0],
-            change_pct: d[1],
-            change_abs: d[2],
-            volume: d[3],
-            day_high: d[4],
-            day_low: d[5],
-            day_open: d[6],
-            tick_time: new Date().toISOString(),
-          });
-        }
+        allTicks.push(...result.value);
       }
     }
   }
@@ -141,6 +141,9 @@ Deno.serve(async (req: Request) => {
   }
   
   try {
+    // Single timestamp for the entire snapshot
+    const tickTime = new Date().toISOString();
+    
     // Fetch all active symbols from database
     const symbols = await fetchSymbols();
     console.log(`Fetched ${symbols.length} symbols from nse_symbols table`);
@@ -154,7 +157,7 @@ Deno.serve(async (req: Request) => {
     
     // Fetch real-time data from TradingView scanner API
     const startTime = Date.now();
-    const ticks = await fetchAllTvTicks(symbols);
+    const ticks = await fetchAllTvTicks(symbols, tickTime);
     const fetchTime = ((Date.now() - startTime) / 1000).toFixed(2);
     
     console.log(`Fetched ${ticks.length} ticks from TradingView in ${fetchTime}s`);
@@ -183,7 +186,7 @@ Deno.serve(async (req: Request) => {
       losers,
       fetch_time_s: parseFloat(fetchTime),
       total_time_s: parseFloat(totalTime),
-      timestamp: new Date().toISOString(),
+      timestamp: tickTime,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     
   } catch (error) {

@@ -1,0 +1,212 @@
+{
+  "gainers": [
+    {
+      "symbol": "HECPROJECT",
+      "price": "138.72",
+      "change_pct": "20.00",
+      "change_abs": "23.12",
+      "volume": 336737,
+      "day_open": "125.00",
+      "day_high": "138.72",
+      "day_low": "122.00"
+    },
+    {
+      "symbol": "AASTHA",
+      "price": "129.05",
+      "change_pct": "19.99",
+      "change_abs": "21.50",
+      "volume": 10338553,
+      "day_open": "117.92",
+      "day_high": "129.06",
+      "day_low": "115.50"
+    },
+    {
+      "symbol": "BLUESTONE",
+      "price": "728.65",
+      "change_pct": "19.37",
+      "change_abs": "118.25",
+      "volume": 23104761,
+      "day_open": "633.20",
+      "day_high": "732.45",
+      "day_low": "616.50"
+    },
+    {
+      "symbol": "JINDWORLD",
+      "price": "37.64",
+      "change_pct": "19.30",
+      "change_abs": "6.09",
+      "volume": 100856338,
+      "day_open": "31.56",
+      "day_high": "37.86",
+      "day_low": "31.00"
+    },
+    {
+      "symbol": "KCPSUGIND",
+      "price": "25.81",
+      "change_pct": "18.89",
+      "change_abs": "4.10",
+      "volume": 5896724,
+      "day_open": "25.00",
+      "day_high": "26.05",
+      "day_low": "24.10"
+    },
+    {
+      "symbol": "SHALPAINTS",
+      "price": "69.05",
+      "change_pct": "17.47",
+      "change_abs": "10.27",
+      "volume": 3497715,
+      "day_open": "59.00",
+      "day_high": "70.53",
+      "day_low": "57.09"
+    },
+    {
+      "symbol": "WESTLIFE",
+      "price": "512.55",
+      "change_pct": "13.87",
+      "change_abs": "62.45",
+      "volume": 1867115,
+      "day_open": "451.00",
+      "day_high": "540.10",
+      "day_low": "446.20"
+    },
+    {
+      "symbol": "SCPL",
+      "price": "547.75",
+      "change_pct": "13.34",
+      "change_abs": "64.45",
+      "volume": 242133,
+      "day_open": "483.50",
+      "day_high": "571.45",
+      "day_low": "483.50"
+    },
+    {
+      "symbol": "VIMTALABS",
+      "price": "599.60",
+      "change_pct": "13.08",
+      "change_abs": "69.35",
+      "volume": 6265863,
+      "day_open": "540.00",
+      "day_high": "620.00",
+      "day_low": "535.00"
+    },
+    {
+      "symbol": "KARURVYSYA",
+      "price": "340.30",
+      "change_pct": "13.06",
+      "change_abs": "39.30",
+      "volume": 83899658,
+      "day_open": "310.05",
+      "day_high": "345.35",
+      "day_low": "310.05"
+    }
+  ],
+  "losers": [
+    {
+      "symbol": "INDOBORAX",
+      "price": "430.10",
+      "change_pct": "-10.59",
+      "change_abs": "-50.95",
+      "volume": 577815,
+      "day_open": "440.95",
+      "day_high": "440.95",
+      "day_low": "414.00"
+    },
+    {
+      "symbol": "VCL",
+      "price": "0.99",
+      "change_pct": "-10.00",
+      "change_abs": "-0.11",
+      "volume": 1499367,
+      "day_open": "1.12",
+      "day_high": "1.14",
+      "day_low": "0.99"
+    },
+    {
+      "symbol": "PANACEABIO",
+      "price": "494.00",
+      "change_pct": "-9.99",
+      "change_abs": "-54.85",
+      "volume": 670126,
+      "day_open": "551.95",
+      "day_high": "560.95",
+      "day_low": "494.00"
+    },
+    {
+      "symbol": "COMSYN",
+      "price": "188.48",
+      "change_pct": "-9.97",
+      "change_abs": "-20.87",
+      "volume": 2525825,
+      "day_open": "210.69",
+      "day_high": "219.00",
+      "day_low": "185.10"
+    },
+    {
+      "symbol": "ABSLAMC",
+      "price": "1043.10",
+      "change_pct": "-6.75",
+      "change_abs": "-75.50",
+      "volume": 873489,
+      "day_open": "1126.90",
+      "day_high": "1126.90",
+      "day_low": "1038.10"
+    },
+    {
+      "symbol": "TOTAL",
+      "price": "48.40",
+      "change_pct": "-6.73",
+      "change_abs": "-3.49",
+      "volume": 9453,
+      "day_open": "53.70",
+      "day_high": "53.70",
+      "day_low": "45.00"
+    },
+    {
+      "symbol": "AKG",
+      "price": "9.38",
+      "change_pct": "-6.11",
+      "change_abs": "-0.61",
+      "volume": 78494,
+      "day_open": "9.97",
+      "day_high": "10.16",
+      "day_low": "9.32"
+    },
+    {
+      "symbol": "RSDFIN",
+      "price": "83.00",
+      "change_pct": "-6.09",
+      "change_abs": "-5.38",
+      "volume": 49,
+      "day_open": "83.00",
+      "day_high": "83.00",
+      "day_low": "83.00"
+    },
+    {
+      "symbol": "KIRLPNU",
+      "price": "1616.10",
+      "change_pct": "-6.06",
+      "change_abs": "-104.20",
+      "volume": 915604,
+      "day_open": "1739.10",
+      "day_high": "1741.10",
+      "day_low": "1575.60"
+    },
+    {
+      "symbol": "TURTLEMINT",
+      "price": "135.61",
+      "change_pct": "-6.02",
+      "change_abs": "-8.68",
+      "volume": 1469784,
+      "day_open": "142.94",
+      "day_high": "144.62",
+      "day_low": "135.05"
+    }
+  ],
+  "meta": {
+    "latest": "2026-07-22 03:13:41.099+00",
+    "total": 2376,
+    "gainers": 1177,
+    "losers": 1163
+  }
+}
