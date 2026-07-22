@@ -2869,25 +2869,35 @@ function normalizeTA(merged){
 var ltPrevPrices={}; // sym -> previous price for flash detection
 var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIGREEN", "ADANIPORTS", "ADANIPOWER", "ALKEM", "AMBER", "AMBUJACEM", "ANGELONE", "APLAPOLLO", "APOLLOHOSP", "ASHOKLEY", "ASIANPAINT", "ASTRAL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJAJHLDNG", "BAJFINANCE", "BANDHANBNK", "BANKBARODA", "BANKINDIA", "BDL", "BEL", "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BLUESTARCO", "BOSCHLTD", "BPCL", "BRITANNIA", "BSE", "CAMS", "CANBK", "CDSL", "CGPOWER", "CHOLAFIN", "CIPLA", "COALINDIA", "COCHINSHIP", "COFORGE", "COLPAL", "CONCOR", "CROMPTON", "CUMMINSIND", "DABUR", "DALBHARAT", "DELHIVERY", "DIVISLAB", "DIXON", "DLF", "DMART", "DRREDDY", "EICHERMOT", "ETERNAL", "EXIDEIND", "FEDERALBNK", "FORCEMOT", "FORTIS", "GAIL", "GLENMARK", "GMRAIRPORT", "GODFRYPHLP", "GODREJCP", "GODREJPROP", "GRASIM", "GVT&D", "HAL", "HAVELLS", "HCLTECH", "HDFCAMC", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO", "HINDPETRO", "HINDUNILVR", "HINDZINC", "HYUNDAI", "ICICIBANK", "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IEX", "INDHOTEL", "INDIANB", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "INOXWIND", "IOC", "IREDA", "IRFC", "ITC", "JINDALSTEL", "JIOFIN", "JSWENERGY", "JSWSTEEL", "JUBLFOOD", "KALYANKJIL", "KAYNES", "KEI", "KFINTECH", "KOTAKBANK", "KPITTECH", "LAURUSLABS", "LICHSGFIN", "LICI", "LODHA", "LT", "LTF", "LTM", "LUPIN", "M&M", "MANAPPURAM", "MANKIND", "MARICO", "MARUTI", "MAXHEALTH", "MAZDOCK", "MCX", "MFSL", "MOTHERSON", "MOTILALOFS", "MPHASIS", "MUTHOOTFIN", "NAM-INDIA", "NATIONALUM", "NAUKRI", "NBCC", "NESTLEIND", "NHPC", "NMDC", "NTPC", "NUVAMA", "NYKAA", "OBEROIRLTY", "OFSS", "OIL", "ONGC", "PAGEIND", "PATANJALI", "PAYTM", "PERSISTENT", "PETRONET", "PFC", "PGEL", "PHOENIXLTD", "PIDILITIND", "PIIND", "PNB", "PNBHOUSING", "POLICYBZR", "POLYCAB", "POWERGRID", "POWERINDIA", "PREMIERENE", "PRESTIGE", "RADICO", "RBLBANK", "RECLTD", "RELIANCE", "RVNL", "SAIL", "SBICARD", "SBILIFE", "SBIN", "SHREECEM", "SHRIRAMFIN", "SIEMENS", "SOLARINDS", "SONACOMS", "SRF", "SUNPHARMA", "SUPREMEIND", "SUZLON", "SWIGGY", "TATACONSUM", "TATAELXSI", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TIINDIA", "TITAN", "TMPV", "TORNTPHARM", "TRENT", "TVSMOTOR", "ULTRACEMCO", "UNIONBANK", "UNITDSPR", "UNOMINDA", "UPL", "VBL", "VEDL", "VMM", "VOLTAS", "WAAREEENER", "WIPRO", "YESBANK", "ZYDUSLIFE"];
   function renderLiveTickMovers(){
-  // Fetch F&O stocks from stock_ticks table (latest snapshot)
   var fnoList = FNO_SYMBOLS;
-  var url = SUPABASE_URL + '/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_high,day_low,day_open&order=created_at.desc&limit=2400';
-  
-  fetch(url, {headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}})
-    .then(function(r){return r.json();})
+  // Step 1: Get latest tick_time
+  fetch(SUPABASE_URL + '/rest/v1/stock_ticks?select=tick_time&order=tick_time.desc&limit=1', {
+    headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+  })
+  .then(function(r){return r.json();})
+  .then(function(meta){
+    if(!meta || !meta.length) {
+      document.getElementById('ltGBody').innerHTML = '<tr><td colspan="6" class="empty-row">No F&O data</td></tr>';
+      document.getElementById('ltLBody').innerHTML = '<tr><td colspan="6" class="empty-row">No F&O data</td></tr>';
+      document.getElementById('ltCountG').textContent = 0;
+      document.getElementById('ltCountL').textContent = 0;
+      return;
+    }
+    var latestTime = meta[0].tick_time;
+    var encTime = encodeURIComponent(latestTime);
+    // Step 2: Fetch all ticks for latest snapshot, sorted by change_pct desc (gainers first)
+    fetch(SUPABASE_URL + '/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_open,tick_time&tick_time=eq.' + encTime + '&order=change_pct.desc&limit=2400', {
+      headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Range': '0-2399'}
+    })
+    .then(function(r){
+      var range = r.headers.get('content-range');
+      return r.json();
+    })
     .then(function(rows){
-      // Filter to F&O only, keep latest tick per symbol
-      var seen = {};
-      var fnoRows = [];
-      for(var i=0; i<rows.length; i++){
-        var sym = rows[i].symbol;
-        if(fnoList.indexOf(sym) < 0) continue;
-        if(seen[sym]) continue;
-        seen[sym] = true;
-        fnoRows.push(rows[i]);
-      }
+      // Filter to F&O only
+      var fnoRows = rows.filter(function(r){return fnoList.indexOf(r.symbol) >= 0;});
       
-      // Calculate change % and sort
+      // Map to normalized format
       fnoRows = fnoRows.map(function(r){
         return {
           symbol: r.symbol,
@@ -2900,12 +2910,10 @@ var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIG
         };
       });
       
-      var g = fnoRows.filter(function(d){return d.changePercent > 0;})
-        .sort(function(a,b){return b.changePercent - a.changePercent;})
-        .slice(0, 10);
-      var l = fnoRows.filter(function(d){return d.changePercent < 0;})
-        .sort(function(a,b){return a.changePercent - b.changePercent;})
-        .slice(0, 10);
+      // Gainers: already sorted desc by change_pct from the query, filter positive
+      var g = fnoRows.filter(function(d){return d.changePercent > 0;}).slice(0, 10);
+      // Losers: reverse sort (ascending) to get most negative first
+      var l = fnoRows.filter(function(d){return d.changePercent < 0;}).sort(function(a,b){return a.changePercent - b.changePercent;}).slice(0, 10);
       
       document.getElementById('ltCountG').textContent = g.length;
       document.getElementById('ltCountL').textContent = l.length;
@@ -2932,10 +2940,12 @@ var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIG
       document.getElementById('ltLBody').innerHTML = l.length ? l.map(fmtRow).join('') : '<tr><td colspan="6" class="empty-row">No F&O losers</td></tr>';
     })
     .catch(function(err){
-      console.error('Live Tick Movers fetch error:', err);
-      document.getElementById('ltGBody').innerHTML = '<tr><td colspan="6" class="empty-row">Loading F&O data...</td></tr>';
-      document.getElementById('ltLBody').innerHTML = '<tr><td colspan="6" class="empty-row">Loading F&O data...</td></tr>';
+      console.error('Live Tick Movers rows fetch error:', err);
     });
+  })
+  .catch(function(err){
+    console.error('Live Tick Movers meta fetch error:', err);
+  });
 }
 
 // Update LTP in live tick panels from TradingView poll data
