@@ -1740,6 +1740,25 @@ body {
 .user-badge .ub-name{color:var(--amber2)}
 .user-badge .ub-logout{color:var(--grey);font-size:9px;margin-left:4px}
 
+
+/* ===== LIVE TICK MOVERS ===== */
+.lt-panel{border:1px solid rgba(0,255,136,.15);border-radius:4px;background:rgba(0,255,136,.02);margin-bottom:10px;overflow:hidden}
+.lt-panel.loser{border-color:rgba(255,45,85,.15);background:rgba(255,45,85,.02)}
+.lt-hdr{padding:6px 10px;font-size:11px;font-weight:700;letter-spacing:.5px;display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.06)}
+.lt-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.lt-tbl th{padding:4px 6px;text-align:right;font-size:9px;font-weight:600;color:var(--text2);text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}
+.lt-tbl th:first-child,.lt-tbl th:nth-child(2){text-align:left}
+.lt-tbl td{padding:3px 6px;text-align:right;font-family:'Courier New',monospace;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.02)}
+.lt-tbl td:first-child,.lt-tbl td:nth-child(2){text-align:left}
+.lt-tbl tr{transition:background .15s}
+.lt-tbl tr:hover{background:rgba(255,255,255,.03)}
+.lt-up{color:var(--green)!important}
+.lt-down{color:var(--red)!important}
+.lt-flash-up{animation:ltFlashUp .4s ease-out}
+.lt-flash-down{animation:ltFlashDown .4s ease-out}
+@keyframes ltFlashUp{0%{background:rgba(0,255,136,.25)}100%{background:transparent}}
+@keyframes ltFlashDown{0%{background:rgba(255,45,85,.25)}100%{background:transparent}}
+.lt-badge{font-size:8px;font-weight:800;color:var(--green);background:var(--green-dim);padding:1px 5px;border-radius:3px;animation:blink 1.5s infinite}
 </style>
 </head>
 <body>
@@ -1932,6 +1951,19 @@ body {
         <div class="panel p-vol" style="border-color:rgba(255,45,85,.2)">
           <div class="panel-hdr"><span class="panel-name" style="color:var(--red)">🔴 Top Losers</span><span class="tick-badge" id="tickBadgeL" style="display:none;font-size:9px;font-weight:800;color:var(--green);background:var(--green-dim);padding:2px 6px;border-radius:4px;margin-left:4px;">● TICK LIVE</span><span class="panel-count" id="vlCount"></span></div>
           <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Chg%</th><th>Chg₹</th><th>Volume</th><th>Turnover</th><th>Series</th></tr></thead><tbody id="vlBody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ===== LIVE TICK MOVERS ===== -->
+      <div class="divider" style="margin-top:14px"><span class="divider-text">LIVE TICK MOVERS</span><span class="divider-line"></span></div>
+      <div class="movers-row">
+        <div class="lt-panel">
+          <div class="lt-hdr"><span style="color:var(--green)">🟢 TOP 10 GAINERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeG">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountG"></span></div>
+          <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltGBody"></tbody></table></div>
+        </div>
+        <div class="lt-panel loser">
+          <div class="lt-hdr"><span style="color:var(--red)">🔴 TOP 10 LOSERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeL">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountL"></span></div>
+          <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltLBody"></tbody></table></div>
         </div>
       </div>
 
@@ -2833,6 +2865,65 @@ function normalizeTA(merged){
 
 
 // Fetch top gainers/losers directly from NSE official API via Supabase Edge Function
+// ===== LIVE TICK MOVERS — render with LTP, Open, PrevClose, Chg% =====
+var ltPrevPrices={}; // sym -> previous price for flash detection
+function renderLiveTickMovers(){
+  if(!nseMovers) return;
+  var g=(nseMovers.gainers||[]).slice(0,10);
+  var l=(nseMovers.losers||[]).slice(0,10);
+  document.getElementById('ltCountG').textContent=g.length;
+  document.getElementById('ltCountL').textContent=l.length;
+  
+  function fmtRow(d,i){
+    var ltp=d.price||0;
+    var open=d.open||d.dayOpen||0;
+    var prevC=d.prevClose||(d.changeAbs!=null&&d.price!=null?d.price-d.changeAbs:0);
+    var chgPct=d.changePercent||d.changePct||0;
+    var dir=ltp>=prevC?'up':'down';
+    var dirClass=dir==='up'?'lt-up':'lt-down';
+    var chgSign=chgPct>=0?'+':'';
+    var prevPrice=ltPrevPrices[d.symbol];
+    var flashClass='';
+    if(prevPrice!=null){
+      if(ltp>prevPrice) flashClass='lt-flash-up';
+      else if(ltp<prevPrice) flashClass='lt-flash-down';
+    }
+    ltPrevPrices[d.symbol]=ltp;
+    return '<tr data-ltSym="'+d.symbol+'" class="'+flashClass+'"><td>'+(i+1)+'</td><td class="'+dirClass+'" style="font-weight:600">'+d.symbol+'</td><td class="'+dirClass+'" data-ltp="'+ltp+'">'+f0(ltp)+'</td><td style="color:var(--text2)">'+f0(open)+'</td><td style="color:var(--text2)">'+f0(prevC)+'</td><td class="'+dirClass+'">'+chgSign+chgPct.toFixed(2)+'%</td></tr>';
+  }
+  
+  document.getElementById('ltGBody').innerHTML=g.length?g.map(fmtRow).join(''):'<tr><td colspan="6" class="empty-row">No gainers</td></tr>';
+  document.getElementById('ltLBody').innerHTML=l.length?l.map(fmtRow).join(''):'<tr><td colspan="6" class="empty-row">No losers</td></tr>';
+}
+
+// Update LTP in live tick panels from TradingView poll data
+function updateLiveTickLTP(sym,price,chgPct,open,prevClose){
+  var rows=document.querySelectorAll('tr[data-ltSym="'+sym+'"]');
+  rows.forEach(function(row){
+    var ltpCell=row.querySelector('td:nth-child(3)');
+    if(!ltpCell) return;
+    var oldPrice=parseFloat(ltpCell.getAttribute('data-ltp')||'0');
+    var dir=price>=prevClose?'up':'down';
+    var dirClass=dir==='up'?'lt-up':'lt-down';
+    ltpCell.textContent=f0(price);
+    ltpCell.setAttribute('data-ltp',price);
+    ltpCell.className=dirClass;
+    // Update stock name color
+    var nameCell=row.querySelector('td:nth-child(2)');
+    if(nameCell) nameCell.className=dirClass;
+    // Update Chg% cell
+    var chgCell=row.querySelector('td:nth-child(6)');
+    if(chgCell){
+      chgCell.textContent=(chgPct>=0?'+':'')+chgPct.toFixed(2)+'%';
+      chgCell.className=dirClass;
+    }
+    // Flash
+    if(price>oldPrice){row.classList.remove('lt-flash-up','lt-flash-down');row.classList.add('lt-flash-up');}
+    else if(price<oldPrice){row.classList.remove('lt-flash-up','lt-flash-down');row.classList.add('lt-flash-down');}
+  });
+}
+
+
 async function loadAllNsePrices(){
   var live=mktOpen();
   
@@ -2852,10 +2943,10 @@ async function loadAllNsePrices(){
         nseMovers=pd.data;
         // Map NSE API fields to our format
         nseMovers.gainers=pd.data.gainers.map(function(d){
-          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ'};
+          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ',open:d.open||0,prevClose:d.prevClose||0};
         });
         nseMovers.losers=pd.data.losers.map(function(d){
-          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ'};
+          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ',open:d.open||0,prevClose:d.prevClose||0};
         });
         console.log('NSE Movers API: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers (official NSE real-time)');
         updateMoversPanel(live);
@@ -2889,8 +2980,8 @@ async function loadAllNsePrices(){
           var lData=await lResp.json();
           if(gData&&gData.length>0){
             nseMovers={
-              gainers:gData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ'};}),
-              losers:lData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ'};}),
+              gainers:gData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ',open:t.day_open||0,prevClose:(t.price-(t.change_abs||0))};}),
+              losers:lData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ',open:t.day_open||0,prevClose:(t.price-(t.change_abs||0))};}),
               fiftyTwoWeekHigh:[],fiftyTwoWeekLow:[]
             };
             console.log('TradingView movers: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers @ '+latestTime);
@@ -2917,8 +3008,8 @@ async function loadAllNsePrices(){
       var gD=await gRes.json();var lD=await lRes.json();
       if(gD&&gD.length>0){
         nseMovers={
-          gainers:gD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ'};}),
-          losers:lD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ'};}),
+          gainers:gD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ',open:t.open||0,prevClose:t.prev_close||0};}),
+          losers:lD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ',open:t.open||0,prevClose:t.prev_close||0};}),
           fiftyTwoWeekHigh:[],fiftyTwoWeekLow:[]
         };
         console.log('NSE daily prices: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers @ '+today);
@@ -2964,6 +3055,8 @@ function updateMoversPanel(live){
     var absSign=chgAbs>=0?'+':'';
     return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="'+chgClass+'">'+chgSign+chg.toFixed(2)+'%</td><td>'+absSign+f0(Math.abs(chgAbs))+'</td><td>'+vol+'</td><td>'+(d.turnover?'\u20b9'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+(d.series||'EQ')+'</td></tr>';
   }).join(''):'<tr><td colspan="8" class="empty-row">No losers</td></tr>';
+
+renderLiveTickMovers();
 }
 
 function fmtVol(v){
@@ -3093,8 +3186,8 @@ var tvIndexMap = {
 // Get displayed stock symbols from the movers tables
 function tvGetDisplayedStocks() {
   var syms = new Set();
-  document.querySelectorAll('tr[data-sym]').forEach(function(row) {
-    var s = row.getAttribute('data-sym');
+  document.querySelectorAll('tr[data-sym], tr[data-ltSym]').forEach(function(row) {
+    var s = row.getAttribute('data-sym') || row.getAttribute('data-ltSym');
     if (s && !s.startsWith('^')) syms.add(s);
   });
   return Array.from(syms);
@@ -3177,6 +3270,7 @@ function tvPollScanner() {
         
         // Update the table row
         tvUpdateRow(sym, close, changeAbs, changePct);
+        updateLiveTickLTP(sym, close, changePct, open, close - changeAbs);
       }
     });
     
