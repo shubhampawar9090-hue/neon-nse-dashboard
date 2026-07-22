@@ -2836,14 +2836,38 @@ function normalizeTA(merged){
 async function loadAllNsePrices(){
   var live=mktOpen();
   
-  // When market is LIVE: trigger fresh tick fetch for real-time data
+  // When market is LIVE: trigger fresh TradingView tick fetch (fire-and-forget)
   if(live){
     try{
       fetch(SUPABASE_URL+'/functions/v1/save-tv-ticks',{method:'POST',headers:{'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({})}).catch(function(){});
     }catch(e){}
   }
   
-  // PRIMARY SOURCE: stock_ticks table (TradingView real-time data for ALL 2,384 stocks)
+  // PRIMARY: NSE Movers API (official NSE real-time gainers/losers)
+  try{
+    var resp=await fetch(EDGE_MOVERS_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    if(resp.ok){
+      var pd=await resp.json();
+      if(pd&&pd.success&&pd.data&&pd.data.gainers&&pd.data.gainers.length>0){
+        nseMovers=pd.data;
+        // Map NSE API fields to our format
+        nseMovers.gainers=pd.data.gainers.map(function(d){
+          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ'};
+        });
+        nseMovers.losers=pd.data.losers.map(function(d){
+          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ'};
+        });
+        console.log('NSE Movers API: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers (official NSE real-time)');
+        updateMoversPanel(live);
+        return;
+      }
+    }
+    throw new Error('Movers API '+resp.status);
+  }catch(e){
+    console.warn('NSE Movers API failed:',e.message);
+  }
+  
+  // SECONDARY: stock_ticks table (TradingView real-time data for ALL 2,384 stocks)
   // Sort all stocks by change_pct (% change from previous day close) → top 20 gainers + top 20 losers
   try{
     var metaResp=await fetch(SUPABASE_URL+'/rest/v1/stock_ticks?select=tick_time&order=tick_time.desc&limit=1',{
@@ -2854,11 +2878,9 @@ async function loadAllNsePrices(){
       if(metaData&&metaData.length>0){
         var latestTime=metaData[0].tick_time;
         var encTime=encodeURIComponent(latestTime);
-        // Fetch top 20 gainers (highest positive change_pct)
         var gResp=await fetch(SUPABASE_URL+'/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_high,day_low,day_open&tick_time=eq.'+encTime+'&order=change_pct.desc&limit=20',{
           headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
         });
-        // Fetch top 20 losers (lowest negative change_pct)
         var lResp=await fetch(SUPABASE_URL+'/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_high,day_low,day_open&tick_time=eq.'+encTime+'&order=change_pct.asc&limit=20',{
           headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
         });
@@ -2866,14 +2888,12 @@ async function loadAllNsePrices(){
           var gData=await gResp.json();
           var lData=await lResp.json();
           if(gData&&gData.length>0){
-            var gainers=(gData||[]).map(function(t){
-              return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ'};
-            });
-            var losers=(lData||[]).map(function(t){
-              return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ'};
-            });
-            nseMovers={gainers:gainers,losers:losers,fiftyTwoWeekHigh:[],fiftyTwoWeekLow:[]};
-            console.log('TradingView movers: '+gainers.length+' gainers, '+losers.length+' losers @ '+latestTime+' (sorted by % chg from prev close)');
+            nseMovers={
+              gainers:gData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ'};}),
+              losers:lData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ'};}),
+              fiftyTwoWeekHigh:[],fiftyTwoWeekLow:[]
+            };
+            console.log('TradingView movers: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers @ '+latestTime);
             updateMoversPanel(live);
             return;
           }
@@ -2884,7 +2904,7 @@ async function loadAllNsePrices(){
     console.warn('TradingView tick fetch failed:',e1.message);
   }
   
-  // FALLBACK: stock_daily_prices table (official NSE closing data)
+  // TERTIARY: stock_daily_prices table (official NSE closing data)
   try{
     var today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
     var gRes=await fetch(SUPABASE_URL+'/rest/v1/stock_daily_prices?select=symbol,close,change_percent,change_val,volume,turnover&trade_date=eq.'+today+'&order=change_percent.desc&limit=20',{
@@ -2894,17 +2914,14 @@ async function loadAllNsePrices(){
       headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
     });
     if(gRes.ok&&lRes.ok){
-      var gD=await gRes.json();
-      var lD=await lRes.json();
+      var gD=await gRes.json();var lD=await lRes.json();
       if(gD&&gD.length>0){
-        var gainers=gD.map(function(t){
-          return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ'};
-        });
-        var losers=lD.map(function(t){
-          return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ'};
-        });
-        nseMovers={gainers:gainers,losers:losers,fiftyTwoWeekHigh:[],fiftyTwoWeekLow:[]};
-        console.log('NSE daily prices movers: '+gainers.length+' gainers, '+losers.length+' losers @ '+today);
+        nseMovers={
+          gainers:gD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ'};}),
+          losers:lD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ'};}),
+          fiftyTwoWeekHigh:[],fiftyTwoWeekLow:[]
+        };
+        console.log('NSE daily prices: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers @ '+today);
         updateMoversPanel(live);
         return;
       }
