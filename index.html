@@ -2817,17 +2817,54 @@ function normalizeTA(merged){
 
 // Fetch top gainers/losers directly from NSE official API via Supabase Edge Function
 async function loadAllNsePrices(){
+  // Try NSE Movers Edge Function first
   try{
     var resp=await fetch(EDGE_MOVERS_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
-    if(!resp.ok) throw new Error('Movers API '+resp.status);
-    var pd=await resp.json();
-    if(pd&&pd.success&&pd.data){
-      nseMovers=pd.data;
-      console.log('NSE movers: '+pd.data.gainers.length+' gainers, '+pd.data.losers.length+' losers, '+pd.data.fiftyTwoWeekHigh.length+' 52W high, '+pd.data.fiftyTwoWeekLow.length+' 52W low');
-      updateMoversPanel();
+    if(resp.ok){
+      var pd=await resp.json();
+      if(pd&&pd.success&&pd.data){
+        nseMovers=pd.data;
+        console.log('NSE movers API: '+pd.data.gainers.length+' gainers, '+pd.data.losers.length+' losers');
+        updateMoversPanel();
+        return;
+      }
     }
+    throw new Error('Movers API '+resp.status);
   }catch(e){
-    console.error('loadAllNsePrices failed:',e.message);
+    console.warn('Movers API failed, falling back to database:',e.message);
+  }
+  // Fallback: fetch top gainers/losers from stock_ticks (latest snapshot)
+  try{
+    // Step 1: Get latest tick_time
+    var metaResp=await fetch(SUPABASE_URL+'/rest/v1/stock_ticks?select=tick_time&order=tick_time.desc&limit=1',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!metaResp.ok) throw new Error('DB meta '+metaResp.status);
+    var metaData=await metaResp.json();
+    if(!metaData||metaData.length===0) throw new Error('No tick data');
+    var latestTime=metaData[0].tick_time;
+    // Step 2: Fetch top gainers (sorted desc, limit 10) and top losers (sorted asc, limit 10)
+    var encTime=encodeURIComponent(latestTime);
+    var gResp=await fetch(SUPABASE_URL+'/rest/v1/stock_ticks?select=symbol,price,change_pct,volume&tick_time=eq.'+encTime+'&order=change_pct.desc&limit=10',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    var lResp=await fetch(SUPABASE_URL+'/rest/v1/stock_ticks?select=symbol,price,change_pct,volume&tick_time=eq.'+encTime+'&order=change_pct.asc&limit=10',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!gResp.ok||!lResp.ok) throw new Error('DB ticks fetch failed');
+    var gData=await gResp.json();
+    var lData=await lResp.json();
+    var gainers=(gData||[]).map(function(t){
+      return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,volume:t.volume,turnover:0,series:'EQ'};
+    });
+    var losers=(lData||[]).map(function(t){
+      return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,volume:t.volume,turnover:0,series:'EQ'};
+    });
+    nseMovers={gainers:gainers,losers:losers,fiftyTwoWeekHigh:[],fiftyTwoWeekLow:[]};
+    console.log('DB fallback movers: '+gainers.length+' gainers, '+losers.length+' losers @ '+latestTime);
+    updateMoversPanel();
+  }catch(e2){
+    console.error('DB fallback also failed:',e2.message);
   }
 }
 
@@ -2836,16 +2873,33 @@ function updateMoversPanel(){
   var gainers=nseMovers.gainers||[];
   var losers=nseMovers.losers||[];
   
-  // Top Gainers panel (no 3% filter — show actual top from NSE)
   document.getElementById('vgCount').textContent=gainers.length;
   document.getElementById('vlCount').textContent=losers.length;
   document.getElementById('vgBody').innerHTML=gainers.length?gainers.map(function(d,i){
-    var vol=d.volume?(d.volume/100000).toFixed(1)+'L':'-';
-    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="pos tv-pct">+'+(d.changePercent||0).toFixed(2)+'%</td><td>'+vol+'</td><td>'+(d.turnover?'₹'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+d.series+'</td></tr>';
+    var vol='-';
+    if(d.volume){
+      var v=d.volume;
+      if(v>=10000000) vol=(v/10000000).toFixed(2)+'Cr';
+      else if(v>=100000) vol=(v/100000).toFixed(1)+'L';
+      else vol=v.toLocaleString('en-IN');
+    }
+    var chg=(d.changePercent||0);
+    var chgClass=chg>=0?'pos tv-pct':'neg tv-pct';
+    var chgSign=chg>=0?'+':'';
+    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="'+chgClass+'">'+chgSign+chg.toFixed(2)+'%</td><td>'+vol+'</td><td>'+(d.turnover?'₹'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+(d.series||'EQ')+'</td></tr>';
   }).join(''):'<tr><td colspan="7" class="empty-row">No gainers</td></tr>';
   document.getElementById('vlBody').innerHTML=losers.length?losers.map(function(d,i){
-    var vol=d.volume?(d.volume/100000).toFixed(1)+'L':'-';
-    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="neg tv-pct">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+vol+'</td><td>'+(d.turnover?'₹'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+d.series+'</td></tr>';
+    var vol='-';
+    if(d.volume){
+      var v=d.volume;
+      if(v>=10000000) vol=(v/10000000).toFixed(2)+'Cr';
+      else if(v>=100000) vol=(v/100000).toFixed(1)+'L';
+      else vol=v.toLocaleString('en-IN');
+    }
+    var chg=(d.changePercent||0);
+    var chgClass=chg>=0?'pos tv-pct':'neg tv-pct';
+    var chgSign=chg>=0?'+':'';
+    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="'+chgClass+'">'+chgSign+chg.toFixed(2)+'%</td><td>'+vol+'</td><td>'+(d.turnover?'₹'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+(d.series||'EQ')+'</td></tr>';
   }).join(''):'<tr><td colspan="7" class="empty-row">No losers</td></tr>';
   
   // Trigger TradingView poll for newly displayed stocks
