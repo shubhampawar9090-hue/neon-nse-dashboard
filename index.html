@@ -3002,6 +3002,8 @@ function tvConnect() {
   
   tvWS.onopen = function() {
     console.log('TV: WebSocket connected, waiting for protocol...');
+    tvConnected = true;
+    tvUpdateButton();
   };
   
   tvWS.onmessage = function(event) {
@@ -3028,6 +3030,7 @@ function tvConnect() {
       // Create chart session
       tvChartId = 'chart_' + Date.now();
       tvWS.send(tvPack(JSON.stringify({m: 'chart_create_session', p: [tvChartId]})));
+      tvUpdateButton();
       
       // Resolve all configured symbols (indices)
       tvResolved = 0;
@@ -3044,17 +3047,20 @@ function tvConnect() {
       });
       
       // Flush queued stock subscriptions
+      console.log('TV: Protocol ready, chartId=' + tvChartId + ', queue=' + tvStockQueue.length);
       if (tvStockQueue.length > 0) {
         setTimeout(function() {
           var queue = tvStockQueue.splice(0);
           var unique = queue.filter(function(s) { return !tvStockSubscribed.has(s); });
+          console.log('TV: Flushing queue: ' + unique.length + ' stocks');
           if (unique.length > 0) tvSubscribeStocks(unique);
-        }, 2000); // Wait 2s for index symbols to resolve first
+        }, 2000);
       }
       
       // Also try to subscribe to displayed stocks after a delay
       setTimeout(function() {
         var displayed = tvGetDisplayedStocks();
+        console.log('TV: Displayed stocks: ' + displayed.length);
         if (displayed.length > 0) tvAddStocks(displayed);
       }, 3000);
       return;
@@ -3131,6 +3137,7 @@ function tvConnect() {
             };
             tvUpdateRow(ourSym, price, chg, pct);
             renderHeaderStockTicker();
+            tvUpdateButton();
           }
           
           tvResolved++;
@@ -3390,7 +3397,8 @@ function tvUpdateButton() {
   if (!btn || !tvEnabled) return;
   var stockCount = tvStockSubscribed.size;
   var total = stockCount + 3;
-  btn.textContent = 'TV: ' + total + ' live';
+  var wsState = tvWS ? tvWS.readyState : 'null';
+  btn.textContent = 'TV: ' + total + ' live [ws:' + wsState + ' ch:' + (tvChartId?'Y':'N') + ' q:' + tvStockQueue.length + ']';
   btn.style.background = 'rgba(0,212,255,.15)';
   btn.style.borderColor = '#00d4ff';
   btn.style.color = '#00d4ff';
@@ -4097,5 +4105,6 @@ function renderCompare(data){
 // Start TradingView WebSocket AFTER all variables are initialized
 startTradingViewTicks();
 </script>
+<div id="tvDebug" style="position:fixed;bottom:60px;right:10px;background:#000;color:#0f0;font-family:monospace;font-size:10px;padding:4px 8px;z-index:99999;border:1px solid #0f0;display:none"></div>
 </body>
 </html>
