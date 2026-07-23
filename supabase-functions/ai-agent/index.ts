@@ -131,6 +131,149 @@ async function fetchYahooQuote(ticker: string): Promise<any> {
   };
 }
 
+// ============ HELPER: Fetch Quote with Fallbacks ============
+async function fetchQuoteWithFallback(ticker: string): Promise<any> {
+  // Try 1: Yahoo Finance
+  try {
+    const yahoo = await fetchYahooQuote(ticker);
+    if (yahoo) {
+      console.log(`fetchQuoteWithFallback: Successfully fetched from Yahoo Finance for ${ticker}`);
+      return yahoo;
+    }
+  } catch (e) {
+    console.error(`fetchQuoteWithFallback: Yahoo Finance failed for ${ticker}:`, e.message);
+  }
+
+  const cleanSym = ticker.replace(".NS", "").replace("^", "").toUpperCase();
+
+  // Try 2: stock_ticks Supabase table
+  try {
+    console.log(`fetchQuoteWithFallback: Yahoo failed. Trying stock_ticks table for ${cleanSym}`);
+    const url = `${SUPABASE_URL}/rest/v1/stock_ticks?symbol=eq.${cleanSym}&order=tick_time.desc&limit=1`;
+    const res = await fetch(url, {
+      headers: {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const tick = data[0];
+        const price = tick.price;
+        const change = tick.change_abs ?? 0;
+        console.log(`fetchQuoteWithFallback: Found tick data in stock_ticks for ${cleanSym}`);
+        return {
+          price: Math.round(price * 100) / 100,
+          change: Math.round(change * 100) / 100,
+          changePercent: Math.round((tick.change_pct ?? 0) * 100) / 100,
+          prevClose: Math.round((price - change) * 100) / 100,
+          open: tick.day_open ?? price,
+          high: tick.day_high ?? price,
+          low: tick.day_low ?? price,
+          volume: tick.volume ?? null,
+          fiftyTwoWeekHigh: 0,
+          fiftyTwoWeekLow: 0,
+        };
+      }
+    }
+  } catch (e) {
+    console.error(`fetchQuoteWithFallback: stock_ticks failed for ${cleanSym}:`, e.message);
+  }
+
+  // Try 3: TradingView scanner API
+  try {
+    console.log(`fetchQuoteWithFallback: stock_ticks failed. Trying TradingView for ${cleanSym}`);
+    const url = "https://scanner.tradingview.com/india/scan";
+    const body = {
+      symbols: {
+        tickers: [`NSE:${cleanSym}`],
+        query: { types: [] }
+      },
+      columns: ["close", "change", "change_abs", "volume", "high", "low", "open"]
+    };
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0"
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const result = await res.json();
+      if (result && result.data && result.data.length > 0) {
+        const d = result.data[0].d;
+        if (d && d.length >= 7) {
+          const close = d[0];
+          const change = d[1] ?? 0;
+          const change_abs = d[2] ?? 0;
+          const volume = d[3] ?? null;
+          const high = d[4] ?? close;
+          const low = d[5] ?? close;
+          const open = d[6] ?? close;
+          console.log(`fetchQuoteWithFallback: Found TradingView data for ${cleanSym}`);
+          return {
+            price: Math.round(close * 100) / 100,
+            change: Math.round(change_abs * 100) / 100,
+            changePercent: Math.round(change * 100) / 100,
+            prevClose: Math.round((close - change_abs) * 100) / 100,
+            open: Math.round(open * 100) / 100,
+            high: Math.round(high * 100) / 100,
+            low: Math.round(low * 100) / 100,
+            volume: volume,
+            fiftyTwoWeekHigh: 0,
+            fiftyTwoWeekLow: 0,
+          };
+        }
+      }
+    }
+  } catch (e) {
+    console.error(`fetchQuoteWithFallback: TradingView failed for ${cleanSym}:`, e.message);
+  }
+
+  // Try 4: stock_daily_prices Supabase table
+  try {
+    console.log(`fetchQuoteWithFallback: TradingView failed. Trying stock_daily_prices table for ${cleanSym}`);
+    const url = `${SUPABASE_URL}/rest/v1/stock_daily_prices?symbol=eq.${cleanSym}&order=trade_date.desc&limit=1`;
+    const res = await fetch(url, {
+      headers: {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const row = data[0];
+        const close = row.close;
+        const change_val = row.change_val ?? 0;
+        console.log(`fetchQuoteWithFallback: Found stock_daily_prices data for ${cleanSym}`);
+        return {
+          price: Math.round(close * 100) / 100,
+          change: Math.round(change_val * 100) / 100,
+          changePercent: Math.round((row.change_percent ?? 0) * 100) / 100,
+          prevClose: Math.round((row.prev_close ?? (close - change_val)) * 100) / 100,
+          open: row.open ?? close,
+          high: row.high ?? close,
+          low: row.low ?? close,
+          volume: row.volume ?? null,
+          fiftyTwoWeekHigh: 0,
+          fiftyTwoWeekLow: 0,
+        };
+      }
+    }
+  } catch (e) {
+    console.error(`fetchQuoteWithFallback: stock_daily_prices failed for ${cleanSym}:`, e.message);
+  }
+
+  return null;
+}
+
+
 // ============ HELPER: DB fetch wrapper ============
 async function dbFetch(path: string): Promise<any> {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -194,7 +337,7 @@ async function dbCount(table: string, filter: string = ""): Promise<number> {
 async function actionQuery(query: string) {
   const ticker = await resolveTicker(query);
   if (ticker) {
-    const quote = await fetchYahooQuote(ticker);
+    const quote = await fetchQuoteWithFallback(ticker);
     if (quote) {
       return {
         success: true, action: "query", ticker,
@@ -231,36 +374,71 @@ async function actionAddSymbol(body: any) {
     return { success: false, error: `Symbol ${sym} already exists in database` };
   }
   // Validate symbol exists on Yahoo Finance
+  let yahooValidated = false;
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}.NS?interval=1d&range=1d`;
     const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(8000) });
-    if (!res.ok) {
-      return { success: false, error: `Symbol ${sym} not found on Yahoo Finance (NSE). HTTP ${res.status}. Verify the ticker.` };
-    }
-    const text = await res.text();
-    if (!text || text.length < 10) {
-      return { success: false, error: `Yahoo Finance returned empty response for ${sym}. May be rate limited — try again.` };
-    }
-    let j;
-    try { j = JSON.parse(text); } catch {
-      return { success: false, error: `Yahoo Finance returned non-JSON response for ${sym}. May be rate limited — try again in a few seconds.` };
-    }
-    const meta = j.chart?.result?.[0]?.meta;
-    if (!meta) {
-      return { success: false, error: `Could not validate ${sym} on Yahoo Finance. Error: ${JSON.stringify(j.chart?.error || j).slice(0, 200)}` };
-    }
-    // Store company name from Yahoo
-    if (!company_name) {
-      const longName = meta.longName || meta.shortName;
-      if (longName) body.company_name = longName;
+    if (res.ok) {
+      const text = await res.text();
+      if (text && text.length >= 10) {
+        let j;
+        try { j = JSON.parse(text); } catch { j = null; }
+        const meta = j?.chart?.result?.[0]?.meta;
+        if (meta) {
+          yahooValidated = true;
+          // Store company name from Yahoo
+          if (!company_name) {
+            const longName = meta.longName || meta.shortName;
+            if (longName) body.company_name = longName;
+          }
+        }
+      }
     }
   } catch (e) {
-    return { success: false, error: `Yahoo Finance validation failed: ${e.message}` };
+    console.warn(`Yahoo validation check failed for ${sym}:`, e.message);
   }
+
+  if (!yahooValidated) {
+    // Try TradingView validation fallback
+    console.log(`Yahoo validation failed or was rate limited. Trying TradingView validation fallback for ${sym}`);
+    try {
+      const url = "https://scanner.tradingview.com/india/scan";
+      const bodyTV = {
+        symbols: {
+          tickers: [`NSE:${sym}`],
+          query: { types: [] }
+        },
+        columns: ["close"]
+      };
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0"
+        },
+        body: JSON.stringify(bodyTV),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result && result.data && result.data.length > 0) {
+          console.log(`TradingView validated symbol ${sym} successfully`);
+          // Symbol exists in TradingView, proceed
+        } else {
+          return { success: false, error: `Symbol ${sym} not found on Yahoo Finance or TradingView scanner API.` };
+        }
+      } else {
+        return { success: false, error: `Symbol validation failed on Yahoo Finance, and TradingView scanner API returned HTTP ${res.status}.` };
+      }
+    } catch (e) {
+      return { success: false, error: `Symbol validation failed on Yahoo Finance, and TradingView fallback also failed: ${e.message}` };
+    }
+  }
+
   // Insert into database
   const result = await dbUpsert("nse_symbols", {
     symbol: sym,
-    company_name: company_name || null,
+    company_name: body.company_name || null,
     sector: sector || null,
     industry: industry || null,
     series: series || "EQ",
@@ -272,9 +450,8 @@ async function actionAddSymbol(body: any) {
   if (result.error) return { success: false, error: result.error };
   // Fetch and save today's price for the new symbol
   try {
-    const quote = await fetchYahooQuote(sym);
+    const quote = await fetchQuoteWithFallback(sym);
     if (quote) {
-      const today = new Date().toISOString().split("T")[0];
       const istDate = new Date(Date.now() + 5.5 * 3600000).toISOString().split("T")[0];
       await dbUpsert("stock_daily_prices", {
         symbol: sym,
@@ -288,8 +465,8 @@ async function actionAddSymbol(body: any) {
   } catch { /* price fetch is best-effort */ }
   return {
     success: true, action: "add_symbol",
-    message: `Symbol ${sym} added successfully to database${company_name ? ` (${company_name})` : ""}`,
-    data: { symbol: sym, company_name, sector, industry, series: series || "EQ" },
+    message: `Symbol ${sym} added successfully to database${body.company_name ? ` (${body.company_name})` : ""}`,
+    data: { symbol: sym, company_name: body.company_name, sector, industry, series: series || "EQ" },
   };
 }
 
