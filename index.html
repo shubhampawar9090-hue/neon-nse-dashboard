@@ -333,14 +333,15 @@ body {
   flex: 1;
   background: none;
   border: none;
-  padding: 10px;
+  padding: 8px 4px;
   color: var(--text2);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 .mode-btn.active.intraday {
   background-color: var(--cyan);
@@ -1960,8 +1961,10 @@ body {
 
       <!-- MODE TOGGLE -->
       <div class="mode-row">
-        <button class="mode-btn intraday active" id="btnIntraday" onclick="setMode('intraday')">⚡ Intraday (5min)</button>
-        <button class="mode-btn swing" id="btnSwing" onclick="setMode('swing')">📊 Swing (Daily)</button>
+        <button class="mode-btn intraday active" id="btn5m" onclick="setMode('5m')">⚡ 5m</button>
+        <button class="mode-btn intraday" id="btn15m" onclick="setMode('15m')">⚡ 15m</button>
+        <button class="mode-btn intraday" id="btn1h" onclick="setMode('1h')">⚡ 1hr</button>
+        <button class="mode-btn swing" id="btnSwing" onclick="setMode('swing')">📊 Swing</button>
       </div>
       <div class="closed-banner" id="closedBanner" style="display:none">🔴 MARKET CLOSED — Last closing prices shown. Live updates resume Mon 9:15 AM IST.</div>
 
@@ -2301,8 +2304,8 @@ async function fetchStockData(symbol){
 async function fetchTA(symbol,timeframe){
   timeframe=timeframe||'intraday';
   try{
-    var interval=timeframe==='intraday'?'5m':'1d';
-    var range=timeframe==='intraday'?'1mo':'6mo';
+    var interval={'5m':'5m','15m':'15m','1h':'60m','swing':'1d'}[timeframe]||'5m';
+    var range={'5m':'1mo','15m':'1mo','1h':'3mo','swing':'6mo'}[timeframe]||'1mo';
     var url=YF_BASE+symbol+'?interval='+interval+'&range='+range;
     var res=await fetch(url);
     var j=await res.json();
@@ -2315,7 +2318,7 @@ async function fetchTA(symbol,timeframe){
     if(closes.length<5)return{symbol:symbol,error:true};
     var price=closes[closes.length-1];
     // EMA
-    var emaPeriods=timeframe==='intraday'?[5,13,26]:[9,21,50];
+    var emaPeriods={'5m':[5,13,26],'15m':[5,13,26],'1h':[9,21,50],'swing':[9,21,50]}[timeframe]||[5,13,26];
     var emas={};
     emaPeriods.forEach(function(p){
       if(closes.length>=p){var e=calcEMA(closes,p);emas['ema'+p]=Math.round(e[e.length-1]*100)/100;}
@@ -2327,7 +2330,7 @@ async function fetchTA(symbol,timeframe){
     // VWAP
     var vwap=Math.round(calcVWAP(closes,volumes)*100)/100;
     // S/R
-    var lookback=timeframe==='intraday'?5:20;
+    var lookback={'5m':5,'15m':10,'1h':20,'swing':20}[timeframe]||5;
     var recentHighs=highs.slice(-lookback),recentLows=lows.slice(-lookback);
     var resistance=Math.round(Math.max.apply(null,recentHighs)*100)/100;
     var support=Math.round(Math.min.apply(null,recentLows)*100)/100;
@@ -2342,8 +2345,8 @@ async function fetchTA(symbol,timeframe){
     else if(rsi>70){sellScore+=25;signal='SELL';}
     else{buyScore+=5;}
     // SL/TP
-    var slMult=timeframe==='intraday'?1:1.5;
-    var tpMult=timeframe==='intraday'?[1.5,2,2.5]:[2,3,4];
+    var slMult=1.5;
+    var tpMult=[1,2,3];
     var sl=Math.round((price-atr*slMult)*100)/100;
     var tp1=Math.round((price+atr*tpMult[0])*100)/100;
     var tp2=Math.round((price+atr*tpMult[1])*100)/100;
@@ -2391,7 +2394,7 @@ async function fetchTA(symbol,timeframe){
     };
   }catch(e){return{symbol:symbol,error:true};}
 }
-var currentMode='intraday';
+var currentMode='5m';
 var taSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TATAMOTORS.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS','HCLTECH.NS','BAJFINANCE.NS','ASIANPAINT.NS','NESTLEIND.NS','ONGC.NS','NTPC.NS','POWERGRID.NS','COALINDIA.NS','ADANIENT.NS','ADANIPORTS.NS','TATASTEEL.NS','JSWSTEEL.NS'];
 var pxSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TATAMOTORS.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS'];
 var nseMovers=null;
@@ -2412,11 +2415,19 @@ function updStatus(){
 
 function setMode(mode){
   currentMode=mode;
-  document.getElementById('btnIntraday').classList.toggle('active',mode==='intraday');
-  document.getElementById('btnSwing').classList.toggle('active',mode==='swing');
-  var t=document.getElementById('infoTitle'),s=document.getElementById('infoSub'),tag=document.getElementById('infoTag');
-  if(mode==='intraday'){t.innerHTML='Technical Analysis — Intraday<span class="mode-tag intraday">5min</span>';s.innerHTML='EMA 5/13/26 · Session VWAP · ATR 14 (5min) · RSI 14 · ORB · S/R (5-day) · SL 1×ATR · TP 1.5×/2×ATR';}
-  else{t.innerHTML='Technical Analysis — Swing<span class="mode-tag swing">daily</span>';s.innerHTML='EMA 9/21/50 · 20-day VWAP · ATR 14 (daily) · RSI 14 · S/R (20-day) · SL 1.5×ATR · TP 2×/3×ATR';}
+  ['btn5m','btn15m','btn1h','btnSwing'].forEach(function(id){document.getElementById(id).classList.remove('active');});
+  var btnMap={'5m':'btn5m','15m':'btn15m','1h':'btn1h','swing':'btnSwing'};
+  document.getElementById(btnMap[mode]||'btn5m').classList.add('active');
+  var t=document.getElementById('infoTitle'),s=document.getElementById('infoSub');
+  var info={
+    '5m':{title:'Technical Analysis',tag:'<span class="mode-tag intraday">5min</span>',sub:'9/21 EMA Crossover · ATR 14 · SL 1.5×ATR · TP 1×/2×/3×ATR · Volume Filter'},
+    '15m':{title:'Technical Analysis',tag:'<span class="mode-tag intraday">15min</span>',sub:'9/21 EMA Crossover · ATR 14 · SL 1.5×ATR · TP 1×/2×/3×ATR · Volume Filter'},
+    '1h':{title:'Technical Analysis',tag:'<span class="mode-tag intraday">1hr</span>',sub:'9/21 EMA Crossover · ATR 14 · SL 1.5×ATR · TP 1×/2×/3×ATR · Volume Filter'},
+    'swing':{title:'Technical Analysis',tag:'<span class="mode-tag swing">daily</span>',sub:'9/21 EMA Crossover · ATR 14 (daily) · SL 1.5×ATR · TP 1×/2×/3×ATR · Volume Filter'}
+  };
+  var i=info[mode]||info['5m'];
+  t.innerHTML=i.title+i.tag;
+  s.innerHTML=i.sub;
   loadAll();
 }
 
@@ -2702,10 +2713,10 @@ function renderCard(d){
   var signalScore=(isB?d.buyScore:d.sellScore)||0;
   var signalReason=d.sentimentReason||d.sentiment||'—';
   var sl=d.sl; var tp1=d.tp1; var tp2=d.tp2;
-  var isIntra=currentMode==='intraday';
-  var slLbl=isIntra?'Stop Loss':'Stop Loss (Swing)';
-  var tp1Lbl=isIntra?'Target 1':'Target 1 (2×ATR)';
-  var tp2Lbl=isIntra?'Target 2':'Target 2 (3×ATR)';
+  var isIntra=currentMode!=='swing';
+  var slLbl='Stop Loss';
+  var tp1Lbl='Target 1';
+  var tp2Lbl='Target 2';
   var volStr=fv(d.volume||0);
   var priceChange=d.price&&d.previousClose?parseFloat((d.price-d.previousClose).toFixed(2)):0;
   // S/R from day high/low as proxy
@@ -3239,9 +3250,9 @@ function showFetchError(msg){
   setTimeout(function(){if(div.parentNode)div.remove();},8000);
 }
 
-setMode('intraday');
+setMode('5m');
 loadAllNsePrices();
-function sched(){var iv=mktOpen()?(currentMode==='intraday'?3000:10000):120000;setTimeout(function(){loadAll().then(function(){sched();});},iv);}
+function sched(){var iv=mktOpen()?({'5m':3000,'15m':5000,'1h':10000,'swing':30000}[currentMode]||3000):120000;setTimeout(function(){loadAll().then(function(){sched();});},iv);}
 // Refresh all NSE symbols every 2 minutes
 var allSymInterval=setInterval(function(){
   var iv=mktOpen();

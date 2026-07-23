@@ -321,8 +321,11 @@ Deno.serve(async (req: Request) => {
     const results = await Promise.all(
       symbols.map(async (sym: string) => {
         try {
-          const interval = timeframe === "intraday" ? "5m" : "1d";
-          const range = timeframe === "intraday" ? "1mo" : "6mo";
+          let interval: string, range: string;
+          if (timeframe === "intraday" || timeframe === "5m") { interval = "5m"; range = "1mo"; }
+          else if (timeframe === "15m") { interval = "15m"; range = "1mo"; }
+          else if (timeframe === "1h") { interval = "60m"; range = "3mo"; }
+          else { interval = "1d"; range = "6mo"; } // swing
           const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${interval}&range=${range}`;
           const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
           const j = await res.json();
@@ -349,7 +352,7 @@ Deno.serve(async (req: Request) => {
 
           // Additional EMAs for frontend compatibility
           const emas: Record<string, number> = { ema9, ema21 };
-          const extraPeriods = timeframe === "intraday" ? [5, 13, 26] : [50, 100];
+          const extraPeriods = timeframe === "swing" ? [50, 100] : timeframe === "1h" ? [50, 100] : [5, 13, 26];
           for (const p of extraPeriods) {
             if (closes.length >= p) {
               const arr = calcEMA(closes, p);
@@ -373,13 +376,13 @@ Deno.serve(async (req: Request) => {
           if (regVol && nonZeroVols.length >= 2) {
             const recent = nonZeroVols.slice(-20, -1);
             const avgRecent = recent.length ? recent.reduce((a: number, b: number) => a + b, 0) / recent.length : 0;
-            const candlesPerDay = timeframe === "intraday" ? 75 : 1;
+            const candlesPerDay = (timeframe === "intraday" || timeframe === "5m") ? 75 : timeframe === "15m" ? 25 : timeframe === "1h" ? 6 : 1;
             const estAvgDaily = avgRecent * candlesPerDay;
             volumeRatio = estAvgDaily ? Math.round((regVol / estAvgDaily) * 100) / 100 : 0;
           }
 
           // === Support/Resistance ===
-          const lookback = timeframe === "intraday" ? 5 : 20;
+          const lookback = (timeframe === "intraday" || timeframe === "5m") ? 5 : timeframe === "15m" ? 10 : 20;
           const recentHighs = highs.slice(-lookback);
           const recentLows = lows.slice(-lookback);
           const resistance = Math.round(Math.max(...recentHighs) * 100) / 100;
@@ -423,7 +426,7 @@ Deno.serve(async (req: Request) => {
 
           // === ORB ===
           let orbSignal = "None";
-          if (timeframe === "intraday" && closes.length > 0) {
+          if ((timeframe === "intraday" || timeframe === "5m" || timeframe === "15m") && closes.length > 0) {
             if (highs.length > 0 && lows.length > 0) {
               if (price > highs[0]) orbSignal = "Bullish ORB";
               else if (price < lows[0]) orbSignal = "Bearish ORB";
