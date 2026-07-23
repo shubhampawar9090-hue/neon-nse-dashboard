@@ -2231,7 +2231,7 @@ loadAllNsePrices()">↻ Refresh</button>
 
 <script>
 // === Supabase Edge Functions (primary) with Yahoo Finance fallback ===
-const SUPABASE_EDGE_BASE='https://vpjbjzrcbxgdrfjbyfiu.supabase.co/functions/v1';
+const SUPABASE_EDGE_BASE='https://mmxkisgdoepojotignkg.supabase.co/functions/v1';
 const EDGE_PRICE_API=SUPABASE_EDGE_BASE+'/get-nse-data';
 const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
 const EDGE_MOVERS_API=SUPABASE_EDGE_BASE+'/get-nse-movers';
@@ -3596,15 +3596,15 @@ function toggleTradingView() {
 // ===== END TRADINGVIEW WEBSOCKET =====
 
 // ===== SUPABASE AUTH =====
-const SUPABASE_URL='https://vpjbjzrcbxgdrfjbyfiu.supabase.co';
-const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwamJqenJjYnhnZHJmamJ5Zml1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ0Mzk2MzUsImV4cCI6MjEwMDAxNTYzNX0.8p5JYClZwNoTctvMO0xeLohO-Kg9UqNrGK5UBK8hDSY';
+const SUPABASE_URL='https://mmxkisgdoepojotignkg.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teGtpc2dkb2Vwb2pvdGlnbmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3OTAzNDMsImV4cCI6MjEwMDM2NjM0M30.4o1ylVMgXyBxMhf82MWI2hjgSmqvOf1aoEPkR8VPW00';
 const sb=window.supabase?supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
     auth:{
       persistSession:true,
       autoRefreshToken:true,
       detectSessionInUrl:false,
       storage:window.localStorage,
-      storageKey:'sb-vpjbjzrcbxgdrfjbyfiu-auth-token'
+      storageKey:'sb-mmxkisgdoepojotignkg-auth-token'
     }
   }):null;
 var currentUser=null;
@@ -3695,7 +3695,7 @@ if(sb){
       onAuthSuccess(res.data.user);
     }else{
       // Method 2: Check localStorage directly for Supabase token
-      var sbKey='sb-vpjbjzrcbxgdrfjbyfiu-auth-token';
+      var sbKey='sb-mmxkisgdoepojotignkg-auth-token';
       var stored=localStorage.getItem(sbKey);
       if(stored){
         try{
