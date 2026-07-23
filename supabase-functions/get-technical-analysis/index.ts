@@ -94,6 +94,54 @@ function calcVWAP(closes: number[], volumes: number[]): number {
   return vv ? pv / vv : (closes[closes.length - 1] || 0);
 }
 
+// ===== FALLBACK HELPER FUNCTIONS =====
+
+function getTVTicker(symbol: string): string {
+  if (symbol === "^NSEI") return "NSE:NIFTY";
+  if (symbol === "^NSEBANK") return "NSE:BANKNIFTY";
+  if (symbol === "^BSESN") return "BSE:SENSEX";
+  if (symbol.includes(":")) return symbol;
+  return `NSE:${symbol}`;
+}
+
+async function fetchTradingView(tvTicker: string) {
+  try {
+    const res = await fetch("https://scanner.tradingview.com/india/scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        symbols: {
+          tickers: [tvTicker],
+          query: { types: [] }
+        },
+        columns: ["close", "change", "change_abs", "volume", "high", "low", "open"]
+      })
+    });
+    if (!res.ok) {
+      console.warn(`TradingView fetch failed with status ${res.status}`);
+      return null;
+    }
+    const j = await res.json();
+    if (j && j.data && j.data.length > 0) {
+      const d = j.data[0].d;
+      if (d) {
+        return {
+          close: Number(d[0]),
+          change_pct: Number(d[1]),
+          change_abs: Number(d[2]),
+          volume: Number(d[3]),
+          high: Number(d[4]),
+          low: Number(d[5]),
+          open: Number(d[6])
+        };
+      }
+    }
+  } catch (e) {
+    console.error(`TV fetch failed for ${tvTicker}:`, e);
+  }
+  return null;
+}
+
 // ===== MAIN STRATEGY: 9/21 EMA CROSSOVER PRO =====
 
 interface StrategyResult {
@@ -328,16 +376,33 @@ Deno.serve(async (req: Request) => {
           else { interval = "1d"; range = "6mo"; } // swing
           const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${interval}&range=${range}`;
           const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-          const j = await res.json();
+          
+          let j: any;
+          try {
+            j = await res.json();
+          } catch (jsonErr) {
+            throw new Error("Yahoo Finance JSON parsing failed");
+          }
+
+          if (!j || !j.chart || !j.chart.result || j.chart.result.length === 0) {
+            throw new Error("Yahoo Finance returned empty or invalid result");
+          }
+
           const result = j.chart.result[0];
           const meta = result.meta || {};
-          const candles = result.indicators.quote[0];
+          const candles = result.indicators?.quote?.[0];
+          if (!candles) {
+            throw new Error("Yahoo Finance missing candle data");
+          }
+
           const closes = (candles.close || []).filter((v: number) => v != null);
           const highs = (candles.high || []).filter((v: number) => v != null);
           const lows = (candles.low || []).filter((v: number) => v != null);
           const volumes = (candles.volume || []).filter((v: number) => v != null);
 
-          if (closes.length < 25) return { symbol: sym, error: true };
+          if (closes.length < 25) {
+            throw new Error("Yahoo Finance returned insufficient candles (<25)");
+          }
 
           const price = meta.regularMarketPrice || closes[closes.length - 1];
           const prev = meta.chartPreviousClose || meta.previousClose || closes[closes.length - 2] || price;
@@ -479,8 +544,251 @@ Deno.serve(async (req: Request) => {
             previousClose: prev,
             error: false
           };
-        } catch (e) {
-          return { symbol: sym, error: true };
+        } catch (yahooErr) {
+          console.warn(`Yahoo Finance failed for ${sym}: ${yahooErr.message}. Trying DB + TradingView fallback...`);
+          try {
+            // 1. Fetch live price from TradingView scanner API
+            const tvTicker = getTVTicker(sym);
+            const tv = await fetchTradingView(tvTicker);
+
+            // 2. Fetch historical daily OHLC from Supabase DB
+            const supabaseUrl = "https://vpjbjzrcbxgdrfjbyfiu.supabase.co";
+            const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+            const dbUrl = `${supabaseUrl}/rest/v1/stock_daily_prices?symbol=eq.${sym}&order=trade_date.desc&limit=100`;
+            const dbRes = await fetch(dbUrl, {
+              headers: {
+                "apikey": supabaseKey,
+                "Authorization": `Bearer ${supabaseKey}`,
+                "Content-Type": "application/json"
+              }
+            });
+            
+            if (!dbRes.ok) {
+              throw new Error(`DB fetch failed with status ${dbRes.status}`);
+            }
+            
+            const dbRows = await dbRes.json();
+            if (!Array.isArray(dbRows)) {
+              throw new Error("DB response is not an array");
+            }
+
+            const sortedRows = dbRows.slice().reverse(); // oldest to newest
+
+            // Extract arrays
+            const closes = sortedRows.map(r => Number(r.close));
+            const highs = sortedRows.map(r => Number(r.high));
+            const lows = sortedRows.map(r => Number(r.low));
+            const volumes = sortedRows.map(r => Number(r.volume));
+
+            // Append TV live price if available
+            if (tv) {
+              closes.push(Number(tv.close));
+              highs.push(Number(tv.high));
+              lows.push(Number(tv.low));
+              volumes.push(Number(tv.volume));
+            }
+
+            // If we don't have enough data (closes.length < 25), return minimal result
+            if (closes.length < 25) {
+              const price = tv ? tv.close : (closes[closes.length - 1] || 0);
+              const changePercent = tv ? tv.change_pct : (sortedRows[sortedRows.length - 1]?.change_percent || 0);
+              const change = tv ? tv.change_abs : (sortedRows[sortedRows.length - 1]?.change_val || 0);
+              const prev = tv ? (tv.close - tv.change_abs) : (sortedRows[sortedRows.length - 1]?.prev_close || price - change);
+              const dayHigh = tv ? tv.high : (sortedRows[sortedRows.length - 1]?.high || price);
+              const dayLow = tv ? tv.low : (sortedRows[sortedRows.length - 1]?.low || price);
+
+              return {
+                symbol: sym,
+                price: Math.round(price * 100) / 100,
+                change: Math.round(change * 100) / 100,
+                changePercent: Math.round(changePercent * 100) / 100,
+                emas: {},
+                rsi: null,
+                atr: null,
+                vwap: null,
+                volumeRatio: 0,
+                support: null,
+                resistance: null,
+                signal: "HOLD",
+                buyScore: 0,
+                sellScore: 0,
+                entry: null,
+                sl: null,
+                tp1: null,
+                tp2: null,
+                tp3: null,
+                trailingStop: null,
+                positionSize: null,
+                positionStatus: null,
+                activePosition: null,
+                trendStrength: 0,
+                volumeCondition: false,
+                emaCrossover: { golden: false, death: false, cross: "none" },
+                emaCrossSignal: "None",
+                trend: "Sideways",
+                chartPattern: "Unknown",
+                orbSignal: "None",
+                fiftyTwoWeekHigh: 0,
+                fiftyTwoWeekLow: 0,
+                pctFrom52WeekHigh: 0,
+                dayHigh: Math.round(dayHigh * 100) / 100,
+                dayLow: Math.round(dayLow * 100) / 100,
+                previousClose: Math.round(prev * 100) / 100,
+                error: false,
+                note: "TA is unavailable"
+              };
+            }
+
+            // We have enough data (25+ rows), compute full TA
+            const price = tv ? tv.close : (closes[closes.length - 1] || 0);
+            const changePercent = tv ? tv.change_pct : (sortedRows[sortedRows.length - 1]?.change_percent || 0);
+            const change = tv ? tv.change_abs : (sortedRows[sortedRows.length - 1]?.change_val || 0);
+            const prev = tv ? (tv.close - tv.change_abs) : (sortedRows[sortedRows.length - 1]?.prev_close || price - change);
+
+            // === EMA calculations (9 and 21 primary) ===
+            const ema9Arr = calcEMA(closes, EMA9_LENGTH);
+            const ema21Arr = calcEMA(closes, EMA21_LENGTH);
+            const ema9 = Math.round(ema9Arr[ema9Arr.length - 1] * 100) / 100;
+            const ema21 = Math.round(ema21Arr[ema21Arr.length - 1] * 100) / 100;
+
+            // Additional EMAs for frontend compatibility
+            const emas: Record<string, number> = { ema9, ema21 };
+            const extraPeriods = timeframe === "swing" ? [50, 100] : timeframe === "1h" ? [50, 100] : [5, 13, 26];
+            for (const p of extraPeriods) {
+              if (closes.length >= p) {
+                const arr = calcEMA(closes, p);
+                emas[`ema${p}`] = Math.round(arr[arr.length - 1] * 100) / 100;
+              }
+            }
+
+            // === RSI ===
+            const rsi = Math.round(calcRSI(closes, RSI_LENGTH) * 100) / 100;
+
+            // === ATR ===
+            const atr = Math.round(calcATR(highs, lows, closes, ATR_LENGTH) * 100) / 100;
+
+            // === VWAP ===
+            const vwap = Math.round(calcVWAP(closes, volumes) * 100) / 100;
+
+            // === Volume Ratio ===
+            let volumeRatio = 0;
+            const regVol = tv ? tv.volume : (volumes[volumes.length - 1] || 0);
+            const nonZeroVols = volumes.filter((v: number) => v != null && v > 0);
+            if (regVol && nonZeroVols.length >= 2) {
+              const recent = nonZeroVols.slice(-20, -1);
+              const avgRecent = recent.length ? recent.reduce((a: number, b: number) => a + b, 0) / recent.length : 0;
+              const candlesPerDay = (timeframe === "intraday" || timeframe === "5m") ? 75 : timeframe === "15m" ? 25 : timeframe === "1h" ? 6 : 1;
+              const estAvgDaily = avgRecent * candlesPerDay;
+              volumeRatio = estAvgDaily ? Math.round((regVol / estAvgDaily) * 100) / 100 : 0;
+            }
+
+            // === Support/Resistance ===
+            const lookback = (timeframe === "intraday" || timeframe === "5m") ? 5 : timeframe === "15m" ? 10 : 20;
+            const recentHighs = highs.slice(-lookback);
+            const recentLows = lows.slice(-lookback);
+            const resistance = Math.round(Math.max(...recentHighs) * 100) / 100;
+            const support = Math.round(Math.min(...recentLows) * 100) / 100;
+
+            // === RUN 9/21 EMA CROSSOVER STRATEGY ===
+            const strat = runStrategy(closes, highs, lows, volumes, price, ema9Arr, ema21Arr);
+
+            // === Trend ===
+            let trend = "Sideways";
+            if (ema9 > ema21) trend = "Up";
+            else if (ema9 < ema21) trend = "Down";
+
+            // === Chart Pattern ===
+            let chartPattern = "Consolidation";
+            if (closes.length >= 10) {
+              const recent = closes.slice(-10);
+              const first3 = recent.slice(0, 3).reduce((a, b) => a + b, 0) / 3;
+              const last3 = recent.slice(-3).reduce((a, b) => a + b, 0) / 3;
+              const pctChange = ((last3 - first3) / first3) * 100;
+              const highs10 = highs.slice(-10);
+              const lows10 = lows.slice(-10);
+              const range10 = Math.max(...highs10) - Math.min(...lows10);
+              const avgPrice = recent.reduce((a, b) => a + b, 0) / recent.length;
+              const rangePct = avgPrice ? (range10 / avgPrice) * 100 : 0;
+
+              if (rangePct < 1.5) chartPattern = "Consolidation";
+              else if (pctChange > 3) chartPattern = "Uptrend";
+              else if (pctChange < -3) chartPattern = "Downtrend";
+              else {
+                const mid = Math.floor(recent.length / 2);
+                const firstHigh = Math.max(...highs10.slice(0, mid));
+                const lastHigh = Math.max(...highs10.slice(mid));
+                const firstLow = Math.min(...lows10.slice(0, mid));
+                const lastLow = Math.min(...lows10.slice(mid));
+                if (lastHigh > firstHigh && lastLow < firstLow) chartPattern = "Volatility Expansion";
+                else if (lastHigh < firstHigh && lastLow > firstLow) chartPattern = "Contraction";
+                else chartPattern = "Consolidation";
+              }
+            }
+
+            // === ORB ===
+            let orbSignal = "None";
+            if ((timeframe === "intraday" || timeframe === "5m" || timeframe === "15m") && closes.length > 0) {
+              if (highs.length > 0 && lows.length > 0) {
+                if (price > highs[0]) orbSignal = "Bullish ORB";
+                else if (price < lows[0]) orbSignal = "Bearish ORB";
+              }
+            }
+
+            // === 52-week data ===
+            const fiftyTwoWeekHigh = highs.length ? Math.max(...highs) : price;
+            const fiftyTwoWeekLow = lows.length ? Math.min(...lows) : price;
+            const pctFrom52WeekHigh = fiftyTwoWeekHigh ? Math.round(((fiftyTwoWeekHigh - price) / fiftyTwoWeekHigh) * 100 * 100) / 100 : 0;
+
+            // EMA crossover for frontend
+            const emaCrossover: any = strat.emaCrossover;
+            let emaCrossSignal = "None";
+            if (emaCrossover.cross === "golden") emaCrossSignal = "Golden Cross";
+            else if (emaCrossover.cross === "death") emaCrossSignal = "Death Cross";
+
+            const dayHigh = tv ? tv.high : (sortedRows[sortedRows.length - 1]?.high || price);
+            const dayLow = tv ? tv.low : (sortedRows[sortedRows.length - 1]?.low || price);
+
+            return {
+              symbol: sym,
+              price: Math.round(price * 100) / 100,
+              change: Math.round(change * 100) / 100,
+              changePercent: Math.round(changePercent * 100) / 100,
+              emas, rsi, atr, vwap, volumeRatio, support, resistance,
+              // Strategy outputs
+              signal: strat.signal,
+              buyScore: strat.buyScore,
+              sellScore: strat.sellScore,
+              entry: strat.entry,
+              sl: strat.sl,
+              tp1: strat.tp1,
+              tp2: strat.tp2,
+              tp3: strat.tp3,
+              trailingStop: strat.trailingStop,
+              positionSize: strat.positionSize,
+              positionStatus: strat.positionStatus,
+              activePosition: strat.activePosition,
+              trendStrength: strat.trendStrength,
+              volumeCondition: strat.volumeCondition,
+              // Legacy compatibility
+              emaCrossover,
+              emaCrossSignal,
+              trend,
+              chartPattern,
+              orbSignal,
+              fiftyTwoWeekHigh: Math.round(fiftyTwoWeekHigh * 100) / 100,
+              fiftyTwoWeekLow: Math.round(fiftyTwoWeekLow * 100) / 100,
+              pctFrom52WeekHigh,
+              dayHigh: Math.round(dayHigh * 100) / 100,
+              dayLow: Math.round(dayLow * 100) / 100,
+              previousClose: Math.round(prev * 100) / 100,
+              error: false,
+              note: "Computed via fallback (DB + TradingView)"
+            };
+
+          } catch (fallbackErr) {
+            console.error(`Fallback failed for ${sym}:`, fallbackErr);
+            return { symbol: sym, error: true, note: `Yahoo and Fallback both failed: ${fallbackErr.message}` };
+          }
         }
       })
     );
