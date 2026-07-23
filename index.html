@@ -1561,6 +1561,32 @@ body {
 }
 
 
+
+/* ===== VIRTUAL TRADING ===== */
+.vt-panel{background:#0a0a0a;border:1px solid #ff880030;padding:12px;margin-top:8px}
+.vt-stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.vt-stat{flex:1;min-width:120px;background:#111;border:1px solid #222;padding:8px 10px}
+.vt-stat-label{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.vt-stat-val{font-size:18px;font-weight:700;color:var(--orange);margin-top:2px}
+.vt-stat-val.pos{color:var(--green)}
+.vt-stat-val.neg{color:var(--red)}
+.vt-form{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.vt-input{background:#0a0a0a;border:1px solid #333;color:#ff8800;padding:6px 10px;font-family:'Courier New',monospace;font-size:12px;outline:none}
+.vt-input:focus{border-color:var(--orange)}
+.vt-input::placeholder{color:#444}
+.vt-select{background:#0a0a0a;border:1px solid #333;color:#ff8800;padding:6px 10px;font-family:'Courier New',monospace;font-size:12px;outline:none;cursor:pointer}
+.vt-btn{background:#ff8800;color:#000;border:none;padding:6px 16px;font-family:'Courier New',monospace;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px}
+.vt-btn.sell{background:#ff4444;color:#fff}
+.vt-btn:hover{opacity:0.85}
+.vt-tabs{display:flex;gap:2px;margin-bottom:8px}
+.vt-tab{background:#111;color:var(--text2);border:1px solid #222;padding:4px 12px;font-size:10px;cursor:pointer;font-family:'Courier New',monospace}
+.vt-tab.active{background:#ff8800;color:#000}
+.vt-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.vt-tbl th{text-align:left;padding:4px 6px;color:var(--text2);border-bottom:1px solid #222;font-size:9px;text-transform:uppercase;letter-spacing:1px;position:sticky;top:0;background:#0a0a0a}
+.vt-tbl td{padding:4px 6px;border-bottom:1px solid #111}
+.vt-buy{color:var(--green)}
+.vt-sell{color:var(--red)}
+
 /* ===== PRICE HISTORY ===== */
 .ph-panel{border:1px solid rgba(255,136,0,.15);border-radius:6px;padding:12px;margin-bottom:12px;background:rgba(255,136,0,.02)}
 .ph-search{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
@@ -1853,7 +1879,8 @@ body {
       <div class="status-cluster">
         <span class="pill" id="statusPill"><span class="pill-dot" id="pillDot"></span><span id="pillText">CONNECTING</span></span>
         <span class="clock">Yahoo Finance | <b id="clock">--:--:--</b> IST</span>
-        <button class="btn-refresh" onclick="loadAll();loadAllNsePrices()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadAll();
+loadAllNsePrices()">↻ Refresh</button>
         <button class="btn-refresh" id="tvToggleBtn" onclick="toggleTradingView()" style="background:rgba(0,212,255,.15);border-color:#00d4ff;color:#00d4ff">TV: ON</button>
     <div class="user-badge" id="userBadge" style="display:none" onclick="doLogout()"><span class="ub-icon" id="ubIcon">S</span><span class="ub-name" id="ubName">User</span><span class="ub-logout">LOGOUT</span></div>
         <button class="btn-watchlist-add">+ WATCHLIST</button>
@@ -1980,11 +2007,11 @@ body {
       <div class="movers-row">
         <div class="panel p-vol">
           <div class="panel-hdr"><span class="panel-name">🟢 Top Gainers</span><span class="tick-badge" id="tickBadgeG" style="display:none;font-size:9px;font-weight:800;color:var(--green);background:var(--green-dim);padding:2px 6px;border-radius:4px;margin-left:4px;">● TICK LIVE</span><span class="panel-count" id="vgCount"></span></div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Chg%</th><th>Chg₹</th><th>Volume</th><th>Turnover</th><th>Series</th></tr></thead><tbody id="vgBody"></tbody></table></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>High</th><th>PrevClose</th><th>Chg%</th><th>Chg₹</th><th>Volume</th><th>Turnover</th><th>Series</th></tr></thead><tbody id="vgBody"></tbody></table></div>
         </div>
         <div class="panel p-vol" style="border-color:rgba(255,45,85,.2)">
           <div class="panel-hdr"><span class="panel-name" style="color:var(--red)">🔴 Top Losers</span><span class="tick-badge" id="tickBadgeL" style="display:none;font-size:9px;font-weight:800;color:var(--green);background:var(--green-dim);padding:2px 6px;border-radius:4px;margin-left:4px;">● TICK LIVE</span><span class="panel-count" id="vlCount"></span></div>
-          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Chg%</th><th>Chg₹</th><th>Volume</th><th>Turnover</th><th>Series</th></tr></thead><tbody id="vlBody"></tbody></table></div>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>High</th><th>PrevClose</th><th>Chg%</th><th>Chg₹</th><th>Volume</th><th>Turnover</th><th>Series</th></tr></thead><tbody id="vlBody"></tbody></table></div>
         </div>
       </div>
 
@@ -1993,11 +2020,11 @@ body {
       <div class="movers-row">
         <div class="lt-panel">
           <div class="lt-hdr"><span style="color:var(--green)">🟢 TOP 10 F&O GAINERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeG">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountG"></span></div>
-          <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltGBody"></tbody></table></div>
+          <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>High</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltGBody"></tbody></table></div>
         </div>
         <div class="lt-panel loser">
           <div class="lt-hdr"><span style="color:var(--red)">🔴 TOP 10 F&O LOSERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeL">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountL"></span></div>
-          <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltLBody"></tbody></table></div>
+          <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>High</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltLBody"></tbody></table></div>
         </div>
       </div>
 
@@ -2157,6 +2184,60 @@ body {
         </div>
       </div>
 
+
+      <!-- ===== VIRTUAL TRADING ===== -->
+      <div id="virtualTradeSec"></div>
+      <div class="divider"><span class="divider-text">💼 VIRTUAL TRADING — PAPER PORTFOLIO</span><span class="divider-line"></span></div>
+      <div class="vt-panel">
+        <div class="chart-panel-hdr">
+          <span class="chart-panel-title" style="color:var(--orange)">💼 Paper Trading Simulator</span>
+          <span style="font-size:10px;color:var(--text2)" id="vtStatus">₹10,00,000 starting capital · RLS protected</span>
+        </div>
+        <div class="vt-stats">
+          <div class="vt-stat"><div class="vt-stat-label">Balance</div><div class="vt-stat-val" id="vtBalance">₹10,00,000</div></div>
+          <div class="vt-stat"><div class="vt-stat-label">Invested</div><div class="vt-stat-val" id="vtInvested">₹0</div></div>
+          <div class="vt-stat"><div class="vt-stat-label">Current Value</div><div class="vt-stat-val" id="vtCurrentValue">₹0</div></div>
+          <div class="vt-stat"><div class="vt-stat-label">P&L</div><div class="vt-stat-val" id="vtPnL">₹0</div></div>
+          <div class="vt-stat"><div class="vt-stat-label">Total Trades</div><div class="vt-stat-val" id="vtTotalTrades" style="font-size:14px">0</div></div>
+        </div>
+        <div class="vt-form">
+          <input type="text" class="vt-input" id="vtSymbol" placeholder="Symbol (e.g. RELIANCE)" style="width:120px">
+          <select class="vt-select" id="vtAction">
+            <option value="BUY">BUY</option>
+            <option value="SELL">SELL</option>
+          </select>
+          <input type="number" class="vt-input" id="vtQty" placeholder="Qty" style="width:70px" min="1" step="1">
+          <input type="number" class="vt-input" id="vtPrice" placeholder="Price" style="width:90px" min="0.01" step="0.05">
+          <button class="vt-btn" onclick="vtPlaceOrder()">EXECUTE BUY</button>
+          <button class="vt-btn sell" onclick="vtPlaceOrder(true)">EXECUTE SELL</button>
+          <input type="text" class="vt-input" id="vtNotes" placeholder="Notes (optional)" style="flex:1;min-width:150px">
+        </div>
+        <div class="vt-tabs">
+          <div class="vt-tab active" id="vtTabHoldings" onclick="vtShowTab('holdings')">HOLDINGS</div>
+          <div class="vt-tab" id="vtTabHistory" onclick="vtShowTab('history')">TRADE HISTORY</div>
+        </div>
+        <div id="vtHoldingsView">
+          <div class="tbl-wrap" style="max-height:300px;overflow-y:auto">
+            <table class="vt-tbl">
+              <thead><tr><th>Symbol</th><th>Qty</th><th>Avg Price</th><th>Invested</th><th>LTP</th><th>Cur Value</th><th>P&L</th><th>P&L%</th><th>Action</th></tr></thead>
+              <tbody id="vtHoldingsBody">
+                <tr><td colspan="9" style="color:var(--text2);text-align:center;padding:20px">No holdings yet. Place a BUY order to start trading.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div id="vtHistoryView" style="display:none">
+          <div class="tbl-wrap" style="max-height:300px;overflow-y:auto">
+            <table class="vt-tbl">
+              <thead><tr><th>#</th><th>Time</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th><th>Value</th><th>Notes</th></tr></thead>
+              <tbody id="vtHistoryBody">
+                <tr><td colspan="8" style="color:var(--text2);text-align:center;padding:20px">No trades yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="foot">Real data from Yahoo Finance. Powered by Supabase Edge Functions. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
     </main>
   </div>
@@ -2193,6 +2274,7 @@ body {
     <button onclick="scrollToSec('sentiSec')"><span class="mn-icon">◉</span>SENTI</button>
     <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
     <button onclick="scrollToSec('priceHistorySec')"><span class="mn-icon">📋</span>HISTORY</button>
+    <button onclick="scrollToSec('virtualTradeSec')"><span class="mn-icon">💼</span>TRADE</button>
     <button onclick="aiToggle()"><span class="mn-icon">AI</span>ELARA</button>
   </div>
 
@@ -2634,12 +2716,12 @@ function renderMovers(data){
   document.getElementById('vlCount').textContent=l.length;
   document.getElementById('vgBody').innerHTML=g.length?g.map(function(d,i){
     var vr=d.volumeRatio||1;
-    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="pos">+'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>'+(d.signal||'-')+'</td><td style="font-size:10px">'+(d.chartPattern||'-')+'</td></tr>';
-  }).join(''):'<tr><td colspan="7" class="empty-row">No gainers</td></tr>';
+    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td style="color:var(--text2)">'+f0(d.open||0)+'</td><td style="color:var(--text2)">'+f0(d.dayHigh||0)+'</td><td style="color:var(--text2)">'+f0(d.previousClose||0)+'</td><td class="pos">+'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>'+(d.signal||'-')+'</td><td style="font-size:10px">'+(d.chartPattern||'-')+'</td></tr>';
+  }).join(''):'<tr><td colspan="11" class="empty-row">No gainers</td></tr>';
   document.getElementById('vlBody').innerHTML=l.length?l.map(function(d,i){
     var vr=d.volumeRatio||1;
-    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>'+(d.signal||'-')+'</td><td style="font-size:10px">'+(d.chartPattern||'-')+'</td></tr>';
-  }).join(''):'<tr><td colspan="7" class="empty-row">No losers</td></tr>';
+    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td style="color:var(--text2)">'+f0(d.open||0)+'</td><td style="color:var(--text2)">'+f0(d.dayHigh||0)+'</td><td style="color:var(--text2)'>"+f0(d.previousClose||0)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>'+(d.signal||'-')+'</td><td style="font-size:10px">'+(d.chartPattern||'-')+'</td></tr>';
+  }).join(''):'<tr><td colspan="11" class="empty-row">No losers</td></tr>';
 }
 
 // SCREENERS
@@ -2931,8 +3013,8 @@ var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIG
   .then(function(r){return r.json();})
   .then(function(meta){
     if(!meta || !meta.length) {
-      document.getElementById('ltGBody').innerHTML = '<tr><td colspan="6" class="empty-row">No F&O data</td></tr>';
-      document.getElementById('ltLBody').innerHTML = '<tr><td colspan="6" class="empty-row">No F&O data</td></tr>';
+      document.getElementById('ltGBody').innerHTML = '<tr><td colspan="7" class="empty-row">No F&O data</td></tr>';
+      document.getElementById('ltLBody').innerHTML = '<tr><td colspan="7" class="empty-row">No F&O data</td></tr>';
       document.getElementById('ltCountG').textContent = 0;
       document.getElementById('ltCountL').textContent = 0;
       return;
@@ -2941,8 +3023,8 @@ var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIG
     var encTime = encodeURIComponent(latestTime);
     // Step 2: Fetch gainers (change_pct > 0, DESC) and losers (change_pct < 0, ASC) separately
     // PostgREST default limit is 1000 rows, so a single query misses losers beyond row 1000
-    var gainersUrl = SUPABASE_URL + '/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_open,tick_time&tick_time=eq.' + encTime + '&change_pct=gt.0&order=change_pct.desc&limit=1000';
-    var losersUrl = SUPABASE_URL + '/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_open,tick_time&tick_time=eq.' + encTime + '&change_pct=lt.0&order=change_pct.asc&limit=1000';
+    var gainersUrl = SUPABASE_URL + '/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_open,day_high,tick_time&tick_time=eq.' + encTime + '&change_pct=gt.0&order=change_pct.desc&limit=1000';
+    var losersUrl = SUPABASE_URL + '/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_open,day_high,tick_time&tick_time=eq.' + encTime + '&change_pct=lt.0&order=change_pct.asc&limit=1000';
     
     Promise.all([
       fetch(gainersUrl, {headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}}).then(function(r){return r.json();}),
@@ -2964,6 +3046,7 @@ var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIG
           changeAbs: r.change_abs || 0,
           volume: r.volume || 0,
           open: r.day_open || 0,
+          high: r.day_high || 0,
           prevClose: r.price && r.change_abs ? (r.price - r.change_abs) : 0
         };
       });
@@ -2979,6 +3062,7 @@ var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIG
       function fmtRow(d, i){
         var ltp = d.price || 0;
         var open = d.open || 0;
+        var high = d.high || 0;
         var prevC = d.prevClose || 0;
         var chgPct = d.changePercent || 0;
         var dir = ltp >= prevC ? 'up' : 'down';
@@ -2991,11 +3075,11 @@ var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIG
           else if(ltp < prevPrice) flashClass = 'lt-flash-down';
         }
         ltPrevPrices[d.symbol] = ltp;
-        return '<tr data-ltSym="' + d.symbol + '" class="' + flashClass + '"><td>' + (i+1) + '</td><td class="' + dirClass + '" style="font-weight:600">' + d.symbol + '</td><td class="' + dirClass + '" data-ltp="' + ltp + '">' + f0(ltp) + '</td><td style="color:var(--text2)">' + f0(open) + '</td><td style="color:var(--text2)">' + f0(prevC) + '</td><td class="' + dirClass + '">' + chgSign + chgPct.toFixed(2) + '%</td></tr>';
+        return '<tr data-ltSym="' + d.symbol + '" class="' + flashClass + '"><td>' + (i+1) + '</td><td class="' + dirClass + '" style="font-weight:600">' + d.symbol + '</td><td class="' + dirClass + '" data-ltp="' + ltp + '">' + f0(ltp) + '</td><td style="color:var(--text2)">' + f0(open) + '</td><td style="color:var(--text2)">' + f0(high) + '</td><td style="color:var(--text2)">' + f0(prevC) + '</td><td class="' + dirClass + '">' + chgSign + chgPct.toFixed(2) + '%</td></tr>';
       }
       
-      document.getElementById('ltGBody').innerHTML = g.length ? g.map(fmtRow).join('') : '<tr><td colspan="6" class="empty-row">No F&O gainers</td></tr>';
-      document.getElementById('ltLBody').innerHTML = l.length ? l.map(fmtRow).join('') : '<tr><td colspan="6" class="empty-row">No F&O losers</td></tr>';
+      document.getElementById('ltGBody').innerHTML = g.length ? g.map(fmtRow).join('') : '<tr><td colspan="7" class="empty-row">No F&O gainers</td></tr>';
+      document.getElementById('ltLBody').innerHTML = l.length ? l.map(fmtRow).join('') : '<tr><td colspan="7" class="empty-row">No F&O losers</td></tr>';
     })
     .catch(function(err){
       console.error('Live Tick Movers rows fetch error:', err);
@@ -3090,8 +3174,8 @@ async function loadAllNsePrices(){
           var lData=await lResp.json();
           if(gData&&gData.length>0){
             nseMovers={
-              gainers:gData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ',open:t.day_open||0,prevClose:(t.price-(t.change_abs||0))};}),
-              losers:lData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ',open:t.day_open||0,prevClose:(t.price-(t.change_abs||0))};}),
+              gainers:gData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ',open:t.day_open||0,high:t.day_high||0,prevClose:(t.price-(t.change_abs||0))};}),
+              losers:lData.map(function(t){return {symbol:t.symbol,price:t.price,changePercent:t.change_pct||0,changeAbs:t.change_abs||0,volume:t.volume||0,turnover:0,series:'EQ',open:t.day_open||0,high:t.day_high||0,prevClose:(t.price-(t.change_abs||0))};}),
               fiftyTwoWeekHigh:[],fiftyTwoWeekLow:[]
             };
             console.log('TradingView movers: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers @ '+latestTime);
@@ -3108,18 +3192,18 @@ async function loadAllNsePrices(){
   // TERTIARY: stock_daily_prices table (official NSE closing data)
   try{
     var today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'});
-    var gRes=await fetch(SUPABASE_URL+'/rest/v1/stock_daily_prices?select=symbol,close,change_percent,change_val,volume,turnover&trade_date=eq.'+today+'&order=change_percent.desc&limit=20',{
+    var gRes=await fetch(SUPABASE_URL+'/rest/v1/stock_daily_prices?select=symbol,close,open,high,prev_close,change_percent,change_val,volume,turnover&trade_date=eq.'+today+'&order=change_percent.desc&limit=20',{
       headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
     });
-    var lRes=await fetch(SUPABASE_URL+'/rest/v1/stock_daily_prices?select=symbol,close,change_percent,change_val,volume,turnover&trade_date=eq.'+today+'&order=change_percent.asc&limit=20',{
+    var lRes=await fetch(SUPABASE_URL+'/rest/v1/stock_daily_prices?select=symbol,close,open,high,prev_close,change_percent,change_val,volume,turnover&trade_date=eq.'+today+'&order=change_percent.asc&limit=20',{
       headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
     });
     if(gRes.ok&&lRes.ok){
       var gD=await gRes.json();var lD=await lRes.json();
       if(gD&&gD.length>0){
         nseMovers={
-          gainers:gD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ',open:t.open||0,prevClose:t.prev_close||0};}),
-          losers:lD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ',open:t.open||0,prevClose:t.prev_close||0};}),
+          gainers:gD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ',open:t.open||0,high:t.high||0,prevClose:t.prev_close||0};}),
+          losers:lD.map(function(t){return {symbol:t.symbol,price:t.close,changePercent:t.change_percent||0,changeAbs:t.change_val||0,volume:t.volume||0,turnover:t.turnover||0,series:'EQ',open:t.open||0,high:t.high||0,prevClose:t.prev_close||0};}),
           fiftyTwoWeekHigh:[],fiftyTwoWeekLow:[]
         };
         console.log('NSE daily prices: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers @ '+today);
@@ -3667,6 +3751,8 @@ function onAuthSuccess(user){
   document.getElementById('ubIcon').textContent=name.charAt(0).toUpperCase();
   document.getElementById('userBadge').style.display='flex';
   localStorage.setItem('sb_session','true');
+  // Initialize virtual trading
+  vtInit();
 }
 
 function doLogout(){
@@ -3749,6 +3835,273 @@ if(sb){
   document.getElementById('authOverlay').classList.add('hidden');
 }
 
+
+
+// ===== VIRTUAL TRADING =====
+var VT_CAPITAL = 1000000; // ₹10,00,000 starting capital
+var vtTrades = [];
+var vtHoldings = {};
+var vtCurrentTab = 'holdings';
+
+async function vtLoadTrades(){
+  var user = window.currentUser;
+  if(!user) return;
+  try{
+    var session = await sb.auth.getSession();
+    if(!session.data || !session.data.session) return;
+    var token = session.data.session.access_token;
+    var resp = await fetch(SUPABASE_URL+'/rest/v1/virtual_trades?select=id,symbol,action,quantity,price,total_value,notes,created_at&order=created_at.desc',
+      {headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+token}});
+    if(!resp.ok) return;
+    vtTrades = await resp.json();
+    vtComputeHoldings();
+    vtRender();
+  }catch(e){
+    console.warn('VT load error:', e.message);
+  }
+}
+
+function vtComputeHoldings(){
+  vtHoldings = {};
+  vtTrades.forEach(function(t){
+    if(!vtHoldings[t.symbol]){
+      vtHoldings[t.symbol] = {symbol:t.symbol, qty:0, invested:0};
+    }
+    var h = vtHoldings[t.symbol];
+    if(t.action === 'BUY'){
+      h.qty += parseFloat(t.quantity);
+      h.invested += parseFloat(t.total_value);
+    } else {
+      h.qty -= parseFloat(t.quantity);
+      h.invested -= parseFloat(t.total_value);
+    }
+  });
+  // Remove zero-qty holdings
+  Object.keys(vtHoldings).forEach(function(k){
+    if(vtHoldings[k].qty <= 0.001) delete vtHoldings[k];
+  });
+}
+
+function vtGetBalance(){
+  var totalBuy = 0, totalSell = 0;
+  vtTrades.forEach(function(t){
+    if(t.action === 'BUY') totalBuy += parseFloat(t.total_value);
+    else totalSell += parseFloat(t.total_value);
+  });
+  return VT_CAPITAL - totalBuy + totalSell;
+}
+
+function vtGetInvested(){
+  var inv = 0;
+  Object.values(vtHoldings).forEach(function(h){ inv += h.invested; });
+  return inv;
+}
+
+function vtGetLTP(symbol){
+  // Try to get current price from existing data
+  if(window.ipcCache && ipcCache[symbol]) return ipcCache[symbol].price || 0;
+  if(window.allStockData){
+    for(var i=0;i<allStockData.length;i++){
+      if(allStockData[i].symbol === symbol) return allStockData[i].price || 0;
+    }
+  }
+  // Try from stock_ticks via cached data
+  if(window.latestTickPrices && latestTickPrices[symbol]) return latestTickPrices[symbol];
+  return 0;
+}
+
+function vtRender(){
+  var balance = vtGetBalance();
+  var invested = vtGetInvested();
+  
+  // Get current values using LTP
+  var currentValue = 0;
+  Object.values(vtHoldings).forEach(function(h){
+    var ltp = vtGetLTP(h.symbol);
+    currentValue += (ltp || h.invested / h.qty) * h.qty;
+  });
+  
+  var pnl = currentValue - invested;
+  var pnlPct = invested > 0 ? (pnl / invested * 100) : 0;
+  
+  document.getElementById('vtBalance').textContent = '₹' + balance.toLocaleString('en-IN', {maximumFractionDigits:0});
+  document.getElementById('vtBalance').className = 'vt-stat-val' + (balance >= VT_CAPITAL ? ' pos' : (balance < VT_CAPITAL ? ' neg' : ''));
+  
+  document.getElementById('vtInvested').textContent = '₹' + invested.toLocaleString('en-IN', {maximumFractionDigits:0});
+  
+  document.getElementById('vtCurrentValue').textContent = '₹' + currentValue.toLocaleString('en-IN', {maximumFractionDigits:0});
+  
+  var pnlEl = document.getElementById('vtPnL');
+  pnlEl.textContent = (pnl >= 0 ? '+' : '') + '₹' + Math.abs(pnl).toLocaleString('en-IN', {maximumFractionDigits:0});
+  pnlEl.className = 'vt-stat-val ' + (pnl >= 0 ? 'pos' : 'neg');
+  
+  document.getElementById('vtTotalTrades').textContent = vtTrades.length;
+  
+  // Render holdings
+  var hArr = Object.values(vtHoldings);
+  var hBody = document.getElementById('vtHoldingsBody');
+  if(hArr.length === 0){
+    hBody.innerHTML = '<tr><td colspan="9" style="color:var(--text2);text-align:center;padding:20px">No holdings yet. Place a BUY order to start trading.</td></tr>';
+  } else {
+    hBody.innerHTML = hArr.map(function(h){
+      var ltp = vtGetLTP(h.symbol) || (h.invested / h.qty);
+      var curVal = ltp * h.qty;
+      var hPnL = curVal - h.invested;
+      var hPnLPct = h.invested > 0 ? (hPnL / h.invested * 100) : 0;
+      var pnlClass = hPnL >= 0 ? 'vt-buy' : 'vt-sell';
+      return '<tr>' +
+        '<td><b>' + h.symbol + '</b></td>' +
+        '<td>' + h.qty.toFixed(0) + '</td>' +
+        '<td>₹' + (h.invested / h.qty).toFixed(2) + '</td>' +
+        '<td>₹' + h.invested.toLocaleString('en-IN', {maximumFractionDigits:0}) + '</td>' +
+        '<td>₹' + ltp.toFixed(2) + '</td>' +
+        '<td>₹' + curVal.toLocaleString('en-IN', {maximumFractionDigits:0}) + '</td>' +
+        '<td class="' + pnlClass + '">' + (hPnL >= 0 ? '+' : '') + '₹' + Math.abs(hPnL).toLocaleString('en-IN', {maximumFractionDigits:0}) + '</td>' +
+        '<td class="' + pnlClass + '">' + (hPnLPct >= 0 ? '+' : '') + hPnLPct.toFixed(2) + '%</td>' +
+        '<td><button class="vt-btn sell" style="padding:2px 8px;font-size:9px" onclick="vtQuickSell(\'' + h.symbol + '\',' + h.qty + ',' + ltp + ')">SELL ALL</button></td>' +
+        '</tr>';
+    }).join('');
+  }
+  
+  // Render trade history
+  var hBody2 = document.getElementById('vtHistoryBody');
+  if(vtTrades.length === 0){
+    hBody2.innerHTML = '<tr><td colspan="8" style="color:var(--text2);text-align:center;padding:20px">No trades yet.</td></tr>';
+  } else {
+    hBody2.innerHTML = vtTrades.map(function(t, i){
+      var actionClass = t.action === 'BUY' ? 'vt-buy' : 'vt-sell';
+      var time = new Date(t.created_at).toLocaleString('en-IN', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      return '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td style="font-size:10px">' + time + '</td>' +
+        '<td><b>' + t.symbol + '</b></td>' +
+        '<td class="' + actionClass + '">' + t.action + '</td>' +
+        '<td>' + parseFloat(t.quantity).toFixed(0) + '</td>' +
+        '<td>₹' + parseFloat(t.price).toFixed(2) + '</td>' +
+        '<td>₹' + parseFloat(t.total_value).toLocaleString('en-IN', {maximumFractionDigits:0}) + '</td>' +
+        '<td style="font-size:10px;color:var(--text2)">' + (t.notes || '-') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+}
+
+function vtShowTab(tab){
+  vtCurrentTab = tab;
+  document.getElementById('vtTabHoldings').className = 'vt-tab' + (tab === 'holdings' ? ' active' : '');
+  document.getElementById('vtTabHistory').className = 'vt-tab' + (tab === 'history' ? ' active' : '');
+  document.getElementById('vtHoldingsView').style.display = tab === 'holdings' ? 'block' : 'none';
+  document.getElementById('vtHistoryView').style.display = tab === 'history' ? 'block' : 'none';
+}
+
+async function vtPlaceOrder(forceSell){
+  var user = window.currentUser;
+  if(!user){
+    alert('Please login first');
+    return;
+  }
+  
+  var session = await sb.auth.getSession();
+  if(!session.data || !session.data.session){
+    alert('Session expired. Please login again.');
+    return;
+  }
+  var token = session.data.session.access_token;
+  
+  var symbol = (document.getElementById('vtSymbol').value || '').trim().toUpperCase();
+  var action = forceSell ? 'SELL' : (document.getElementById('vtAction').value || 'BUY');
+  var qty = parseFloat(document.getElementById('vtQty').value || 0);
+  var price = parseFloat(document.getElementById('vtPrice').value || 0);
+  var notes = (document.getElementById('vtNotes').value || '').trim();
+  
+  if(!symbol || !qty || !price || qty <= 0 || price <= 0){
+    alert('Please fill: Symbol, Quantity, Price');
+    return;
+  }
+  
+  // For SELL, check if user has enough holdings
+  if(action === 'SELL' && vtHoldings[symbol] && qty > vtHoldings[symbol].qty){
+    alert('You only have ' + vtHoldings[symbol].qty + ' shares of ' + symbol);
+    return;
+  }
+  if(action === 'SELL' && (!vtHoldings[symbol] || vtHoldings[symbol].qty <= 0)){
+    alert('You do not hold any shares of ' + symbol);
+    return;
+  }
+  
+  // For BUY, check if user has enough balance
+  if(action === 'BUY'){
+    var cost = qty * price;
+    var balance = vtGetBalance();
+    if(cost > balance){
+      alert('Insufficient balance. Available: ₹' + balance.toLocaleString('en-IN', {maximumFractionDigits:0}) + ', Needed: ₹' + cost.toLocaleString('en-IN', {maximumFractionDigits:0}));
+      return;
+    }
+  }
+  
+  // Insert trade into Supabase
+  try{
+    var resp = await fetch(SUPABASE_URL+'/rest/v1/virtual_trades', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        user_id: user.id,
+        symbol: symbol,
+        action: action,
+        quantity: qty,
+        price: price,
+        notes: notes
+      })
+    });
+    
+    if(!resp.ok){
+      var err = await resp.json();
+      alert('Order failed: ' + (err.message || 'Unknown error'));
+      return;
+    }
+    
+    // Clear form
+    document.getElementById('vtSymbol').value = '';
+    document.getElementById('vtQty').value = '';
+    document.getElementById('vtPrice').value = '';
+    document.getElementById('vtNotes').value = '';
+    
+    // Reload trades
+    await vtLoadTrades();
+    
+    // Show success
+    document.getElementById('vtStatus').textContent = '✅ ' + action + ' ' + qty + ' ' + symbol + ' @ ₹' + price + ' executed';
+    setTimeout(function(){ document.getElementById('vtStatus').textContent = '₹10,00,000 starting capital · RLS protected'; }, 3000);
+  }catch(e){
+    alert('Order failed: ' + e.message);
+  }
+}
+
+function vtQuickSell(symbol, qty, price){
+  document.getElementById('vtSymbol').value = symbol;
+  document.getElementById('vtAction').value = 'SELL';
+  document.getElementById('vtQty').value = qty;
+  document.getElementById('vtPrice').value = price.toFixed(2);
+  vtPlaceOrder(true);
+}
+
+// Initialize virtual trading after login
+function vtInit(){
+  if(window.currentUser && window.sb){
+    sb.auth.getSession().then(function(res){
+      if(res.data && res.data.session){
+        vtLoadTrades();
+      }
+    }).catch(function(){});
+  } else if(!window.currentUser){
+    // Retry after 2 seconds if user not yet loaded
+    setTimeout(vtInit, 2000);
+  }
+}
 
 // ===== ELARA AI AGENT =====
 // Elara AI — now fully client-side (no backend needed)
