@@ -607,16 +607,43 @@ body {
 
 .sig-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
   gap: 8px;
   margin-bottom: 16px;
 }
+
+
+/* ===== MARKET BREADTH BAR ===== */
+.breadth-bar{display:flex;flex-direction:column;gap:6px;margin:10px 14px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px}
+.bb-header{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.bb-mood{display:flex;align-items:center;gap:6px}
+.bb-mood-dot{width:8px;height:8px;border-radius:50%;animation:pulse 2s infinite}
+.bb-track{display:flex;height:22px;border-radius:4px;overflow:hidden;border:1px solid var(--border)}
+.bb-seg{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;transition:flex .3s ease;min-width:0;white-space:nowrap;overflow:hidden}
+.bb-seg.adv{background:linear-gradient(90deg,#0ea844,#16c45f)}
+.bb-seg.dec{background:linear-gradient(90deg,#e0274a,#ff456e)}
+.bb-seg.unch{background:linear-gradient(90deg,#4a4a4a,#666)}
+.bb-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--text2);font-family:Consolas,monospace}
+.bb-labels span{display:flex;align-items:center;gap:3px}
+.bb-dot{width:6px;height:6px;border-radius:50%}
+.bb-dot.g{background:var(--green)}.bb-dot.r{background:var(--red)}.bb-dot.gr{background:var(--text2)}
+.bb-stats{display:flex;gap:12px;font-size:10px;font-family:Consolas,monospace}
+.bb-stat{display:flex;flex-direction:column;align-items:center}
+.bb-stat .v{font-size:14px;font-weight:700}
+.bb-stat .l{font-size:8px;color:var(--text2);text-transform:uppercase}
+
+/* ===== MARKET MOOD GAUGE ===== */
+.mood-gauge{display:flex;align-items:center;gap:10px;margin:0 14px 8px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px}
+.mg-label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.mg-bar{flex:1;height:10px;border-radius:5px;background:linear-gradient(90deg,#e0274a 0%,#ff6b35 25%,#ffce30 50%,#a4d04e 75%,#16c45f 100%);position:relative;overflow:hidden}
+.mg-needle{position:absolute;top:-2px;width:3px;height:14px;background:#fff;border-radius:1px;box-shadow:0 0 4px rgba(0,0,0,.5);transition:left .5s ease}
+.mg-value{font-size:11px;font-weight:700;font-family:Consolas,monospace;white-space:nowrap;min-width:70px;text-align:right}
 
 .sig-card {
   background-color: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 8px;
+  padding: 6px;
   position: relative;
   transition: all 0.2s ease-in-out;
   display: flex;
@@ -852,16 +879,7 @@ body {
 }
 
 /* Sparkline canvas placeholder inside reason box */
-.reason-box::after {
-  content: "";
-  display: block;
-  height: 14px;
-  margin-top: 4px;
-  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.05) 50%, transparent);
-  border-bottom: 1px solid var(--cyan);
-  clip-path: polygon(0% 75%, 10% 60%, 20% 85%, 30% 30%, 40% 70%, 50% 20%, 60% 65%, 70% 15%, 80% 50%, 90% 10%, 100% 45%, 100% 100%, 0% 100%);
-  opacity: 0.6;
-}
+/* sparkline removed for compactness */
 .sig-card.buy .reason-box::after {
   border-bottom-color: var(--green);
 }
@@ -1583,18 +1601,20 @@ body {
 .pos{color:#00ff88}.neg{color:#ff2d55}
 
 /* ===== LIVE INDEX CARDS ===== */
-.idx-cards-row{display:flex;gap:10px;padding:10px 12px 0;flex-wrap:wrap}
-.idx-pcard{flex:1;min-width:260px;background:linear-gradient(135deg,rgba(255,136,0,.04),rgba(0,0,0,.8));border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:6px;padding:12px 14px;position:relative;overflow:hidden}
+.idx-cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 12px 0}
+.idx-pcard{background:linear-gradient(135deg,rgba(255,136,0,.04),rgba(0,0,0,.8));border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:6px;padding:10px 12px;position:relative;overflow:hidden}
 .idx-pcard.banknifty{border-left-color:#00e5ff}
 .idx-pcard.sensex{border-left-color:#22c55e}
+.idx-pcard.vix{border-left-color:#a855f7;background:linear-gradient(135deg,rgba(168,85,247,.04),rgba(0,0,0,.8))}
 .idx-pcard .ipc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .idx-pcard .ipc-name{font-size:13px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase}
 .idx-pcard.banknifty .ipc-name{color:#00e5ff}
 .idx-pcard.sensex .ipc-name{color:#22c55e}
+.idx-pcard.vix .ipc-name{color:#a855f7}
 .idx-pcard .ipc-live{font-size:9px;color:var(--green);display:flex;align-items:center;gap:4px}
 .idx-pcard .ipc-live .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.idx-pcard .ipc-price{font-size:28px;font-weight:700;color:var(--text);font-family:'Courier New',monospace;letter-spacing:.5px}
+.idx-pcard .ipc-price{font-size:22px;font-weight:700;color:var(--text);font-family:'Courier New',monospace;letter-spacing:.5px}
 .idx-pcard .ipc-chg-row{display:flex;gap:10px;align-items:center;margin:4px 0 8px;font-family:'Courier New',monospace}
 .idx-pcard .ipc-chg-val{font-size:13px;font-weight:700}
 .idx-pcard .ipc-chg-pct{font-size:12px;font-weight:700;padding:2px 6px;border-radius:3px}
@@ -1606,8 +1626,12 @@ body {
 .idx-pcard .ipc-det .val{font-size:12px;color:var(--text);font-family:'Courier New',monospace;font-weight:600}
 .idx-pcard .ipc-spark{position:absolute;bottom:0;right:0;width:80px;height:40px;opacity:.5}
 @media(max-width:767px){
-  .idx-cards-row{flex-direction:column;gap:8px;padding:8px}
-  .idx-pcard{min-width:100%}
+  .idx-cards-row{grid-template-columns:repeat(2,1fr)!important;gap:6px;padding:6px}
+  .idx-pcard{min-width:0}
+  .breadth-bar{margin:6px;padding:8px}
+  .mood-gauge{margin:0 6px 6px;padding:6px}
+  .bb-stats{gap:8px}
+  .bb-stat .v{font-size:12px}
   .idx-pcard .ipc-price{font-size:24px}
   .idx-pcard .ipc-details{grid-template-columns:repeat(4,1fr)}
 }
@@ -1908,6 +1932,20 @@ loadAllNsePrices()">↻ Refresh</button>
         <div class="ipc-det"><span class="lbl">LOW</span><span class="val" id="ipcSensexLow">—</span></div>
         <div class="ipc-det"><span class="lbl">PREV CLOSE</span><span class="val" id="ipcSensexPrev">—</span></div>
       </div>
+        <div class="idx-pcard vix" id="ipcVix" style="border-color:rgba(138,43,226,.25)">
+      <div class="ipc-head"><span class="ipc-name" style="color:#a855f7">INDIA VIX</span><span class="ipc-live"><span class="dot" style="background:#a855f7"></span>LIVE</span></div>
+      <div class="ipc-price" id="ipcVixPrice">—</div>
+      <div class="ipc-chg-row">
+        <span class="ipc-chg-val" id="ipcVixChg">—</span>
+        <span class="ipc-chg-pct" id="ipcVixPct">—</span>
+      </div>
+      <div class="ipc-details">
+        <div class="ipc-det"><span class="lbl">OPEN</span><span class="val" id="ipcVixOpen">—</span></div>
+        <div class="ipc-det"><span class="lbl">HIGH</span><span class="val" id="ipcVixHigh">—</span></div>
+        <div class="ipc-det"><span class="lbl">LOW</span><span class="val" id="ipcVixLow">—</span></div>
+        <div class="ipc-det"><span class="lbl">PREV CLOSE</span><span class="val" id="ipcVixPrev">—</span></div>
+      </div>
+    </div>
     </div>
   </div>
   <div class="app-layout">
@@ -2003,6 +2041,35 @@ loadAllNsePrices()">↻ Refresh</button>
           <div class="lt-hdr"><span style="color:var(--red)">🔴 TOP 10 F&O LOSERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeL">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountL"></span></div>
           <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>High</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltLBody"></tbody></table></div>
         </div>
+      </div>
+
+      
+      <!-- ===== MARKET BREADTH ===== -->
+      <div class="breadth-bar" id="breadthBar" style="display:none">
+        <div class="bb-header">
+          <span>Market Breadth — Advances vs Declines</span>
+          <div class="bb-mood"><span class="bb-mood-dot" id="bbMoodDot" style="background:var(--text2)"></span><span id="bbMoodText" style="font-size:10px;font-weight:700">CALCULATING...</span></div>
+        </div>
+        <div class="bb-track">
+          <div class="bb-seg adv" id="bbAdvSeg" style="flex:1">—</div>
+          <div class="bb-seg dec" id="bbDecSeg" style="flex:1">—</div>
+        </div>
+        <div class="bb-labels">
+          <span><span class="bb-dot g"></span> <span id="bbAdvCount">—</span> Advances</span>
+          <span><span class="bb-dot gr"></span> <span id="bbUnchCount">—</span> Unchanged</span>
+          <span><span class="bb-dot r"></span> <span id="bbDecCount">—</span> Declines</span>
+        </div>
+        <div class="bb-stats">
+          <div class="bb-stat"><span class="v" id="bbAdr" style="color:var(--text)">—</span><span class="l">A/D Ratio</span></div>
+          <div class="bb-stat"><span class="v" id="bbTotal" style="color:var(--text)">—</span><span class="l">Total Stocks</span></div>
+          <div class="bb-stat"><span class="v" id="bbAdvPct" style="color:var(--green)">—</span><span class="l">% Advancing</span></div>
+        </div>
+      </div>
+      <!-- ===== MARKET MOOD GAUGE ===== -->
+      <div class="mood-gauge" id="moodGauge" style="display:none">
+        <span class="mg-label">Market Mood</span>
+        <div class="mg-bar"><div class="mg-needle" id="mgNeedle" style="left:50%"></div></div>
+        <span class="mg-value" id="mgValue">NEUTRAL · 50</span>
       </div>
 
       <!-- ===== COMBINED SCREENER ===== -->
@@ -2513,7 +2580,7 @@ function renderHeaderIndices(){
 }
 
 // ===== LIVE INDEX PRICE CARDS =====
-var ipcSymbols={'^NSEI':{name:'NIFTY 50',prefix:'ipcNifty'},'^NSEBANK':{name:'BANK NIFTY',prefix:'ipcBankNifty'},'^BSESN':{name:'SENSEX',prefix:'ipcSensex'}};
+var ipcSymbols={'^NSEI':{name:'NIFTY 50',prefix:'ipcNifty'},'^NSEBANK':{name:'BANK NIFTY',prefix:'ipcBankNifty'},'^BSESN':{name:'SENSEX',prefix:'ipcSensex'},'^INDIAVIX':{name:'INDIA VIX',prefix:'ipcVix',isVix:true}};
 var ipcCache={};
 
 async function fetchIndexPriceCards(){
@@ -2558,7 +2625,7 @@ async function fetchIndexPriceCards(){
 
 // Also render cards from loadAll() price results
 function renderIndexCardsFromData(priceData){
-  ['^NSEI','^NSEBANK','^BSESN'].forEach(function(sym){
+  ['^NSEI','^NSEBANK','^BSESN','^INDIAVIX'].forEach(function(sym){
     var d=(priceData||[]).filter(function(x){return x.symbol===sym&&!x.error;})[0];
     if(!d)return;
     ipcCache[sym]={price:d.price,prev:d.previousClose||d.price,open:d.open||d.price,high:d.dayHigh||d.price,low:d.dayLow||d.price,chg:d.change||0,pct:d.changePercent||0};
@@ -2616,7 +2683,18 @@ function renderIndexPriceCards(){
     document.getElementById(pfx+'High').textContent=fmt(d.high);
     document.getElementById(pfx+'Low').textContent=fmt(d.low);
     document.getElementById(pfx+'Prev').textContent=fmt(d.prev);
-    priceEl.style.color=isPos?'var(--green)':'var(--red)';
+    var isVix=ipcSymbols[sym]&&ipcSymbols[sym].isVix;
+    if(isVix){
+      // VIX: high = fear (red), low = calm (green) — inverted color logic
+      priceEl.style.color=d.pct>5?'var(--red)':(d.pct<-5?'var(--green)':'var(--yellow)');
+      var vixLabel=document.getElementById(pfx+'Price');
+      if(vixLabel&&d.price){
+        var vixMood=d.price>20?'HIGH FEAR':d.price<13?'LOW FEAR':'NEUTRAL';
+        var moodColor=d.price>20?'var(--red)':d.price<13?'var(--green)':'var(--yellow)';
+      }
+    } else {
+      priceEl.style.color=isPos?'var(--green)':'var(--red)';
+    }
   });
   updateTickCounter();
 }
@@ -2646,6 +2724,64 @@ function renderMovers(data){
     var vr=d.volumeRatio||1;
     return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td style="color:var(--text2)">'+f0(d.open||0)+'</td><td style="color:var(--text2)">'+f0(d.dayHigh||0)+'</td><td style="color:var(--text2)">'+f0(d.previousClose||0)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>'+(d.signal||'-')+'</td><td style="font-size:10px">'+(d.chartPattern||'-')+'</td></tr>';
   }).join(''):'<tr><td colspan="11" class="empty-row">No losers</td></tr>';
+}
+
+// ===== MARKET BREADTH =====
+function renderMarketBreadth(data){
+  var v=data.filter(function(d){return!d.error&&d.changePercent!=null});
+  if(v.length<5)return;
+  var adv=v.filter(function(d){return d.changePercent>0}).length;
+  var dec=v.filter(function(d){return d.changePercent<0}).length;
+  var unch=v.length-adv-dec;
+  var total=v.length;
+  var adr=dec>0?(adv/dec).toFixed(2):'∞';
+  var advPct=((adv/total)*100).toFixed(1);
+
+  var bar=document.getElementById('breadthBar');
+  if(bar)bar.style.display='flex';
+
+  // Segments
+  var advSeg=document.getElementById('bbAdvSeg');
+  var decSeg=document.getElementById('bbDecSeg');
+  if(advSeg){
+    advSeg.style.flex=adv>0?adv:0.01;
+    advSeg.textContent=adv>0?adv+' ADV':'';
+  }
+  if(decSeg){
+    decSeg.style.flex=dec>0?dec:0.01;
+    decSeg.textContent=dec>0?dec+' DEC':'';
+  }
+
+  document.getElementById('bbAdvCount').textContent=adv;
+  document.getElementById('bbDecCount').textContent=dec;
+  document.getElementById('bbUnchCount').textContent=unch;
+  document.getElementById('bbAdr').textContent=adr;
+  document.getElementById('bbTotal').textContent=total;
+  document.getElementById('bbAdvPct').textContent=advPct+'%';
+
+  // Mood dot
+  var moodDot=document.getElementById('bbMoodDot');
+  var moodText=document.getElementById('bbMoodText');
+  if(moodDot&&moodText){
+    if(adr>=2){moodDot.style.background='var(--green)';moodText.textContent='BULLISH';moodText.style.color='var(--green)';}
+    else if(adr>=1){moodDot.style.background='var(--yellow)';moodText.textContent='NEUTRAL';moodText.style.color='var(--yellow)';}
+    else{moodDot.style.background='var(--red)';moodText.textContent='BEARISH';moodText.style.color='var(--red)';}
+  }
+
+  // Market Mood Gauge
+  var gauge=document.getElementById('moodGauge');
+  if(gauge)gauge.style.display='flex';
+
+  var score=Math.round((adv/total)*100);
+  var needle=document.getElementById('mgNeedle');
+  var mgVal=document.getElementById('mgValue');
+  if(needle)needle.style.left=score+'%';
+  if(mgVal){
+    var label=score>=75?'EXTREME GREED':score>=60?'GREED':score>=40?'NEUTRAL':score>=25?'FEAR':'EXTREME FEAR';
+    var color=score>=60?'var(--green)':score>=40?'var(--yellow)':'var(--red)';
+    mgVal.textContent=label+' · '+score;
+    mgVal.style.color=color;
+  }
 }
 
 // SCREENERS
@@ -3042,6 +3178,79 @@ function updateLiveTickLTP(sym,price,chgPct,open,prevClose){
 }
 
 
+
+// ===== LIGHTWEIGHT BREADTH FROM STOCK_TICKS =====
+async function fetchTickBreadth(){
+  try{
+    // Get latest tick time
+    var metaResp=await fetch(SUPABASE_URL+'/rest/v1/stock_ticks?select=tick_time&order=tick_time.desc&limit=1',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!metaResp.ok)return;
+    var metaData=await metaResp.json();
+    if(!metaData||!metaData.length)return;
+    var latestTime=metaData[0].tick_time;
+    var encTime=encodeURIComponent(latestTime);
+
+    // Fetch ALL ticks for latest snapshot to compute breadth (we need change_pct for all)
+    var resp=await fetch(SUPABASE_URL+'/rest/v1/stock_ticks?select=symbol,change_pct&tick_time=eq.'+encTime+'&limit=2500',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(!resp.ok)return;
+    var data=await resp.json();
+    if(!data||!data.length)return;
+
+    var adv=0,dec=0,unch=0;
+    data.forEach(function(t){
+      var pct=t.change_pct||0;
+      if(pct>0)adv++;
+      else if(pct<0)dec++;
+      else unch++;
+    });
+    var total=data.length;
+    var adr=dec>0?(adv/dec).toFixed(2):'\u221e';
+    var advPct=((adv/total)*100).toFixed(1);
+    var score=Math.round((adv/total)*100);
+
+    // Update breadth bar
+    var bar=document.getElementById('breadthBar');
+    if(bar)bar.style.display='flex';
+    var advSeg=document.getElementById('bbAdvSeg');
+    var decSeg=document.getElementById('bbDecSeg');
+    if(advSeg){advSeg.style.flex=adv>0?adv:0.01;advSeg.textContent=adv>0?adv+' ADV':'';}
+    if(decSeg){decSeg.style.flex=dec>0?dec:0.01;decSeg.textContent=dec>0?dec+' DEC':'';}
+    document.getElementById('bbAdvCount').textContent=adv;
+    document.getElementById('bbDecCount').textContent=dec;
+    document.getElementById('bbUnchCount').textContent=unch;
+    document.getElementById('bbAdr').textContent=adr;
+    document.getElementById('bbTotal').textContent=total;
+    document.getElementById('bbAdvPct').textContent=advPct+'%';
+
+    var moodDot=document.getElementById('bbMoodDot');
+    var moodText=document.getElementById('bbMoodText');
+    if(moodDot&&moodText){
+      if(adr>=2){moodDot.style.background='var(--green)';moodText.textContent='BULLISH';moodText.style.color='var(--green)';}
+      else if(adr>=1){moodDot.style.background='var(--yellow)';moodText.textContent='NEUTRAL';moodText.style.color='var(--yellow)';}
+      else{moodDot.style.background='var(--red)';moodText.textContent='BEARISH';moodText.style.color='var(--red)';}
+    }
+
+    // Mood gauge
+    var gauge=document.getElementById('moodGauge');
+    if(gauge)gauge.style.display='flex';
+    var needle=document.getElementById('mgNeedle');
+    var mgVal=document.getElementById('mgValue');
+    if(needle)needle.style.left=score+'%';
+    if(mgVal){
+      var label=score>=75?'EXTREME GREED':score>=60?'GREED':score>=40?'NEUTRAL':score>=25?'FEAR':'EXTREME FEAR';
+      var color=score>=60?'var(--green)':score>=40?'var(--yellow)':'var(--red)';
+      mgVal.textContent=label+' \u00b7 '+score;
+      mgVal.style.color=color;
+    }
+  }catch(e){
+    console.warn('Breadth fetch failed:',e.message);
+  }
+}
+
 async function loadAllNsePrices(){
   var live=mktOpen();
   
@@ -3068,6 +3277,7 @@ async function loadAllNsePrices(){
         });
         console.log('NSE Movers API: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers (official NSE real-time)');
         updateMoversPanel(live);
+        fetchTickBreadth();
         return;
       }
     }
@@ -3104,6 +3314,7 @@ async function loadAllNsePrices(){
             };
             console.log('TradingView movers: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers @ '+latestTime);
             updateMoversPanel(live);
+            fetchTickBreadth();
             return;
           }
         }
