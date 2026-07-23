@@ -53,7 +53,15 @@ async function fetchBatchQuotes(symbols: string[]): Promise<any[]> {
       });
       
       if (!res.ok) return;
-      const j = await res.json();
+      
+      let j;
+      try {
+        j = await res.json();
+      } catch (jsonErr) {
+        // Handle json parse error (e.g. empty response from rate limiting)
+        return;
+      }
+      
       const result = j.chart?.result?.[0];
       if (!result) return;
       
@@ -68,7 +76,6 @@ async function fetchBatchQuotes(symbols: string[]): Promise<any[]> {
       const highs = (quotes.high || []).filter((v: number | null) => v != null);
       const lows = (quotes.low || []).filter((v: number | null) => v != null);
       const volumes = (quotes.volume || []).filter((v: number | null) => v != null);
-      const lastIdx = timestamps.length - 1;
       
       // Use second-to-last candle's close as previous close (yesterday's actual close)
       // chartPreviousClose gives the close BEFORE the range start, NOT yesterday's close
@@ -106,6 +113,69 @@ async function fetchBatchQuotes(symbols: string[]): Promise<any[]> {
   }));
   
   return results;
+}
+
+async function fetchTVQuotes(symbols: string[]): Promise<any[]> {
+  const tickers = symbols.map(sym => `NSE:${sym}`);
+  const url = "https://scanner.tradingview.com/india/scan";
+  
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0",
+      },
+      body: JSON.stringify({
+        symbols: {
+          tickers: tickers,
+          query: { types: [] }
+        },
+        columns: ["close", "change", "change_abs", "volume", "high", "low", "open"]
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    
+    if (!res.ok) {
+      console.error(`TradingView fetch failed: ${res.status}`);
+      return [];
+    }
+    
+    const j = await res.json();
+    const data = j.data || [];
+    const results: any[] = [];
+    
+    for (const item of data) {
+      if (!item || !item.s || !Array.isArray(item.d)) continue;
+      
+      const s = item.s;
+      const symbol = s.startsWith("NSE:") ? s.substring(4) : s;
+      const [close, change_pct, change_abs, volume, high, low, open] = item.d;
+      
+      if (typeof close !== "number") continue;
+      
+      const prevClose = typeof change_abs === "number" ? close - change_abs : close;
+      
+      results.push({
+        symbol: symbol,
+        open: typeof open === "number" ? open : close,
+        high: typeof high === "number" ? high : close,
+        low: typeof low === "number" ? low : close,
+        close: close,
+        prev_close: prevClose,
+        change_val: typeof change_abs === "number" ? parseFloat(change_abs.toFixed(2)) : 0,
+        change_percent: typeof change_pct === "number" ? parseFloat(change_pct.toFixed(2)) : 0,
+        volume: typeof volume === "number" ? volume : null,
+        turnover: null,
+        series: "EQ",
+      });
+    }
+    
+    return results;
+  } catch (e) {
+    console.error(`TradingView fetch error: ${e.message}`);
+    return [];
+  }
 }
 
 async function upsertPrices(records: any[], tradeDate: string): Promise<number> {
@@ -154,8 +224,8 @@ Deno.serve(async (req: Request) => {
     
     // 2. Process in batches of 30 (to avoid overwhelming Yahoo Finance)
     const batchSize = 30;
-    let totalSaved = 0;
-    let totalFailed = 0;
+    let yahooSavedCount = 0;
+    const succeededSymbols = new Set<string>();
     const tradeDate = getISTDate();
     console.log(`Trade date: ${tradeDate}`);
     
@@ -169,11 +239,12 @@ Deno.serve(async (req: Request) => {
       try {
         const results = await fetchBatchQuotes(batch);
         const saved = await upsertPrices(results, tradeDate);
-        totalSaved += saved;
-        totalFailed += batch.length - results.length;
+        if (saved > 0) {
+          results.forEach(r => succeededSymbols.add(r.symbol));
+          yahooSavedCount += saved;
+        }
       } catch (e) {
         console.error(`Batch ${batchNum} error: ${e.message}`);
-        totalFailed += batch.length;
       }
       
       // Small delay between batches to be gentle on Yahoo Finance
@@ -182,15 +253,53 @@ Deno.serve(async (req: Request) => {
       }
     }
     
+    // 3. Collect failed symbols for TradingView scanner fallback
+    const failedSymbols = allSymbols.filter(sym => !succeededSymbols.has(sym));
+    console.log(`Yahoo attempt done. Succeeded: ${yahooSavedCount}, Failed: ${failedSymbols.length}`);
+    
+    let tvSavedCount = 0;
+    if (failedSymbols.length > 0) {
+      console.log(`Starting TradingView fallback for ${failedSymbols.length} failed symbols...`);
+      const tvBatchSize = 100;
+      
+      for (let i = 0; i < failedSymbols.length; i += tvBatchSize) {
+        const batch = failedSymbols.slice(i, i + tvBatchSize);
+        const batchNum = Math.floor(i / tvBatchSize) + 1;
+        const totalBatches = Math.ceil(failedSymbols.length / tvBatchSize);
+        
+        console.log(`Processing TradingView batch ${batchNum}/${totalBatches} (${batch.length} symbols)...`);
+        
+        try {
+          const results = await fetchTVQuotes(batch);
+          const saved = await upsertPrices(results, tradeDate);
+          if (saved > 0) {
+            results.forEach(r => succeededSymbols.add(r.symbol));
+            tvSavedCount += saved;
+          }
+        } catch (e) {
+          console.error(`TradingView batch ${batchNum} error: ${e.message}`);
+        }
+        
+        // Small delay between TradingView batches
+        if (i + tvBatchSize < failedSymbols.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+    }
+    
+    const totalFailed = allSymbols.length - succeededSymbols.size;
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    const totalSaved = yahooSavedCount + tvSavedCount;
     
     return new Response(JSON.stringify({
       success: true,
-      message: `Daily prices saved: ${totalSaved} symbols, ${totalFailed} failed`,
+      message: `Daily prices saved: ${totalSaved} symbols (Yahoo: ${yahooSavedCount}, TradingView: ${tvSavedCount}), ${totalFailed} failed`,
       data: {
         trade_date: tradeDate,
         total_symbols: allSymbols.length,
-        saved: totalSaved,
+        saved_yahoo: yahooSavedCount,
+        saved_tradingview: tvSavedCount,
+        total_saved: totalSaved,
         failed: totalFailed,
         elapsed_seconds: parseFloat(elapsed),
       }
