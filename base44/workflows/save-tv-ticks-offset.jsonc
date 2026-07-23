@@ -1,13 +1,13 @@
 {
-  "name": "save-tv-ticks-workflow",
-  "description": "Fetch all 2,384 NSE stocks from TradingView scanner API and store tick-by-tick snapshots in Supabase database every 5 minutes during NSE market hours (Mon-Fri, 9 AM - 4 PM IST)",
+  "name": "save-tv-ticks-offset",
+  "description": "Offset tick fetcher \u2014 runs at 2.5-minute offset from the main save-tv-ticks-workflow to effectively double tick data frequency during market hours (Mon-Fri, 9 AM - 4 PM IST)",
   "trigger": {
     "condition": null,
     "config": {
       "trigger_type": "scheduled",
       "events": [],
       "schedule_mode": "recurring",
-      "cron_expression": "*/5 9-15 * * 1-5",
+      "cron_expression": "2,7,12,17,22,27,32,37,42,47,52,57 9-15 * * 1-5",
       "one_time_date": null,
       "timezone": "Asia/Calcutta",
       "interval_value": null,
@@ -21,9 +21,9 @@
   "definition": {
     "document": {
       "dsl": "1.0.0",
-      "name": "save_tv_ticks_workflow",
+      "name": "save_tv_ticks_offset",
       "namespace": "base44",
-      "version": "2.1"
+      "version": "1.0"
     },
     "do": [
       {
@@ -36,7 +36,7 @@
           },
           "x-base44": {
             "description": "Save 2,384 NSE stocks to database",
-            "title": "Fetch TradingView Ticks"
+            "title": "Fetch TradingView Ticks (Offset)"
           }
         }
       }
