@@ -772,6 +772,32 @@ body {
 .chg-val.neg::before {
   content: "▼ ";
 }
+.pos-status {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-left: 4px;
+  font-family: Consolas, monospace;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.pos-status.active {
+  background: rgba(0,255,136,.15);
+  color: var(--green);
+  border: 1px solid rgba(0,255,136,.3);
+}
+.pos-status.tp-hit {
+  background: rgba(0,255,136,.1);
+  color: var(--green);
+  border: 1px solid rgba(0,255,136,.2);
+}
+.pos-status.sl-hit {
+  background: rgba(255,45,85,.1);
+  color: var(--red);
+  border: 1px solid rgba(255,45,85,.2);
+}
 .vol-txt {
   color: var(--text2);
   font-size: 9px;
@@ -2706,8 +2732,15 @@ function renderCard(d){
     var mc=(d.dayMomentum||0)>=0?'g':'r';
     ih='<div class="intra-row"><div><span class="mini-l">Open</span><span class="mini-v">'+f0(d.dayOpen)+'</span></div><div><span class="mini-l">High</span><span class="mini-v g">'+f0(d.dayHigh)+'</span></div><div><span class="mini-l">Low</span><span class="mini-v r">'+f0(d.dayLow)+'</span></div><div><span class="mini-l">Mom</span><span class="mini-v '+mc+'">'+(d.dayMomentum>=0?'+':'')+d.dayMomentum+'%</span></div></div>';
   }
+  var posBadge='';
+  if(d.positionStatus){
+    var ps=d.positionStatus;
+    var psCls=ps==='ACTIVE'?'active':(ps.indexOf('TP')>=0?'tp-hit':'sl-hit');
+    var psTxt=ps==='ACTIVE'?'● ACTIVE':(ps==='SL_HIT'?'✗ SL HIT':'✓ '+ps.replace('_',' '));
+    posBadge='<span class="pos-status '+psCls+'">'+psTxt+'</span>';
+  }
   var h='<div class="sig-card '+cc+'"><div class="sc-head"><div><div class="sc-name">'+cs(d.symbol)+'</div><div class="sc-price">'+f(d.price)+'</div></div><div class="sc-badge '+bc+'">'+d.signal+'</div></div>'+
-    '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(priceChange>=0?'+':'')+f0(priceChange)+')</span><span class="vol-txt">Vol: '+volStr+' ('+d.volumeRatio+'x)</span></div>'+
+    '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(priceChange>=0?'+':'')+f0(priceChange)+')</span><span class="vol-txt">Vol: '+volStr+' ('+d.volumeRatio+'x)</span>'+posBadge+'</div>'+
     '<div class="sl-tp">'+
     '<div class="box sl"><div class="lbl">SL</div><div class="val">'+(sl!=null?f(sl):'—')+'</div></div>'+
     '<div class="box entry"><div class="lbl">Entry</div><div class="val">'+(d.entry!=null?f(d.entry):f(d.price))+'</div></div>'+
@@ -2726,6 +2759,7 @@ function renderTA(data){
   document.getElementById('buyCards').innerHTML=b.map(renderCard).join('')||'<div class="loading">No buy signals</div>';
   document.getElementById('sellCards').innerHTML=s.map(renderCard).join('')||'<div class="loading">No sell signals</div>';
   document.getElementById('holdCards').innerHTML=h.map(renderCard).join('')||'<div class="loading">No hold signals</div>';
+  window._taLoaded=true;
 }
 
 function renderGL(data){
@@ -3125,7 +3159,7 @@ function fmtVol(v){
 
 async function loadAll(){
   updStatus();
-  ['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});
+  if(!window._taLoaded){['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});}
   var priceResults,taResults;
   
   // Primary: Supabase Edge Functions
