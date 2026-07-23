@@ -2034,7 +2034,7 @@ loadAllNsePrices()">↻ Refresh</button>
       <!-- Combined: Breakout + Chart Pattern + EMA Stack + Price Action -->
       <div class="panel" style="border:1px solid rgba(0,240,255,.2);margin-bottom:12px">
         <div class="panel-hdr"><span class="panel-name" style="color:var(--cyan)">🎯 Combined Screener — Breakout · Pattern · EMA Stack · EMA Cross · Price Action</span><span class="panel-count" id="combCount"></span></div>
-        <div class="tbl-wrap" style="max-height:400px"><table class="tbl"><thead><tr><th>Stock</th><th>Price</th><th>Chg%</th><th>⚡ Breakout</th><th>📊 Pattern</th><th>📈 EMA Stack</th><th>✅ Price Action</th><th>Hits</th><th>Signal</th></tr></thead><tbody id="combBody"></tbody></table></div>
+        <div class="tbl-wrap" style="max-height:400px"><table class="tbl"><thead><tr><th>Stock</th><th>Price</th><th>Chg%</th><th>⚡ Breakout</th><th>📊 Pattern</th><th>📈 EMA Stack</th><th>⚡ EMA Cross</th><th>✅ Price Action</th><th>Hits</th><th>Signal</th></tr></thead><tbody id="combBody"></tbody></table></div>
       </div>
 
       <!-- Remaining screeners -->
@@ -2755,7 +2755,7 @@ function renderScreeners(data){
     if(Math.abs(d.changePercent)>=2){paParts.push((d.changePercent>0?'+':'')+d.changePercent+'%');hits++;}
     var paTag=paParts.length?'<span style="font-size:10px;color:var(--cyan)">'+paParts.join(' · ')+'</span>':'<span style="color:var(--muted);font-size:10px">—</span>';
 
-    return {d:d,hits:hits,boTag:boTag,patTag:patTag,emaTag:emaTag,paTag:paTag};
+    return {d:d,hits:hits,boTag:boTag,patTag:patTag,emaTag:emaTag,crossTag:crossTag,paTag:paTag};
   }).filter(function(x){return x.hits>0;}).sort(function(a,b){return b.hits-a.hits;});
 
   document.getElementById('combCount').textContent=comb.length+' stocks';
@@ -3013,8 +3013,8 @@ var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIG
   .then(function(r){return r.json();})
   .then(function(meta){
     if(!meta || !meta.length) {
-      document.getElementById('ltGBody').innerHTML = '<tr><td colspan="7" class="empty-row">No F&O data</td></tr>';
-      document.getElementById('ltLBody').innerHTML = '<tr><td colspan="7" class="empty-row">No F&O data</td></tr>';
+      document.getElementById('ltGBody').innerHTML = '<tr><td colspan="7" class="empty-row">No F&O data (database unavailable)</td></tr>';
+      document.getElementById('ltLBody').innerHTML = '<tr><td colspan="7" class="empty-row">No F&O data (database unavailable)</td></tr>';
       document.getElementById('ltCountG').textContent = 0;
       document.getElementById('ltCountL').textContent = 0;
       return;
@@ -3714,7 +3714,9 @@ async function doLogin(){
     if(error)throw error;
     onAuthSuccess(data.user);
   }catch(e){
-    document.getElementById('loginErr').textContent=e.message||'Login failed';
+    var lmsg=e.message||'Login failed';
+      if(lmsg.indexOf('Database error')>=0)lmsg='Supabase database temporarily unavailable. Please try again in a moment.';
+      document.getElementById('loginErr').textContent=lmsg;
   }
   btn.disabled=false;btn.textContent='LOGIN';
 }
