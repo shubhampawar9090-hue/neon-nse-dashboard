@@ -2710,7 +2710,7 @@ function renderCard(d){
     '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(priceChange>=0?'+':'')+f0(priceChange)+')</span><span class="vol-txt">Vol: '+volStr+' ('+d.volumeRatio+'x)</span></div>'+
     '<div class="sl-tp">'+
     '<div class="box sl"><div class="lbl">SL</div><div class="val">'+(sl!=null?f(sl):'—')+'</div></div>'+
-    '<div class="box entry"><div class="lbl">Entry</div><div class="val">'+f(d.price)+'</div></div>'+
+    '<div class="box entry"><div class="lbl">Entry</div><div class="val">'+(d.entry!=null?f(d.entry):f(d.price))+'</div></div>'+
     '<div class="box tp"><div class="lbl">TP1</div><div class="val">'+(tp1!=null?f(tp1):'—')+'</div></div>'+
     '<div class="box tp"><div class="lbl">TP2</div><div class="val">'+(tp2!=null?f(tp2):'—')+'</div></div>'+
     '<div class="box tp"><div class="lbl">TP3</div><div class="val">'+(d.tp3!=null?f(d.tp3):'—')+'</div></div>'+

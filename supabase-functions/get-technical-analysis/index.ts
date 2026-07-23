@@ -4,6 +4,25 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+// ===== PINE SCRIPT STRATEGY PARAMETERS =====
+const EMA9_LENGTH = 9;
+const EMA21_LENGTH = 21;
+const ATR_LENGTH = 14;
+const ATR_MULT_TARGET = 2.0;      // atr_multiplier_target
+const ATR_MULT_STOPLOSS = 1.5;     // atr_multiplier_stoploss
+const TARGET3_MULT = 3.0;          // target3_multiplier
+const ATR_TRAILING_MULT = 1.0;     // atr_trailing_mult
+const VOLUME_MA_LENGTH = 20;       // volume_ma_length
+const RSI_LENGTH = 14;
+const RISK_PERCENT = 1.0;          // risk_percent
+const INITIAL_CAPITAL = 10000;     // initial_capital
+const USE_VOLUME_FILTER = true;
+const USE_RSI_FILTER = false;      // disabled in Pine Script
+const RSI_OVERBOUGHT = 70;
+const RSI_OVERSOLD = 30;
+
+// ===== HELPER FUNCTIONS =====
+
 function calcEMA(values: number[], period: number): number[] {
   const k = 2 / (period + 1);
   const ema: number[] = [values[0]];
@@ -13,7 +32,7 @@ function calcEMA(values: number[], period: number): number[] {
   return ema;
 }
 
-function calcRSI(values: number[], period: number = 14): number {
+function calcRSI(values: number[], period: number = RSI_LENGTH): number {
   if (values.length < period + 1) return 50;
   let gains = 0, losses = 0;
   for (let i = values.length - period; i < values.length; i++) {
@@ -27,8 +46,14 @@ function calcRSI(values: number[], period: number = 14): number {
   return 100 - 100 / (1 + rs);
 }
 
-function calcATR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
-  if (closes.length < period + 1) return 0;
+function calcSMA(values: number[], period: number): number {
+  if (values.length < period) return values.reduce((a, b) => a + b, 0) / values.length;
+  const recent = values.slice(-period);
+  return recent.reduce((a, b) => a + b, 0) / recent.length;
+}
+
+function calcATRSeries(highs: number[], lows: number[], closes: number[], period: number = ATR_LENGTH): number[] {
+  if (closes.length < 2) return [0];
   const trs: number[] = [];
   for (let i = 1; i < closes.length; i++) {
     const tr = Math.max(
@@ -38,9 +63,250 @@ function calcATR(highs: number[], lows: number[], closes: number[], period: numb
     );
     trs.push(tr);
   }
-  const recent = trs.slice(-period);
-  return recent.reduce((a, b) => a + b, 0) / recent.length;
+  const atrs: number[] = [];
+  if (trs.length < period) {
+    const avg = trs.reduce((a, b) => a + b, 0) / trs.length;
+    for (let i = 0; i < trs.length; i++) atrs.push(avg);
+    return atrs;
+  }
+  let prevATR = trs.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  atrs.push(prevATR);
+  for (let i = period; i < trs.length; i++) {
+    prevATR = (prevATR * (period - 1) + trs[i]) / period;
+    atrs.push(prevATR);
+  }
+  return atrs;
 }
+
+function calcATR(highs: number[], lows: number[], closes: number[], period: number = ATR_LENGTH): number {
+  const atrs = calcATRSeries(highs, lows, closes, period);
+  return atrs[atrs.length - 1] || 0;
+}
+
+function calcVWAP(closes: number[], volumes: number[]): number {
+  let pv = 0, vv = 0;
+  for (let i = 0; i < closes.length; i++) {
+    if (i < volumes.length && volumes[i]) {
+      pv += closes[i] * volumes[i];
+      vv += volumes[i];
+    }
+  }
+  return vv ? pv / vv : (closes[closes.length - 1] || 0);
+}
+
+// ===== MAIN STRATEGY: 9/21 EMA CROSSOVER PRO =====
+
+interface StrategyResult {
+  signal: string;
+  entry: number | null;
+  sl: number | null;
+  tp1: number | null;
+  tp2: number | null;
+  tp3: number | null;
+  trailingStop: number | null;
+  positionSize: number | null;
+  buyScore: number;
+  sellScore: number;
+  emaCrossover: { golden: boolean; death: boolean; cross: string };
+  trendStrength: number;
+  volumeCondition: boolean;
+  activePosition: string | null;
+  positionStatus: string | null;
+}
+
+function runStrategy(
+  closes: number[], highs: number[], lows: number[], volumes: number[],
+  price: number, ema9Arr: number[], ema21Arr: number[]
+): StrategyResult {
+  const len = closes.length;
+  const lastIdx = len - 1;
+
+  const ema9 = ema9Arr[lastIdx];
+  const ema21 = ema21Arr[lastIdx];
+
+  const atrSeries = calcATRSeries(highs, lows, closes, ATR_LENGTH);
+  const atrCurrent = atrSeries[atrSeries.length - 1] || 0;
+
+  const volSMA = calcSMA(volumes, VOLUME_MA_LENGTH);
+  const volCurrent = volumes[lastIdx] || 0;
+  const volumeCondition = !USE_VOLUME_FILTER || volCurrent > volSMA;
+
+  const rsi = calcRSI(closes, RSI_LENGTH);
+
+  const trendStrength = ema21 ? Math.abs(ema9 - ema21) / ema21 * 100 : 0;
+
+  // ===== DETECT CROSSOVERS THROUGH HISTORY =====
+  let lastBullishCrossIdx = -1;
+  let lastBearishCrossIdx = -1;
+
+  for (let i = 1; i <= lastIdx; i++) {
+    if (ema9Arr[i] == null || ema21Arr[i] == null) continue;
+    const wasBelow = ema9Arr[i - 1] <= ema21Arr[i - 1];
+    const nowAbove = ema9Arr[i] > ema21Arr[i];
+    const wasAbove = ema9Arr[i - 1] >= ema21Arr[i - 1];
+    const nowBelow = ema9Arr[i] < ema21Arr[i];
+
+    if (wasBelow && nowAbove) lastBullishCrossIdx = i;
+    if (wasAbove && nowBelow) lastBearishCrossIdx = i;
+  }
+
+  let activePosition: string | null = null;
+  let entryPrice: number | null = null;
+  let slPrice: number | null = null;
+  let tp1: number | null = null;
+  let tp2: number | null = null;
+  let tp3: number | null = null;
+  let trailingStop: number | null = null;
+  let positionSize: number | null = null;
+  let positionStatus: string | null = null;
+  let signal = "HOLD";
+  let buyScore = 0;
+  let sellScore = 0;
+  let crossoverResult = { golden: false, death: false, cross: "none" };
+
+  const hasBullishCross = lastBullishCrossIdx === lastIdx;
+  const hasBearishCross = lastBearishCrossIdx === lastIdx;
+
+  if (hasBullishCross) crossoverResult = { golden: true, death: false, cross: "golden" };
+  if (hasBearishCross) crossoverResult = { golden: false, death: true, cross: "death" };
+
+  const mostRecentCrossIdx = Math.max(lastBullishCrossIdx, lastBearishCrossIdx);
+  const isMostRecentBullish = lastBullishCrossIdx > lastBearishCrossIdx;
+
+  if (mostRecentCrossIdx >= 0) {
+    const crossIdx = mostRecentCrossIdx;
+    const atrAtCross = atrSeries[Math.min(crossIdx - 1, atrSeries.length - 1)] || atrCurrent;
+    const entryAtCross = closes[crossIdx];
+
+    if (isMostRecentBullish) {
+      // === LONG POSITION (Bullish 9/21 Crossover) ===
+      const slCalc = entryAtCross - (atrAtCross * ATR_MULT_STOPLOSS);
+      const tp1Calc = entryAtCross + (atrAtCross * ATR_MULT_TARGET * 0.5);
+      const tp2Calc = entryAtCross + (atrAtCross * ATR_MULT_TARGET);
+      const tp3Calc = entryAtCross + (atrAtCross * TARGET3_MULT);
+
+      let highestSinceLong = entryAtCross;
+      let trailingLongStop = slCalc;
+      let status = "ACTIVE";
+
+      for (let i = crossIdx; i <= lastIdx; i++) {
+        highestSinceLong = Math.max(highestSinceLong, highs[i]);
+        trailingLongStop = Math.max(trailingLongStop, highestSinceLong - (atrAtCross * ATR_TRAILING_MULT));
+
+        if (highs[i] >= tp3Calc) { status = "TP3_HIT"; break; }
+        if (highs[i] >= tp2Calc) { status = "TP2_HIT"; break; }
+        if (highs[i] >= tp1Calc) { status = "TP1_HIT"; break; }
+        if (lows[i] <= trailingLongStop) { status = "SL_HIT"; break; }
+      }
+
+      if (status === "ACTIVE") {
+        activePosition = "LONG";
+        entryPrice = Math.round(entryAtCross * 100) / 100;
+        slPrice = Math.round(trailingLongStop * 100) / 100;
+        tp1 = Math.round(tp1Calc * 100) / 100;
+        tp2 = Math.round(tp2Calc * 100) / 100;
+        tp3 = Math.round(tp3Calc * 100) / 100;
+        trailingStop = Math.round(trailingLongStop * 100) / 100;
+        positionStatus = "ACTIVE";
+        signal = "BUY";
+
+        const riskPerShare = Math.abs(entryAtCross - slCalc);
+        if (riskPerShare > 0) {
+          positionSize = Math.floor((INITIAL_CAPITAL * RISK_PERCENT / 100) / riskPerShare);
+        }
+      } else {
+        positionStatus = status;
+        signal = "HOLD";
+        entryPrice = Math.round(entryAtCross * 100) / 100;
+        slPrice = Math.round(slCalc * 100) / 100;
+        tp1 = Math.round(tp1Calc * 100) / 100;
+        tp2 = Math.round(tp2Calc * 100) / 100;
+        tp3 = Math.round(tp3Calc * 100) / 100;
+        trailingStop = Math.round(trailingLongStop * 100) / 100;
+      }
+    } else {
+      // === SHORT POSITION (Bearish 9/21 Crossover) ===
+      const slCalc = entryAtCross + (atrAtCross * ATR_MULT_STOPLOSS);
+      const tp1Calc = entryAtCross - (atrAtCross * ATR_MULT_TARGET * 0.5);
+      const tp2Calc = entryAtCross - (atrAtCross * ATR_MULT_TARGET);
+      const tp3Calc = entryAtCross - (atrAtCross * TARGET3_MULT);
+
+      let lowestSinceShort = entryAtCross;
+      let trailingShortStop = slCalc;
+      let status = "ACTIVE";
+
+      for (let i = crossIdx; i <= lastIdx; i++) {
+        lowestSinceShort = Math.min(lowestSinceShort, lows[i]);
+        trailingShortStop = Math.min(trailingShortStop, lowestSinceShort + (atrAtCross * ATR_TRAILING_MULT));
+
+        if (lows[i] <= tp3Calc) { status = "TP3_HIT"; break; }
+        if (lows[i] <= tp2Calc) { status = "TP2_HIT"; break; }
+        if (lows[i] <= tp1Calc) { status = "TP1_HIT"; break; }
+        if (highs[i] >= trailingShortStop) { status = "SL_HIT"; break; }
+      }
+
+      if (status === "ACTIVE") {
+        activePosition = "SHORT";
+        entryPrice = Math.round(entryAtCross * 100) / 100;
+        slPrice = Math.round(trailingShortStop * 100) / 100;
+        tp1 = Math.round(tp1Calc * 100) / 100;
+        tp2 = Math.round(tp2Calc * 100) / 100;
+        tp3 = Math.round(tp3Calc * 100) / 100;
+        trailingStop = Math.round(trailingShortStop * 100) / 100;
+        positionStatus = "ACTIVE";
+        signal = "SELL";
+
+        const riskPerShare = Math.abs(slCalc - entryAtCross);
+        if (riskPerShare > 0) {
+          positionSize = Math.floor((INITIAL_CAPITAL * RISK_PERCENT / 100) / riskPerShare);
+        }
+      } else {
+        positionStatus = status;
+        signal = "HOLD";
+        entryPrice = Math.round(entryAtCross * 100) / 100;
+        slPrice = Math.round(slCalc * 100) / 100;
+        tp1 = Math.round(tp1Calc * 100) / 100;
+        tp2 = Math.round(tp2Calc * 100) / 100;
+        tp3 = Math.round(tp3Calc * 100) / 100;
+        trailingStop = Math.round(trailingShortStop * 100) / 100;
+      }
+    }
+  }
+
+  // ===== SCORING (frontend compatibility) =====
+  if (signal === "BUY") {
+    buyScore = 60 + Math.round(trendStrength * 2);
+    if (volumeCondition) buyScore += 15;
+    if (rsi < RSI_OVERSOLD) buyScore += 10;
+    if (price > calcVWAP(closes, volumes)) buyScore += 10;
+    buyScore = Math.min(100, buyScore);
+    sellScore = Math.max(0, 20 - Math.round(trendStrength));
+  } else if (signal === "SELL") {
+    sellScore = 60 + Math.round(trendStrength * 2);
+    if (volumeCondition) sellScore += 15;
+    if (rsi > RSI_OVERBOUGHT) sellScore += 10;
+    if (price < calcVWAP(closes, volumes)) sellScore += 10;
+    sellScore = Math.min(100, sellScore);
+    buyScore = Math.max(0, 20 - Math.round(trendStrength));
+  } else {
+    if (ema9 > ema21) {
+      buyScore = 30 + Math.round(trendStrength);
+      sellScore = 10;
+    } else {
+      buyScore = 10;
+      sellScore = 30 + Math.round(trendStrength);
+    }
+  }
+
+  return {
+    signal, entry: entryPrice, sl: slPrice, tp1, tp2, tp3,
+    trailingStop, positionSize, buyScore, sellScore,
+    emaCrossover: crossoverResult, trendStrength: Math.round(trendStrength * 100) / 100,
+    volumeCondition, activePosition, positionStatus,
+  };
+}
+
+// ===== MAIN HANDLER =====
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -68,55 +334,45 @@ Deno.serve(async (req: Request) => {
           const lows = (candles.low || []).filter((v: number) => v != null);
           const volumes = (candles.volume || []).filter((v: number) => v != null);
 
-          if (closes.length < 5) return { symbol: sym, error: true };
+          if (closes.length < 25) return { symbol: sym, error: true };
 
           const price = meta.regularMarketPrice || closes[closes.length - 1];
           const prev = meta.chartPreviousClose || meta.previousClose || closes[closes.length - 2] || price;
           const change = price - prev;
           const changePercent = prev ? (change / prev) * 100 : 0;
 
-          // === EMA calculations ===
-          const emaPeriods = timeframe === "intraday" ? [5, 13, 26] : [9, 21, 50];
-          const emas: Record<string, number> = {};
-          emaPeriods.forEach(p => {
+          // === EMA calculations (9 and 21 primary) ===
+          const ema9Arr = calcEMA(closes, EMA9_LENGTH);
+          const ema21Arr = calcEMA(closes, EMA21_LENGTH);
+          const ema9 = Math.round(ema9Arr[ema9Arr.length - 1] * 100) / 100;
+          const ema21 = Math.round(ema21Arr[ema21Arr.length - 1] * 100) / 100;
+
+          // Additional EMAs for frontend compatibility
+          const emas: Record<string, number> = { ema9, ema21 };
+          const extraPeriods = timeframe === "intraday" ? [5, 13, 26] : [50, 100];
+          for (const p of extraPeriods) {
             if (closes.length >= p) {
-              const emaArr = calcEMA(closes, p);
-              emas[`ema${p}`] = Math.round(emaArr[emaArr.length - 1] * 100) / 100;
+              const arr = calcEMA(closes, p);
+              emas[`ema${p}`] = Math.round(arr[arr.length - 1] * 100) / 100;
             }
-          });
-
-          // === RSI ===
-          const rsi = Math.round(calcRSI(closes, 14) * 100) / 100;
-
-          // === ATR ===
-          const atr = Math.round(calcATR(highs, lows, closes, 14) * 100) / 100;
-
-          // === VWAP ===
-          let vwap = price;
-          if (closes.length > 0 && volumes.length > 0) {
-            let pv = 0, vv = 0;
-            for (let i = 0; i < closes.length; i++) {
-              if (i < volumes.length && volumes[i]) {
-                pv += closes[i] * volumes[i];
-                vv += volumes[i];
-              }
-            }
-            vwap = vv ? Math.round((pv / vv) * 100) / 100 : price;
           }
 
+          // === RSI ===
+          const rsi = Math.round(calcRSI(closes, RSI_LENGTH) * 100) / 100;
+
+          // === ATR ===
+          const atr = Math.round(calcATR(highs, lows, closes, ATR_LENGTH) * 100) / 100;
+
+          // === VWAP ===
+          const vwap = Math.round(calcVWAP(closes, volumes) * 100) / 100;
+
           // === Volume Ratio ===
-          // Uses regularMarketVolume from meta vs avg of recent non-zero candle volumes
-          // Note: price function (get-nse-data) computes this more accurately from daily candles
-          // The frontend merge prefers price data's volumeRatio over this value
           let volumeRatio = 0;
           const regVol = meta.regularMarketVolume || 0;
           const nonZeroVols = volumes.filter((v: number) => v != null && v > 0);
           if (regVol && nonZeroVols.length >= 2) {
-            // Use second-to-last candle (last completed candle) as representative
-            const lastComplete = nonZeroVols[nonZeroVols.length - 1] > 0 ? nonZeroVols[nonZeroVols.length - 1] : nonZeroVols[nonZeroVols.length - 2];
             const recent = nonZeroVols.slice(-20, -1);
             const avgRecent = recent.length ? recent.reduce((a: number, b: number) => a + b, 0) / recent.length : 0;
-            // Scale up: daily volume vs avg 5m candle * candles per day
             const candlesPerDay = timeframe === "intraday" ? 75 : 1;
             const estAvgDaily = avgRecent * candlesPerDay;
             volumeRatio = estAvgDaily ? Math.round((regVol / estAvgDaily) * 100) / 100 : 0;
@@ -129,67 +385,15 @@ Deno.serve(async (req: Request) => {
           const resistance = Math.round(Math.max(...recentHighs) * 100) / 100;
           const support = Math.round(Math.min(...recentLows) * 100) / 100;
 
-          // === Signal logic ===
-          const emaKeys = Object.keys(emas).map(k => parseInt(k.replace("ema", ""))).sort((a, b) => a - b);
-          let signal = "NEUTRAL";
-          let buyScore = 0, sellScore = 0;
+          // === RUN 9/21 EMA CROSSOVER STRATEGY ===
+          const strat = runStrategy(closes, highs, lows, volumes, price, ema9Arr, ema21Arr);
 
-          if (emaKeys.length >= 2) {
-            const shortEma = emas[`ema${emaKeys[0]}`];
-            const longEma = emas[`ema${emaKeys[1]}`];
-            if (shortEma > longEma) { signal = "BUY"; buyScore += 30; }
-            else { signal = "SELL"; sellScore += 30; }
-          }
-
-          if (rsi < 30) { buyScore += 25; signal = "BUY"; }
-          else if (rsi > 70) { sellScore += 25; signal = "SELL"; }
-          else { buyScore += 5; }
-
-          if (price > vwap) { buyScore += 10; }
-          else { sellScore += 10; }
-
-          // Determine final signal strength
-          if (buyScore >= 70) signal = "STRONG BUY";
-          else if (buyScore >= 40) signal = "BUY";
-          else if (sellScore >= 70) signal = "STRONG SELL";
-          else if (sellScore >= 40) signal = "SELL";
-          else signal = "HOLD";
-
-          // === SL and TP ===
-          const slMult = timeframe === "intraday" ? 1 : 1.5;
-          const tpMult = timeframe === "intraday" ? [1.5, 2] : [2, 3];
-          const sl = Math.round((price - atr * slMult) * 100) / 100;
-          const tp1 = Math.round((price + atr * tpMult[0]) * 100) / 100;
-          const tp2 = Math.round((price + atr * tpMult[1]) * 100) / 100;
-
-          // === EMA crossover detection ===
-          const emaCrossover: any = { golden: false, death: false, cross: "none" };
-          if (emaKeys.length >= 2 && closes.length > emaKeys[1]) {
-            const shortArr = calcEMA(closes, emaKeys[0]);
-            const longArr = calcEMA(closes, emaKeys[1]);
-            const lastIdx = shortArr.length - 1;
-            if (lastIdx > 0) {
-              const wasBelow = shortArr[lastIdx - 1] <= longArr[lastIdx - 1];
-              const nowAbove = shortArr[lastIdx] > longArr[lastIdx];
-              const wasAbove = shortArr[lastIdx - 1] >= longArr[lastIdx - 1];
-              const nowBelow = shortArr[lastIdx] < longArr[lastIdx];
-              if (wasBelow && nowAbove) { emaCrossover.golden = true; emaCrossover.cross = "golden"; buyScore += 20; }
-              else if (wasAbove && nowBelow) { emaCrossover.death = true; emaCrossover.cross = "death"; sellScore += 20; }
-            }
-          }
-
-          // === Trend from EMA alignment ===
+          // === Trend ===
           let trend = "Sideways";
-          if (emaKeys.length >= 3) {
-            const e1 = emas[`ema${emaKeys[0]}`];
-            const e2 = emas[`ema${emaKeys[1]}`];
-            const e3 = emas[`ema${emaKeys[2]}`];
-            if (e1 > e2 && e2 > e3) trend = "Up";
-            else if (e1 < e2 && e2 < e3) trend = "Down";
-            else trend = "Sideways";
-          }
+          if (ema9 > ema21) trend = "Up";
+          else if (ema9 < ema21) trend = "Down";
 
-          // === Chart Pattern (basic) ===
+          // === Chart Pattern ===
           let chartPattern = "Consolidation";
           if (closes.length >= 10) {
             const recent = closes.slice(-10);
@@ -206,7 +410,6 @@ Deno.serve(async (req: Request) => {
             else if (pctChange > 3) chartPattern = "Uptrend";
             else if (pctChange < -3) chartPattern = "Downtrend";
             else {
-              // Check for higher highs / lower lows
               const mid = Math.floor(recent.length / 2);
               const firstHigh = Math.max(...highs10.slice(0, mid));
               const lastHigh = Math.max(...highs10.slice(mid));
@@ -218,14 +421,12 @@ Deno.serve(async (req: Request) => {
             }
           }
 
-          // === ORB Signal (Opening Range Breakout) ===
+          // === ORB ===
           let orbSignal = "None";
           if (timeframe === "intraday" && closes.length > 0) {
-            // First candle high/low as opening range
             if (highs.length > 0 && lows.length > 0) {
               if (price > highs[0]) orbSignal = "Bullish ORB";
               else if (price < lows[0]) orbSignal = "Bearish ORB";
-              else orbSignal = "None";
             }
           }
 
@@ -234,28 +435,36 @@ Deno.serve(async (req: Request) => {
           const fiftyTwoWeekLow = meta.fiftyTwoWeekLow || 0;
           const pctFrom52WeekHigh = fiftyTwoWeekHigh ? Math.round(((fiftyTwoWeekHigh - price) / fiftyTwoWeekHigh) * 100 * 100) / 100 : 0;
 
-          buyScore = Math.min(100, buyScore);
-          sellScore = Math.min(100, sellScore);
+          // EMA crossover for frontend
+          const emaCrossover: any = strat.emaCrossover;
+          let emaCrossSignal = "None";
+          if (emaCrossover.cross === "golden") emaCrossSignal = "Golden Cross";
+          else if (emaCrossover.cross === "death") emaCrossSignal = "Death Cross";
 
           return {
             symbol: sym,
             price: Math.round(price * 100) / 100,
             change: Math.round(change * 100) / 100,
             changePercent: Math.round(changePercent * 100) / 100,
-            emas,
-            rsi,
-            atr,
-            vwap,
-            volumeRatio,
-            support,
-            resistance,
-            signal,
-            buyScore,
-            sellScore,
-            sl,
-            tp1,
-            tp2,
+            emas, rsi, atr, vwap, volumeRatio, support, resistance,
+            // Strategy outputs
+            signal: strat.signal,
+            buyScore: strat.buyScore,
+            sellScore: strat.sellScore,
+            entry: strat.entry,
+            sl: strat.sl,
+            tp1: strat.tp1,
+            tp2: strat.tp2,
+            tp3: strat.tp3,
+            trailingStop: strat.trailingStop,
+            positionSize: strat.positionSize,
+            positionStatus: strat.positionStatus,
+            activePosition: strat.activePosition,
+            trendStrength: strat.trendStrength,
+            volumeCondition: strat.volumeCondition,
+            // Legacy compatibility
             emaCrossover,
+            emaCrossSignal,
             trend,
             chartPattern,
             orbSignal,
