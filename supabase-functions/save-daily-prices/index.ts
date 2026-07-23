@@ -1,4 +1,3 @@
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -60,26 +59,45 @@ async function fetchBatchQuotes(symbols: string[]): Promise<any[]> {
       
       const meta = result.meta;
       const price = meta.regularMarketPrice;
-      const prevClose = meta.chartPreviousClose || meta.previousClose || price;
-      const change = price - prevClose;
-      const changePercent = prevClose ? (change / prevClose) * 100 : 0;
       
-      // Get OHLC from the last candle
+      // Get OHLC from candles — use candle data for accurate close/prev_close
       const timestamps = result.timestamp || [];
       const quotes = result.indicators?.quote?.[0] || {};
+      const closes = (quotes.close || []).filter((v: number | null) => v != null);
+      const opens = (quotes.open || []).filter((v: number | null) => v != null);
+      const highs = (quotes.high || []).filter((v: number | null) => v != null);
+      const lows = (quotes.low || []).filter((v: number | null) => v != null);
+      const volumes = (quotes.volume || []).filter((v: number | null) => v != null);
       const lastIdx = timestamps.length - 1;
+      
+      // Use second-to-last candle's close as previous close (yesterday's actual close)
+      // chartPreviousClose gives the close BEFORE the range start, NOT yesterday's close
+      const prevClose = closes.length >= 2 
+        ? closes[closes.length - 2] 
+        : (meta.chartPreviousClose || price);
+      
+      // Use the last candle's close if available (more reliable than regularMarketPrice
+      // which can be a stale cached value), fallback to regularMarketPrice
+      const closePrice = closes.length >= 1 ? closes[closes.length - 1] : price;
+      const openPrice = opens.length >= 1 ? opens[opens.length - 1] : (meta.regularMarketOpen || closePrice);
+      const highPrice = highs.length >= 1 ? highs[highs.length - 1] : (meta.regularMarketDayHigh || closePrice);
+      const lowPrice = lows.length >= 1 ? lows[lows.length - 1] : (meta.regularMarketDayLow || closePrice);
+      const volume = volumes.length >= 1 ? volumes[volumes.length - 1] : (meta.regularMarketVolume || null);
+      
+      const change = closePrice - prevClose;
+      const changePercent = prevClose ? (change / prevClose) * 100 : 0;
       
       results.push({
         symbol: sym,
-        open: quotes.open?.[lastIdx] || meta.regularMarketOpen || null,
-        high: quotes.high?.[lastIdx] || meta.regularMarketDayHigh || null,
-        low: quotes.low?.[lastIdx] || meta.regularMarketDayLow || null,
-        close: price,
+        open: openPrice,
+        high: highPrice,
+        low: lowPrice,
+        close: closePrice,
         prev_close: prevClose,
         change_val: parseFloat(change.toFixed(2)),
         change_percent: parseFloat(changePercent.toFixed(2)),
-        volume: meta.regularMarketVolume || quotes.volume?.[lastIdx] || null,
-        turnover: null, // Not available from Yahoo Finance
+        volume: volume,
+        turnover: null,
         series: "EQ",
       });
     } catch (e) {
