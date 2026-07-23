@@ -368,13 +368,18 @@ Deno.serve(async (req: Request) => {
 
     const results = await Promise.all(
       symbols.map(async (sym: string) => {
+        // Auto-append .NS suffix for NSE stocks if missing
+        let yahooSym = sym;
+        if (!yahooSym.startsWith('^') && !yahooSym.includes('.')) {
+          yahooSym = yahooSym + '.NS';
+        }
         try {
           let interval: string, range: string;
           if (timeframe === "intraday" || timeframe === "5m") { interval = "5m"; range = "1mo"; }
           else if (timeframe === "15m") { interval = "15m"; range = "1mo"; }
           else if (timeframe === "1h") { interval = "60m"; range = "3mo"; }
           else { interval = "1d"; range = "6mo"; } // swing
-          const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${interval}&range=${range}`;
+          const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=${interval}&range=${range}`;
           const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
           
           let j: any;
