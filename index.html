@@ -2720,7 +2720,7 @@ function renderMovers(data){
   }).join(''):'<tr><td colspan="11" class="empty-row">No gainers</td></tr>';
   document.getElementById('vlBody').innerHTML=l.length?l.map(function(d,i){
     var vr=d.volumeRatio||1;
-    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td style="color:var(--text2)">'+f0(d.open||0)+'</td><td style="color:var(--text2)">'+f0(d.dayHigh||0)+'</td><td style="color:var(--text2)'>"+f0(d.previousClose||0)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>'+(d.signal||'-')+'</td><td style="font-size:10px">'+(d.chartPattern||'-')+'</td></tr>';
+    return '<tr><td>'+(i+1)+'</td><td><b>'+cs(d.symbol)+'</b></td><td>'+f0(d.price)+'</td><td style="color:var(--text2)">'+f0(d.open||0)+'</td><td style="color:var(--text2)">'+f0(d.dayHigh||0)+'</td><td style="color:var(--text2)">'+f0(d.previousClose||0)+'</td><td class="neg">'+(d.changePercent||0).toFixed(2)+'%</td><td>'+(vr?vr.toFixed(1):'1.0')+'x</td><td>'+(d.signal||'-')+'</td><td style="font-size:10px">'+(d.chartPattern||'-')+'</td></tr>';
   }).join(''):'<tr><td colspan="11" class="empty-row">No losers</td></tr>';
 }
 
