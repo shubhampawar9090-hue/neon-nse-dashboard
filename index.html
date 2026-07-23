@@ -2453,7 +2453,9 @@ async function fetchHeaderIndices(){
       var j=await res.json();
       var meta=j.chart.result[0].meta;
       var price=meta.regularMarketPrice;
-      var prev=meta.chartPreviousClose||meta.previousClose||price;
+      var allCandles=j.chart.result[0].indicators.quote[0]||{};
+      var allCloses=(allCandles.close||[]).filter(function(v){return v!=null});
+      var prev=allCloses.length>=2?allCloses[allCloses.length-2]:(meta.chartPreviousClose||price);
       var chg=price-prev;
       var pct=prev?((chg/prev)*100):0;
       headerIdxCache[sym]={price:price,change:chg,changePercent:pct};
@@ -2529,7 +2531,9 @@ async function fetchIndexPriceCards(){
         var j=await res.json();
         var meta=j.chart.result[0].meta;
         var price=meta.regularMarketPrice;
-        var prev=meta.chartPreviousClose||meta.previousClose||price;
+        var allCandles=j.chart.result[0].indicators.quote[0]||{};
+        var allCloses=(allCloses.close||[]).filter(function(v){return v!=null});
+        var prev=allCloses.length>=2?allCloses[allCloses.length-2]:(meta.chartPreviousClose||price);
         var open=meta.regularMarketOpen||price;
         var high=meta.regularMarketDayHigh||price;
         var low=meta.regularMarketDayLow||price;

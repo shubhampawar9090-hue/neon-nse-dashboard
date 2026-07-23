@@ -25,11 +25,14 @@ async function fetchSymbol(sym: string) {
     if (!meta) return { symbol: sym, error: true };
 
     const price = meta.regularMarketPrice;
-    const prev = meta.chartPreviousClose || meta.previousClose || price;
+    const candles = j.chart?.result?.[0]?.indicators?.quote?.[0] || {};
+    const closes = (candles.close || []).filter((v: number | null) => v != null);
+    // Use second-to-last candle's close as previous close (actual yesterday's close)
+    // chartPreviousClose gives the close BEFORE the range start, not yesterday's close
+    const prev = closes.length >= 2 ? closes[closes.length - 2] : (meta.chartPreviousClose || price);
     const change = price - prev;
     const changePercent = prev ? (change / prev) * 100 : 0;
 
-    const candles = j.chart?.result?.[0]?.indicators?.quote?.[0] || {};
     const volumes = (candles.volume || []).filter((v: number | null) => v != null);
     const recentVol = volumes.slice(-5);
     const avgVol = recentVol.length ? recentVol.reduce((a: number, b: number) => a + b, 0) / recentVol.length : 0;
