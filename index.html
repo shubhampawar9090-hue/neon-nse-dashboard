@@ -3137,10 +3137,10 @@ async function loadAllNsePrices(){
         nseMovers=pd.data;
         // Map NSE API fields to our format
         nseMovers.gainers=pd.data.gainers.map(function(d){
-          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ',open:d.open||0,prevClose:d.prevClose||0};
+          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ',open:d.open||0,high:d.high||0,prevClose:d.prevClose||0};
         });
         nseMovers.losers=pd.data.losers.map(function(d){
-          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ',open:d.open||0,prevClose:d.prevClose||0};
+          return {symbol:d.symbol,price:d.price,changePercent:d.changePercent||0,changeAbs:d.change||0,volume:d.volume||0,turnover:d.turnover||0,series:d.series||'EQ',open:d.open||0,high:d.high||0,prevClose:d.prevClose||0};
         });
         console.log('NSE Movers API: '+nseMovers.gainers.length+' gainers, '+nseMovers.losers.length+' losers (official NSE real-time)');
         updateMoversPanel(live);
@@ -3238,8 +3238,8 @@ function updateMoversPanel(live){
     var chgClass=chg>=0?'pos tv-pct':'neg tv-pct';
     var chgSign=chg>=0?'+':'';
     var absSign=chgAbs>=0?'+':'-';
-    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="'+chgClass+'">'+chgSign+chg.toFixed(2)+'%</td><td>'+absSign+f0(Math.abs(chgAbs))+'</td><td>'+vol+'</td><td>'+(d.turnover?'\u20b9'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+(d.series||'EQ')+'</td></tr>';
-  }).join(''):'<tr><td colspan="8" class="empty-row">No gainers</td></tr>';
+    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td style="color:var(--text2)">'+f0(d.open||0)+'</td><td style="color:var(--text2)">'+f0(d.high||0)+'</td><td style="color:var(--text2)">'+f0(d.prevClose||0)+'</td><td class="'+chgClass+'">'+chgSign+chg.toFixed(2)+'%</td><td>'+absSign+f0(Math.abs(chgAbs))+'</td><td>'+vol+'</td><td>'+(d.turnover?'₹'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+(d.series||'EQ')+'</td></tr>';
+  }).join(''):'<tr><td colspan="11" class="empty-row">No gainers</td></tr>';
   document.getElementById('vlBody').innerHTML=losers.length?losers.map(function(d,i){
     var vol=fmtVol(d.volume);
     var chg=(d.changePercent||0);
@@ -3247,8 +3247,8 @@ function updateMoversPanel(live){
     var chgClass=chg>=0?'pos tv-pct':'neg tv-pct';
     var chgSign=chg>=0?'+':'';
     var absSign=chgAbs>=0?'+':'-';
-    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td class="'+chgClass+'">'+chgSign+chg.toFixed(2)+'%</td><td>'+absSign+f0(Math.abs(chgAbs))+'</td><td>'+vol+'</td><td>'+(d.turnover?'\u20b9'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+(d.series||'EQ')+'</td></tr>';
-  }).join(''):'<tr><td colspan="8" class="empty-row">No losers</td></tr>';
+    return '<tr data-sym="'+d.symbol+'"><td>'+(i+1)+'</td><td><b>'+d.symbol+'</b></td><td class="tv-price">'+f0(d.price)+'</td><td style="color:var(--text2)">'+f0(d.open||0)+'</td><td style="color:var(--text2)">'+f0(d.high||0)+'</td><td style="color:var(--text2)">'+f0(d.prevClose||0)+'</td><td class="'+chgClass+'">'+chgSign+chg.toFixed(2)+'%</td><td>'+absSign+f0(Math.abs(chgAbs))+'</td><td>'+vol+'</td><td>'+(d.turnover?'₹'+(d.turnover/100).toFixed(1)+'Cr':'-')+'</td><td>'+(d.series||'EQ')+'</td></tr>';
+  }).join(''):'<tr><td colspan="11" class="empty-row">No losers</td></tr>';
 
 renderLiveTickMovers();
   setInterval(renderLiveTickMovers, 10000); // F&O panel refresh every 10s
