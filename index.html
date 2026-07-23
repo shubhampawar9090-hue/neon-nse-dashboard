@@ -2277,7 +2277,9 @@ async function fetchStockData(symbol){
     var j=await res.json();
     var meta=j.chart.result[0].meta;
     var price=meta.regularMarketPrice;
-    var prev=meta.chartPreviousClose||meta.previousClose||price;
+    var allCandles1=j.chart.result[0].indicators.quote[0]||{};
+    var allCloses1=(allCandles1.close||[]).filter(function(v){return v!=null;});
+    var prev=allCloses1.length>=2?allCloses1[allCloses1.length-2]:(meta.chartPreviousClose||price);
     var change=price-prev;
     var changePercent=prev?(change/prev)*100:0;
     var volumes=(j.chart.result[0].indicators.quote[0].volume||[]).filter(function(v){return v!=null;});
@@ -2386,9 +2388,9 @@ async function fetchTA(symbol,timeframe){
       volumeRatio:volRatio,
       dayHigh:meta.regularMarketDayHigh||price,
       dayLow:meta.regularMarketDayLow||price,
-      previousClose:meta.chartPreviousClose||meta.previousClose||price,
-      change:Math.round((price-(meta.chartPreviousClose||meta.previousClose||price))*100)/100,
-      changePercent:Math.round(((price-(meta.chartPreviousClose||meta.previousClose||price))/(meta.chartPreviousClose||meta.previousClose||price)*100)*100)/100,
+      previousClose:closes.length>=2?closes[closes.length-2]:(meta.chartPreviousClose||price),
+      change:Math.round((price-(closes.length>=2?closes[closes.length-2]:(meta.chartPreviousClose||price)))*100)/100,
+      changePercent:Math.round(((price-(closes.length>=2?closes[closes.length-2]:(meta.chartPreviousClose||price)))/(closes.length>=2?closes[closes.length-2]:(meta.chartPreviousClose||price))*100)*100)/100,
       chartPattern:'—',trend:closes.length>5&&closes[closes.length-1]>closes[closes.length-5]?'Up':(closes[closes.length-1]<closes[closes.length-5]?'Down':'Sideways'),
       orbSignal:'None'
     };
@@ -2532,7 +2534,7 @@ async function fetchIndexPriceCards(){
         var meta=j.chart.result[0].meta;
         var price=meta.regularMarketPrice;
         var allCandles=j.chart.result[0].indicators.quote[0]||{};
-        var allCloses=(allCloses.close||[]).filter(function(v){return v!=null});
+        var allCloses=(allCandles.close||[]).filter(function(v){return v!=null});
         var prev=allCloses.length>=2?allCloses[allCloses.length-2]:(meta.chartPreviousClose||price);
         var open=meta.regularMarketOpen||price;
         var high=meta.regularMarketDayHigh||price;
