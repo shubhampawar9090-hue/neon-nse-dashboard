@@ -953,6 +953,11 @@ body {
   background-color: rgba(0, 255, 136, 0.05);
   border-color: rgba(0, 255, 136, 0.2);
 }
+.sl-tp .entry {
+  background-color: rgba(255, 200, 0, 0.05);
+  border-color: rgba(255, 200, 0, 0.2);
+}
+.sl-tp .entry .val { color: var(--amber, #ff8800); }
 .sl-tp .lbl {
   font-size: 7px;
   color: var(--text2);
@@ -2312,10 +2317,11 @@ async function fetchTA(symbol,timeframe){
     else{buyScore+=5;}
     // SL/TP
     var slMult=timeframe==='intraday'?1:1.5;
-    var tpMult=timeframe==='intraday'?[1.5,2]:[2,3];
+    var tpMult=timeframe==='intraday'?[1.5,2,2.5]:[2,3,4];
     var sl=Math.round((price-atr*slMult)*100)/100;
     var tp1=Math.round((price+atr*tpMult[0])*100)/100;
     var tp2=Math.round((price+atr*tpMult[1])*100)/100;
+    var tp3=Math.round((price+atr*tpMult[2])*100)/100;
     // EMA crossover
     var emaCrossover={golden:false,death:false,cross:'none'};
     if(emaKeys.length>=2&&closes.length>emaKeys[1]){
@@ -2345,7 +2351,7 @@ async function fetchTA(symbol,timeframe){
     return{
       symbol:symbol,price:Math.round(price*100)/100,
       emas:emas,rsi,atr,vwap,support,resistance,
-      signal,buyScore,sellScore,sl,tp1,tp2,
+      signal,buyScore,sellScore,sl,tp1,tp2,tp3,
       emaCrossover,error:false,
       fiftyTwoWeekHigh,fiftyTwoWeekLow,pctFrom52WeekHigh,
       volumeRatio:volRatio,
@@ -2702,19 +2708,12 @@ function renderCard(d){
   }
   var h='<div class="sig-card '+cc+'"><div class="sc-head"><div><div class="sc-name">'+cs(d.symbol)+'</div><div class="sc-price">'+f(d.price)+'</div></div><div class="sc-badge '+bc+'">'+d.signal+'</div></div>'+
     '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(priceChange>=0?'+':'')+f0(priceChange)+')</span><span class="vol-txt">Vol: '+volStr+' ('+d.volumeRatio+'x)</span></div>'+
-    ih+
-    '<div class="reason-box"><b>Signal Score:</b> Buy '+d.buyScore+' / Sell '+d.sellScore+'<br><b>Pattern:</b> '+d.chartPattern+' ('+d.chartPatternType+') | <b>Breakout:</b> '+d.breakoutType+' | <b>ATR:</b> '+d.atrTrend+' | <b>Sentiment:</b> '+d.sentiment+(d.emaCrossSignal&&d.emaCrossSignal!=='None'?'<br><b>EMA Cross:</b> '+d.emaCrossLabel+' ('+d.emaCrossFreshness+', '+d.emaCrossBars+' bars ago) @ '+f(d.emaCrossPrice):'')+(signalReason?'<br>'+signalReason:'')+'</div>'+
-    '<div class="tag-row">'+tags+'</div>'+
-    '<div class="mini-grid"><div class="mini"><span class="mini-l">'+(d.emaLabel||'EMA')+'</span><span class="mini-v '+ec+'">'+es+'</span></div><div class="mini"><span class="mini-l">'+vwapLbl+'</span><span class="mini-v '+vc+'">'+f0(d.vwap)+'</span></div><div class="mini"><span class="mini-l">RSI</span><span class="mini-v '+rc+'">'+(d.rsi||'—')+'</span></div></div>'+
-    '<div class="mini-grid"><div class="mini"><span class="mini-l">ATR</span><span class="mini-v">'+f0(d.atr)+'</span></div><div class="mini"><span class="mini-l">Day Low</span><span class="mini-v g">'+f0(support)+'</span></div><div class="mini"><span class="mini-l">Day High</span><span class="mini-v r">'+f0(resistance)+'</span></div></div>';
-  if(isIntra&&d.orbSignal&&d.orbSignal!=='None'){
-    h+='<div class="mini-grid"><div class="mini"><span class="mini-l">ORB Signal</span><span class="mini-v '+(d.orbSignal.indexOf('Bullish')>=0?'g':(d.orbSignal.indexOf('Bearish')>=0?'r':''))+'">'+d.orbSignal+'</span></div><div class="mini"><span class="mini-l">Vol Ratio</span><span class="mini-v '+(d.volumeRatio>1.5?'o':'')+'">'+d.volumeRatio+'x</span></div><div class="mini"><span class="mini-l">Trend</span><span class="mini-v">'+d.trend+'</span></div></div>';
-  }
-  h+='<div class="mini-grid"><div class="mini"><span class="mini-l">52W H</span><span class="mini-v">'+f0(d.fiftyTwoWeekHigh)+'</span></div><div class="mini"><span class="mini-l">52W L</span><span class="mini-v">'+f0(d.fiftyTwoWeekLow)+'</span></div><div class="mini"><span class="mini-l">Chg%H</span><span class="mini-v neg">-'+(d.pctFrom52WeekHigh||'—')+'%</span></div></div>'+
     '<div class="sl-tp">'+
-    '<div class="box sl"><div class="lbl">'+slLbl+'</div><div class="val">'+(sl!=null?f(sl):'—')+'</div></div>'+
-    '<div class="box tp"><div class="lbl">'+tp1Lbl+'</div><div class="val">'+(tp1!=null?f(tp1):'—')+'</div></div>'+
-    '<div class="box tp"><div class="lbl">'+tp2Lbl+'</div><div class="val">'+(tp2!=null?f(tp2):'—')+'</div></div>'+
+    '<div class="box sl"><div class="lbl">SL</div><div class="val">'+(sl!=null?f(sl):'—')+'</div></div>'+
+    '<div class="box entry"><div class="lbl">Entry</div><div class="val">'+f(d.price)+'</div></div>'+
+    '<div class="box tp"><div class="lbl">TP1</div><div class="val">'+(tp1!=null?f(tp1):'—')+'</div></div>'+
+    '<div class="box tp"><div class="lbl">TP2</div><div class="val">'+(tp2!=null?f(tp2):'—')+'</div></div>'+
+    '<div class="box tp"><div class="lbl">TP3</div><div class="val">'+(d.tp3!=null?f(d.tp3):'—')+'</div></div>'+
     '</div></div>';
   return h;
 }
@@ -2859,6 +2858,10 @@ function normalizeTA(merged){
     // Volume ratio default
     if(!item.volumeRatio)item.volumeRatio=1;
     
+    // Derive TP3 if missing (tp3 = tp2 + (tp2 - tp1))
+    if(!item.tp3&&item.tp1&&item.tp2){
+      item.tp3=Math.round((item.tp2+(item.tp2-item.tp1))*100)/100;
+    }
     return item;
   });
 }
