@@ -1,1 +1,5 @@
 .agents/.env
+node_modules/
+.npm/
+__pycache__/
+.cache/
