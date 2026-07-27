@@ -3922,6 +3922,12 @@ function doLogout(){
   localStorage.removeItem('sb_session');
 }
 
+function showAuthOverlay(){
+  if(currentUser)return; // Don't re-show if already logged in (guest or real)
+  var ov=document.getElementById('authOverlay');
+  if(ov){ov.classList.remove('hidden');ov.style.display='flex';}
+}
+
 // Check existing session on load — persist login across refreshes
 // Guest mode check first
 if(localStorage.getItem('sb_guest')==='true'){
