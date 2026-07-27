@@ -1826,8 +1826,7 @@ body {
       <div class="status-cluster">
         <span class="pill" id="statusPill"><span class="pill-dot" id="pillDot"></span><span id="pillText">CONNECTING</span></span>
         <span class="clock">Yahoo Finance | <b id="clock">--:--:--</b> IST</span>
-        <button class="btn-refresh" onclick="loadAll();
-loadAllNsePrices()">↻ Refresh</button>
+        <button class="btn-refresh" onclick="loadAll();loadPriceList();loadAllNsePrices()">↻ Refresh</button>
         <button class="btn-refresh" id="tvToggleBtn" onclick="toggleTradingView()" style="background:rgba(0,212,255,.15);border-color:#00d4ff;color:#00d4ff">TV: ON</button>
     <div class="user-badge" id="userBadge" style="display:none" onclick="doLogout()"><span class="ub-icon" id="ubIcon">S</span><span class="ub-name" id="ubName">User</span><span class="ub-logout">LOGOUT</span></div>
         <button class="btn-watchlist-add">+ WATCHLIST</button>
@@ -1925,6 +1924,10 @@ loadAllNsePrices()">↻ Refresh</button>
         <button class="sidebar-item">
           <span class="sidebar-icon">📰</span>
           <span class="sidebar-label">NEWS</span>
+        </button>
+        <button class="sidebar-item" onclick="scrollToSec('priceListSec')">
+          <span class="sidebar-icon">💰</span>
+          <span class="sidebar-label">PRICES</span>
         </button>
         <button class="sidebar-item">
           <span class="sidebar-icon">⚙️</span>
@@ -2139,6 +2142,47 @@ loadAllNsePrices()">↻ Refresh</button>
         </div>
       </div>
 
+      <!-- ===== PRICE LIST — ALL NSE STOCKS ===== -->
+      <div id="priceListSec"></div>
+      <div class="divider"><span class="divider-text">💰 ALL NSE STOCK PRICES</span><span class="divider-line"></span></div>
+      <div class="pl-wrap">
+        <div class="pl-stats">
+          <div class="pl-stat">Total: <b id="plTotal">—</b></div>
+          <div class="pl-stat">Gainers: <span class="pos" id="plGainers">—</span></div>
+          <div class="pl-stat">Losers: <span class="neg" id="plLosers">—</span></div>
+          <div class="pl-stat">Showing: <b id="plShowing">—</b></div>
+          <div class="pl-stat">Updated: <b id="plUpdated">—</b></div>
+        </div>
+        <div class="pl-controls">
+          <input class="pl-search" id="plSearch" placeholder="Search symbol... (e.g. RELIANCE, TCS, INFY)" oninput="plFilter()">
+          <select class="pl-sort" id="plSort" onchange="plFilter()">
+            <option value="symbol">Sort: Symbol A-Z</option>
+            <option value="-change_pct">Sort: Change % ↓</option>
+            <option value="change_pct">Sort: Change % ↑</option>
+            <option value="-price">Sort: Price ↓</option>
+            <option value="price">Sort: Price ↑</option>
+            <option value="-volume">Sort: Volume ↓</option>
+          </select>
+        </div>
+        <div class="pl-scroll" id="plScroll">
+          <table class="pl-table">
+            <thead><tr>
+              <th onclick="plSetSort('symbol')">Symbol</th>
+              <th onclick="plSetSort('price')">Price ₹</th>
+              <th onclick="plSetSort('change_pct')">Chg %</th>
+              <th onclick="plSetSort('change_abs')">Chg ₹</th>
+              <th onclick="plSetSort('volume')">Volume</th>
+              <th onclick="plSetSort('day_open')">Open</th>
+              <th onclick="plSetSort('day_high')">High</th>
+              <th onclick="plSetSort('day_low')">Low</th>
+            </tr></thead>
+            <tbody id="plBody">
+              <tr><td colspan="8" class="pl-load">Loading 2,384 stocks...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="foot">Real data from Yahoo Finance. Powered by Supabase Edge Functions. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
     </main>
   </div>
@@ -2174,6 +2218,7 @@ loadAllNsePrices()">↻ Refresh</button>
     <button onclick="scrollToSec('chartSec')"><span class="mn-icon">📈</span>CHART</button>
     <button onclick="scrollToSec('sentiSec')"><span class="mn-icon">◉</span>SENTI</button>
     <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
+        <button onclick="scrollToSec('priceListSec')"><span class="mn-icon">💰</span>PRICES</button>
         <button onclick="aiToggle()"><span class="mn-icon">AI</span>ELARA</button>
   </div>
 
@@ -2411,6 +2456,7 @@ function setMode(mode){
   t.innerHTML=i.title+i.tag;
   s.innerHTML=i.sub;
   loadAll();
+  loadPriceList();
 }
 
 function renderIndices(data){
@@ -4006,6 +4052,146 @@ function scrollToSec(id){
   document.querySelectorAll('.mobile-nav button').forEach(function(b){b.classList.remove('active');});
   event.currentTarget.classList.add('active');
 }
+
+// ===== PRICE LIST — ALL NSE STOCKS =====
+var plData=[];
+var plFiltered=[];
+var plSortKey='symbol';
+var plSortDir=1;
+var plRendered=0;
+var PL_PAGE=100;
+
+async function loadPriceList(){
+  try{
+    var res=await fetch(SUPABASE_URL+'/rest/v1/stock_ticks?select=symbol,price,change_pct,change_abs,volume,day_high,day_low,day_open,tick_time&order=tick_time.desc&limit=3000',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    var data=await res.json();
+    // Deduplicate — keep latest per symbol
+    var seen={};
+    plData=[];
+    for(var i=0;i<data.length;i++){
+      var d=data[i];
+      if(!seen[d.symbol]){
+        seen[d.symbol]=1;
+        plData.push({
+          symbol:d.symbol,
+          price:d.price||0,
+          change_pct:d.change_pct||0,
+          change_abs:d.change_abs||0,
+          volume:d.volume||0,
+          day_open:d.day_open||0,
+          day_high:d.day_high||0,
+          day_low:d.day_low||0
+        });
+      }
+    }
+    plData.sort(function(a,b){return a.symbol<b.symbol?-1:a.symbol>b.symbol?1:0});
+    // Stats
+    var g=0,l=0;
+    for(var i=0;i<plData.length;i++){
+      if(plData[i].change_pct>0)g++;
+      else if(plData[i].change_pct<0)l++;
+    }
+    document.getElementById('plTotal').textContent=plData.length;
+    document.getElementById('plGainers').textContent=g;
+    document.getElementById('plLosers').textContent=l;
+    document.getElementById('plUpdated').textContent=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' IST';
+    plFilter();
+  }catch(e){
+    document.getElementById('plBody').innerHTML='<tr><td colspan="8" class="pl-load" style="color:var(--red)">Error loading data: '+e.message+'</td></tr>';
+  }
+}
+
+function plSetSort(key){
+  if(plSortKey===key){plSortDir=-plSortDir;}else{plSortKey=key;plSortDir=1;}
+  plFilter();
+}
+
+function plFilter(){
+  var q=(document.getElementById('plSearch').value||'').toUpperCase().trim();
+  var sortSel=document.getElementById('plSort');
+  if(sortSel.value){plSortKey=sortSel.value.replace('-','');plSortDir=sortSel.value.startsWith('-')?-1:1;}
+  plFiltered=plData.filter(function(d){
+    return !q||d.symbol.indexOf(q)>=0;
+  });
+  plFiltered.sort(function(a,b){
+    var va=a[plSortKey]||0,vb=b[plSortKey]||0;
+    if(typeof va==='string')return plSortDir*(va<vb?-1:va>vb?1:0);
+    return plSortDir*(va-vb);
+  });
+  plRendered=0;
+  document.getElementById('plShowing').textContent=plFiltered.length;
+  plRender();
+}
+
+function plFormatVol(v){
+  if(v>=10000000)return (v/10000000).toFixed(2)+'Cr';
+  if(v>=100000)return (v/100000).toFixed(2)+'L';
+  if(v>=1000)return (v/1000).toFixed(1)+'K';
+  return v;
+}
+
+function plRender(){
+  var body=document.getElementById('plBody');
+  var end=Math.min(plRendered+PL_PAGE,plFiltered.length);
+  var html='';
+  for(var i=plRendered;i<end;i++){
+    var d=plFiltered[i];
+    var pos=d.change_pct>=0;
+    html+='<tr>'+
+      '<td class="sym" onclick="plClickSymbol(''+d.symbol+'')">'+d.symbol+'</td>'+
+      '<td>'+(d.price?d.price.toFixed(2):'—')+'</td>'+
+      '<td class="'+(pos?'pos':'neg')+'">'+(pos?'+':'')+d.change_pct.toFixed(2)+'%</td>'+
+      '<td class="'+(pos?'pos':'neg')+'">'+(pos?'+':'')+(d.change_abs||0).toFixed(2)+'</td>'+
+      '<td>'+plFormatVol(d.volume)+'</td>'+
+      '<td>'+(d.day_open?d.day_open.toFixed(2):'—')+'</td>'+
+      '<td>'+(d.day_high?d.day_high.toFixed(2):'—')+'</td>'+
+      '<td>'+(d.day_low?d.day_low.toFixed(2):'—')+'</td>'+
+    '</tr>';
+  }
+  if(plRendered===0){
+    body.innerHTML=html;
+  }else{
+    body.innerHTML+=html;
+  }
+  plRendered=end;
+  if(plRendered<plFiltered.length){
+    body.innerHTML+='<tr id="plMoreRow"><td colspan="8" class="pl-load" style="cursor:pointer;color:var(--orange)" onclick="plRender()">▼ Load more ('+(plFiltered.length-plRendered)+' remaining)</td></tr>';
+  }
+}
+
+function plClickSymbol(sym){
+  // Load chart for this symbol
+  var yfSym=sym+'.NS';
+  if(sym==='^NSEI'||sym==='^NSEBANK'||sym==='^BSESN')yfSym=sym;
+  var sel=document.getElementById('chartSelect');
+  // Add option if not exists
+  var found=false;
+  for(var i=0;i<sel.options.length;i++){
+    if(sel.options[i].value===yfSym){found=true;break;}
+  }
+  if(!found){
+    var opt=document.createElement('option');
+    opt.value=yfSym;opt.text=sym;
+    sel.appendChild(opt);
+  }
+  sel.value=yfSym;
+  loadChart(yfSym);
+  scrollToSec('chartSec');
+}
+
+// Infinite scroll for price list
+document.getElementById('plScroll').addEventListener('scroll',function(){
+  if(this.scrollTop+this.clientHeight>=this.scrollHeight-50){
+    if(plRendered<plFiltered.length){
+      var moreRow=document.getElementById('plMoreRow');
+      if(moreRow)moreRow.remove();
+      plRender();
+    }
+  }
+});
+
 
 // ===== MARKET SENTIMENT METER =====
 var sentiChart=null;
