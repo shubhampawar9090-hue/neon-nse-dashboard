@@ -3801,13 +3801,16 @@ async function doLogin(){
   try{
     var email=document.getElementById('loginEmail').value.trim();
     var pass=document.getElementById('loginPass').value;
+    if(!email||!pass)throw{message:'Enter email and password'};
     var{data,error}=await sb.auth.signInWithPassword({email:email,password:pass});
     if(error)throw error;
+    if(!data.user)throw{message:'Login failed — no user returned'};
     onAuthSuccess(data.user);
   }catch(e){
     var lmsg=e.message||'Login failed';
-      if(lmsg.indexOf('Database error')>=0)lmsg='Supabase database temporarily unavailable. Please try again in a moment.';
-      document.getElementById('loginErr').textContent=lmsg;
+    if(lmsg.indexOf('Database error')>=0)lmsg='Supabase database temporarily unavailable. Please try again in a moment.';
+    if(lmsg.indexOf('Invalid login')>=0)lmsg='Wrong email or password';
+    document.getElementById('loginErr').textContent=lmsg;
   }
   btn.disabled=false;btn.textContent='LOGIN';
 }
@@ -3820,27 +3823,42 @@ async function doSignup(){
     var email=document.getElementById('signupEmail').value.trim();
     var pass=document.getElementById('signupPass').value;
     if(!name||!email||pass.length<6)throw{message:'Fill all fields. Password min 6 chars.'};
+    
+    // Step 1: Create the account
     var{data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{full_name:name}}});
-    if(error)throw error;
-    if(data.user&&data.session){
-      // Session returned — auto-login
-      onAuthSuccess(data.user);
-    }else if(data.user&&!data.session){
-      // No session but user created — try immediate sign-in (autoconfirm is on)
-      var{data:siData,error:siError}=await sb.auth.signInWithPassword({email:email,password:pass});
-      if(siError||!siData.user){
-        // Sign-in failed — show confirmation message as fallback
-        document.getElementById('signupErr').style.color='var(--green)';
-        document.getElementById('signupErr').textContent='Account created! Please log in.';
-        // Switch to login tab and pre-fill email
-        authTab('login');
-        document.getElementById('loginEmail').value=email;
-      }else{
-        onAuthSuccess(siData.user);
+    if(error){
+      // If user already exists, try signing in directly
+      if(error.message&&error.message.indexOf('already')>=0){
+        var{data:siData,error:siError}=await sb.auth.signInWithPassword({email:email,password:pass});
+        if(siError)throw siError;
+        if(siData.user){onAuthSuccess(siData.user);return;}
       }
-    }else{
-      throw{message:'Signup failed — no user returned'};
+      throw error;
     }
+    
+    // Step 2: Always sign in immediately (don't depend on data.session)
+    var{data:liData,error:liError}=await sb.auth.signInWithPassword({email:email,password:pass});
+    if(!liError&&liData.user){
+      onAuthSuccess(liData.user);
+      return;
+    }
+    
+    // Step 3: If sign-in failed, try using signUp's session if available
+    if(data.user&&data.session){
+      onAuthSuccess(data.user);
+      return;
+    }
+    
+    // Step 4: If all else fails, show success message and switch to login
+    if(data.user){
+      document.getElementById('signupErr').style.color='var(--green)';
+      document.getElementById('signupErr').textContent='Account created! Please log in.';
+      authTab('login');
+      document.getElementById('loginEmail').value=email;
+      return;
+    }
+    
+    throw{message:'Signup failed — no user returned'};
   }catch(e){
     document.getElementById('signupErr').textContent=e.message||'Signup failed';
   }
@@ -3848,21 +3866,38 @@ async function doSignup(){
 }
 
 function onAuthSuccess(user){
+  if(!user){
+    console.error('onAuthSuccess called with null user');
+    return;
+  }
   currentUser=user;
+  // Force-hide overlay with multiple methods
   var ov=document.getElementById('authOverlay');
-  if(ov)ov.classList.add('hidden');
-  var name=(user.user_metadata&&user.user_metadata.full_name)||user.email.split('@')[0];
-  document.getElementById('ubName').textContent=name;
-  document.getElementById('ubIcon').textContent=name.charAt(0).toUpperCase();
-  document.getElementById('userBadge').style.display='flex';
+  if(ov){
+    ov.classList.add('hidden');
+    ov.style.display='none';
+  }
+  // Set user badge
+  var name='User';
+  if(user.user_metadata&&user.user_metadata.full_name)name=user.user_metadata.full_name;
+  else if(user.email)name=user.email.split('@')[0];
+  var ubName=document.getElementById('ubName');
+  var ubIcon=document.getElementById('ubIcon');
+  var ubadge=document.getElementById('userBadge');
+  if(ubName)ubName.textContent=name;
+  if(ubIcon)ubIcon.textContent=name.charAt(0).toUpperCase();
+  if(ubadge)ubadge.style.display='flex';
   localStorage.setItem('sb_session','true');
+  console.log('Auth success:',name,user.email);
 }
 
 function doLogout(){
   if(sb)sb.auth.signOut();
   currentUser=null;
-  document.getElementById('userBadge').style.display='none';
-  document.getElementById('authOverlay').classList.remove('hidden');
+  var ubadge=document.getElementById('userBadge');
+  if(ubadge)ubadge.style.display='none';
+  var ov=document.getElementById('authOverlay');
+  if(ov){ov.classList.remove('hidden');ov.style.display='flex';}
   localStorage.removeItem('sb_session');
 }
 
@@ -3943,9 +3978,11 @@ if(sb){
 setTimeout(function(){
   if(currentUser){
     var ov=document.getElementById('authOverlay');
-    if(ov&&!ov.classList.contains('hidden')){
+    if(ov){
       ov.classList.add('hidden');
+      ov.style.display='none';
     }
+    console.log('Ultimate fallback: force-hid overlay');
   }
 },4000);
 
