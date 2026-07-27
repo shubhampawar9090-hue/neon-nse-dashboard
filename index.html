@@ -3838,7 +3838,8 @@ async function doSignup(){
 
 function onAuthSuccess(user){
   currentUser=user;
-  document.getElementById('authOverlay').classList.add('hidden');
+  var ov=document.getElementById('authOverlay');
+  if(ov)ov.classList.add('hidden');
   var name=(user.user_metadata&&user.user_metadata.full_name)||user.email.split('@')[0];
   document.getElementById('ubName').textContent=name;
   document.getElementById('ubIcon').textContent=name.charAt(0).toUpperCase();
@@ -3858,7 +3859,7 @@ function doLogout(){
 if(sb){
   // Method 1: Try getSession (reads from persisted storage)
   sb.auth.getSession().then(function(res){
-    if(res.data&&res.data.session&&res.data.user){
+    if(res.data&&res.data.session&&res.data.session.user){
       onAuthSuccess(res.data.user);
     }else{
       // Method 2: Check localStorage directly for Supabase token
@@ -3873,23 +3874,23 @@ if(sb){
               if(u.data&&u.data.user){
                 onAuthSuccess(u.data.user);
               }else{
-                document.getElementById('authOverlay').classList.remove('hidden');
+                showAuthOverlay();
               }
             }).catch(function(){
-              document.getElementById('authOverlay').classList.remove('hidden');
+              showAuthOverlay();
             });
           }else{
-            document.getElementById('authOverlay').classList.remove('hidden');
+            showAuthOverlay();
           }
         }catch(e){
-          document.getElementById('authOverlay').classList.remove('hidden');
+          showAuthOverlay();
         }
       }else{
-        document.getElementById('authOverlay').classList.remove('hidden');
+        showAuthOverlay();
       }
     }
   }).catch(function(){
-    document.getElementById('authOverlay').classList.remove('hidden');
+    showAuthOverlay();
   });
 
   // Method 3: Listen for auth state changes (catches INITIAL_SESSION, refreshes, etc.)
@@ -3902,11 +3903,12 @@ if(sb){
     }else if(event==='SIGNED_IN'&&session&&session.user){
       onAuthSuccess(session.user);
     }else if(event==='INITIAL_SESSION'&&session&&session.user){
-      // This fires when Supabase finishes loading the persisted session
       onAuthSuccess(session.user);
     }else if(event==='TOKEN_REFRESHED'&&session&&session.user){
       onAuthSuccess(session.user);
     }
+    // For INITIAL_SESSION with null session, don't show overlay here —
+    // the getSession() callback handles that
   });
 
   // Method 4: Fallback — if overlay still visible after 2s, try one more getSession
@@ -3914,7 +3916,7 @@ if(sb){
     var overlay=document.getElementById('authOverlay');
     if(overlay&&!overlay.classList.contains('hidden')){
       sb.auth.getSession().then(function(res){
-        if(res.data&&res.data.session&&res.data.user){
+        if(res.data&&res.data.session&&res.data.session.user){
           onAuthSuccess(res.data.user);
         }
       }).catch(function(){});
