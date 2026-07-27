@@ -1,6 +1,25 @@
-.agents/.env
+# Keep ONLY dashboard files on GitHub
+# Everything else is local dev only
+.agents/
+nsetools-dev/
+nsetools/
+incoming_files/
+base44/
+functions/
+supabase-functions/
+blobs/
 node_modules/
 .npm/
 __pycache__/
 .cache/
-blobs/
+*.pyc
+*.pyo
+*.bak
+disk_cleanup.sql
+supabase_schema.sql
+save-tv-ticks.ts
+fno_symbols.json
+nse_official_gl.json
+top10_data.json
+data/
+index.html.bak
