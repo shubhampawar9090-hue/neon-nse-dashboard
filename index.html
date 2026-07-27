@@ -3822,13 +3822,24 @@ async function doSignup(){
     if(!name||!email||pass.length<6)throw{message:'Fill all fields. Password min 6 chars.'};
     var{data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{full_name:name}}});
     if(error)throw error;
-    if(data.user){
-      if(!data.session){
+    if(data.user&&data.session){
+      // Session returned — auto-login
+      onAuthSuccess(data.user);
+    }else if(data.user&&!data.session){
+      // No session but user created — try immediate sign-in (autoconfirm is on)
+      var{data:siData,error:siError}=await sb.auth.signInWithPassword({email:email,password:pass});
+      if(siError||!siData.user){
+        // Sign-in failed — show confirmation message as fallback
         document.getElementById('signupErr').style.color='var(--green)';
-        document.getElementById('signupErr').textContent='Check your email to confirm account.';
+        document.getElementById('signupErr').textContent='Account created! Please log in.';
+        // Switch to login tab and pre-fill email
+        authTab('login');
+        document.getElementById('loginEmail').value=email;
       }else{
-        onAuthSuccess(data.user);
+        onAuthSuccess(siData.user);
       }
+    }else{
+      throw{message:'Signup failed — no user returned'};
     }
   }catch(e){
     document.getElementById('signupErr').textContent=e.message||'Signup failed';
@@ -3927,6 +3938,16 @@ if(sb){
   console.warn('Supabase SDK not loaded');
   document.getElementById('authOverlay').classList.add('hidden');
 }
+
+// Ultimate fallback: if currentUser is set but overlay still visible after 4s, force-hide it
+setTimeout(function(){
+  if(currentUser){
+    var ov=document.getElementById('authOverlay');
+    if(ov&&!ov.classList.contains('hidden')){
+      ov.classList.add('hidden');
+    }
+  }
+},4000);
 
 
 
