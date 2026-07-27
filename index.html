@@ -287,38 +287,6 @@ body {
   overflow-y: auto;
 }
 
-/* ===== TAB NAV ===== */
-.tab-nav {
-  display: flex;
-  gap: 8px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 20px;
-  overflow-x: auto;
-  white-space: nowrap;
-}
-.tab-nav::-webkit-scrollbar {
-  height: 0px;
-}
-.tab-btn {
-  background: none;
-  border: none;
-  color: var(--text2);
-  font-size: 12px;
-  font-weight: 700;
-  padding: 12px 16px;
-  cursor: pointer;
-  letter-spacing: 1.1px;
-  transition: all 0.15s;
-  border-bottom: 2px solid transparent;
-  text-transform: uppercase;
-}
-.tab-btn:hover {
-  color: var(--text);
-}
-.tab-btn.active {
-  color: var(--cyan);
-  border-bottom-color: var(--cyan);
-}
 
 /* ===== MODE TOGGLE ===== */
 .mode-row {
@@ -1745,10 +1713,6 @@ body {
   .clock {
     display: none;
   }
-  .tab-btn {
-    padding: 8px;
-    font-size: 11px;
-  }
   .sc-badge {
     position: relative;
     top: auto;
@@ -1990,16 +1954,6 @@ loadAllNsePrices()">↻ Refresh</button>
     <!-- MAIN CONTENT -->
     <main class="main-content">
       <!-- TAB NAV -->
-      <div class="tab-nav">
-        <button class="tab-btn active">DASHBOARD</button>
-        <button class="tab-btn">MARKET WATCH</button>
-        <button class="tab-btn">SCREENER</button>
-        <button class="tab-btn">OPTIONS</button>
-        <button class="tab-btn">CHARTS</button>
-        <button class="tab-btn">NEWS</button>
-        <button class="tab-btn">PORTFOLIO</button>
-        <button class="tab-btn">ORDERS</button>
-      </div>
 
       <!-- MODE TOGGLE -->
       <div class="mode-row">
