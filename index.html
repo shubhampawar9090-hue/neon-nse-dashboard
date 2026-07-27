@@ -3929,8 +3929,8 @@ function showAuthOverlay(){
 }
 
 // Check existing session on load — persist login across refreshes
-// Guest mode check first
-if(localStorage.getItem('sb_guest')==='true'){
+// Guest mode check first (URL param or localStorage)
+if(window.location.search.indexOf('guest=true')>=0||localStorage.getItem('sb_guest')==='true'){
   doGuestLogin();
 }else if(sb){
   // Method 1: Try getSession (reads from persisted storage)
