@@ -174,12 +174,80 @@ async function fetchTradingViewFallback(failedSymbols: string[]): Promise<Map<st
   return resultsMap;
 }
 
+
+async function fetchChartData(sym: string, interval: string = "1m", range: string = "1d") {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=${interval}&range=${range}`;
+    const res = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!res.ok) return { symbol: sym, error: true, chart: null };
+    
+    let j;
+    try { j = await res.json(); } catch { return { symbol: sym, error: true, chart: null }; }
+    
+    const result = j.chart?.result?.[0];
+    if (!result) return { symbol: sym, error: true, chart: null };
+    
+    const meta = result.meta;
+    const timestamps = result.timestamp || [];
+    const quotes = result.indicators?.quote?.[0] || {};
+    
+    const candles = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      if (quotes.close?.[i] != null) {
+        candles.push({
+          t: timestamps[i],
+          o: quotes.open?.[i] || 0,
+          h: quotes.high?.[i] || 0,
+          l: quotes.low?.[i] || 0,
+          c: quotes.close?.[i] || 0,
+          v: quotes.volume?.[i] || 0,
+        });
+      }
+    }
+    
+    return {
+      symbol: sym,
+      error: false,
+      chart: {
+        meta: {
+          regularMarketPrice: meta.regularMarketPrice,
+          chartPreviousClose: meta.chartPreviousClose,
+          regularMarketOpen: meta.regularMarketOpen,
+          regularMarketDayHigh: meta.regularMarketDayHigh,
+          regularMarketDayLow: meta.regularMarketDayLow,
+          fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh,
+          fiftyTwoWeekLow: meta.fiftyTwoWeekLow,
+          currency: meta.currency,
+          exchangeName: meta.exchangeName,
+        },
+        candles: candles,
+      },
+    };
+  } catch {
+    return { symbol: sym, error: true, chart: null };
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const body = await req.json();
     const symbols: string[] = body.symbols || [];
+    
+    // Chart mode: return full intraday candle data for charting
+    if (body.chart && symbols.length > 0) {
+      const interval = body.interval || "1m";
+      const range = body.range || "1d";
+      const chartResult = await fetchChartData(symbols[0], interval, range);
+      return Response.json({ 
+        success: !chartResult.error, 
+        data: chartResult,
+      }, {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
     if (!symbols.length) return Response.json({ success: false, error: "No symbols" }, { headers: corsHeaders });
 
     const BATCH = 40;

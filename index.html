@@ -2257,7 +2257,6 @@ const EDGE_PRICE_API=SUPABASE_EDGE_BASE+'/get-nse-data';
 const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
 const EDGE_MOVERS_API=SUPABASE_EDGE_BASE+'/get-nse-movers';
 const EDGE_AI_API=SUPABASE_EDGE_BASE+'/ai-agent';
-const YF_BASE='https://query1.finance.yahoo.com/v8/finance/chart/';
 
 // === Technical Analysis Functions (computed client-side) ===
 function calcEMA(values,period){
@@ -2477,13 +2476,14 @@ async function fetchHeaderIndices(){
   var symbols=Object.keys(headerIdxSymbols);
   var entries=await Promise.all(symbols.map(async function(sym){
     try{
-      var url='https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d';
-      var res=await fetch(url);
+      var url=EDGE_PRICE_API;
+      var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:[sym],chart:true,interval:'1d',range:'5d'})});
       var j=await res.json();
-      var meta=j.chart.result[0].meta;
+      if(!j.success||!j.data||!j.data.chart)return null;
+      var meta=j.data.chart.meta;
       var price=meta.regularMarketPrice;
-      var allCandles=j.chart.result[0].indicators.quote[0]||{};
-      var allCloses=(allCandles.close||[]).filter(function(v){return v!=null});
+      var candles=j.data.chart.candles||[];
+      var allCloses=candles.map(function(c){return c.c;}).filter(function(v){return v!=null});
       var prev=allCloses.length>=2?allCloses[allCloses.length-2]:(meta.chartPreviousClose||price);
       var chg=price-prev;
       var pct=prev?((chg/prev)*100):0;
@@ -2555,13 +2555,14 @@ async function fetchIndexPriceCards(){
     // Fallback: try Yahoo Finance directly (may fail due to CORS)
     await Promise.all(symbols.map(async function(sym){
       try{
-        var url='https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d';
-        var res=await fetch(url);
+        var url=EDGE_PRICE_API;
+        var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:[sym],chart:true,interval:'1d',range:'5d'})});
         var j=await res.json();
-        var meta=j.chart.result[0].meta;
+        if(!j.success||!j.data||!j.data.chart)return;
+        var meta=j.data.chart.meta;
         var price=meta.regularMarketPrice;
-        var allCandles=j.chart.result[0].indicators.quote[0]||{};
-        var allCloses=(allCandles.close||[]).filter(function(v){return v!=null});
+        var candles=j.data.chart.candles||[];
+        var allCloses=candles.map(function(c){return c.c;}).filter(function(v){return v!=null});
         var prev=allCloses.length>=2?allCloses[allCloses.length-2]:(meta.chartPreviousClose||price);
         var open=meta.regularMarketOpen||price;
         var high=meta.regularMarketDayHigh||price;
@@ -4258,19 +4259,18 @@ async function loadChart(sym){
   if(!cvs)return;
   
   try{
-    var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(sym)+'?interval=1m&range=1d';
-    var res=await fetch(url);
+    var url=EDGE_PRICE_API;
+    var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:[sym],chart:true,interval:'1m',range:'1d'})});
     var json=await res.json();
-    var result=json.chart&&json.chart.result&&json.chart.result[0];
-    if(!result){console.log('Chart: no data for',sym);return;}
+    if(!json.success||!json.data||!json.data.chart){console.log('Chart: no data for',sym);return;}
     
-    var meta=result.meta;
-    var timestamps=result.timestamp||[];
-    var quotes=result.indicators&&result.indicators.quote&&result.indicators.quote[0]||{};
-    var closes=(quotes.close||[]).filter(function(v){return v!=null;});
-    var highs=(quotes.high||[]).filter(function(v){return v!=null;});
-    var lows=(quotes.low||[]).filter(function(v){return v!=null;});
-    var volumes=(quotes.volume||[]).filter(function(v){return v!=null;});
+    var meta=json.data.chart.meta;
+    var candles=json.data.chart.candles||[];
+    var timestamps=candles.map(function(c){return c.t;});
+    var closes=candles.map(function(c){return c.c;}).filter(function(v){return v!=null;});
+    var highs=candles.map(function(c){return c.h;}).filter(function(v){return v!=null;});
+    var lows=candles.map(function(c){return c.l;}).filter(function(v){return v!=null;});
+    var volumes=candles.map(function(c){return c.v;}).filter(function(v){return v!=null;});
     
     if(closes.length===0){console.log('Chart: empty closes for',sym);return;}
     
@@ -4336,17 +4336,16 @@ async function loadChart(sym){
 async function tickUpdateChart(){
   if(!priceChart||!chartData)return;
   try{
-    var url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(chartSym)+'?interval=1m&range=1d';
-    var res=await fetch(url);
+    var url=EDGE_PRICE_API;
+    var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:[chartSym],chart:true,interval:'1m',range:'1d'})});
     var json=await res.json();
-    var result=json.chart&&json.chart.result&&json.chart.result[0];
-    if(!result)return;
-    var meta=result.meta;
-    var timestamps=result.timestamp||[];
-    var quotes=result.indicators&&result.indicators.quote&&result.indicators.quote[0]||{};
-    var closes=(quotes.close||[]).filter(function(v){return v!=null;});
-    var highs=(quotes.high||[]).filter(function(v){return v!=null;});
-    var lows=(quotes.low||[]).filter(function(v){return v!=null;});
+    if(!json.success||!json.data||!json.data.chart)return;
+    var meta=json.data.chart.meta;
+    var candles=json.data.chart.candles||[];
+    var timestamps=candles.map(function(c){return c.t;});
+    var closes=candles.map(function(c){return c.c;}).filter(function(v){return v!=null;});
+    var highs=candles.map(function(c){return c.h;}).filter(function(v){return v!=null;});
+    var lows=candles.map(function(c){return c.l;}).filter(function(v){return v!=null;});
     
     if(closes.length===0)return;
     var newPrice=closes[closes.length-1];
