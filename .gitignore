@@ -23,3 +23,7 @@ nse_official_gl.json
 top10_data.json
 data/
 index.html.bak
+screeni-py
+supabase/
+*.temp/
+screeni-py-clone/
