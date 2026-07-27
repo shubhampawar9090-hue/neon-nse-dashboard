@@ -3368,8 +3368,9 @@ async function loadAll(){
       if(!r.ok)throw new Error('TA API '+r.status);
       return r.json();
     });
-    var r=await Promise.all([p1,p2]);
-    var pd=r[0],td=r[1];
+    var r=await Promise.allSettled([p1,p2]);
+    var pd=r[0].status==='fulfilled'?r[0].value:null;
+    var td=r[1].status==='fulfilled'?r[1].value:null;
     if(pd&&pd.success&&pd.data&&pd.data.length){priceResults=pd.data;}
     if(td&&td.success&&td.data&&td.data.length){taResults=td.data;}
   }catch(e){
