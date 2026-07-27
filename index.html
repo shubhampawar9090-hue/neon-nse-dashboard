@@ -2117,7 +2117,7 @@ loadAllNsePrices()">↻ Refresh</button>
             <option value="KOTAKBANK.NS">KOTAKBANK</option>
           </select>
         </div>
-        <div class="chart-container"><canvas id="priceChart"></canvas></div>
+        <div class="chart-container"><canvas id="priceChart"></canvas><div id="chartSource" style="position:absolute;top:6px;right:10px;font-size:9px;color:#666;font-family:Courier New;pointer-events:none;z-index:10"></div></div>
         <div class="chart-info" id="chartInfo">
           <div class="chart-info-item"><span class="ci-label">O:</span><span class="ci-val" id="ciOpen">—</span></div>
           <div class="chart-info-item"><span class="ci-label">H:</span><span class="ci-val" id="ciHigh">—</span></div>
@@ -4274,7 +4274,11 @@ async function loadChart(sym){
     
     if(closes.length===0){console.log('Chart: empty closes for',sym);return;}
     
-    chartData={meta:meta,closes:closes,highs:highs,lows:lows,volumes:volumes,timestamps:timestamps,sym:sym};
+    // Show data source indicator
+    var srcEl=document.getElementById('chartSource');
+    if(srcEl){srcEl.textContent=json.source==='tradingview'?'⚡ TradingView':'Yahoo Finance';srcEl.style.color=json.source==='tradingview'?'#00d1ff':'#666';}
+    
+    chartData={meta:meta,closes:closes,highs:highs,lows:lows,volumes:volumes,timestamps:timestamps,sym:sym,source:json.source||'yahoo'};
     lastTickPrice=meta.regularMarketPrice;
     
     // Build labels
@@ -4342,6 +4346,9 @@ async function tickUpdateChart(){
     if(!json.success||!json.data||!json.data.chart)return;
     var meta=json.data.chart.meta;
     var candles=json.data.chart.candles||[];
+    // Update source indicator if source changed
+    var srcEl=document.getElementById('chartSource');
+    if(srcEl&&json.source){srcEl.textContent=json.source==='tradingview'?'⚡ TradingView':'Yahoo Finance';srcEl.style.color=json.source==='tradingview'?'#00d1ff':'#666';}
     var timestamps=candles.map(function(c){return c.t;});
     var closes=candles.map(function(c){return c.c;}).filter(function(v){return v!=null;});
     var highs=candles.map(function(c){return c.h;}).filter(function(v){return v!=null;});

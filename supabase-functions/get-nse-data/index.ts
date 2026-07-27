@@ -228,6 +228,108 @@ async function fetchChartData(sym: string, interval: string = "1m", range: strin
   }
 }
 
+// TradingView fallback for chart data — uses scanner API for current OHLC + stock_ticks DB for history
+async function fetchChartDataFromTV(sym: string, interval: string = "1m", range: string = "1d"): Promise<any> {
+  try {
+    const tvSym = toTradingViewSymbol(sym);
+    
+    // 1. Get current snapshot from TradingView scanner
+    const scanRes = await fetch("https://scanner.tradingview.com/india/scan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        symbols: { tickers: [tvSym], query: { types: [] } },
+        columns: ["close", "change", "change_abs", "volume", "high", "low", "open", "Recommend.All"],
+      }),
+    });
+    
+    if (!scanRes.ok) return { symbol: sym, error: true, chart: null };
+    
+    const scanJson = await scanRes.json();
+    const item = scanJson.data?.[0];
+    if (!item || !item.d || item.d.length < 7) return { symbol: sym, error: true, chart: null };
+    
+    const d = item.d;
+    const price = d[0] || 0;
+    const changePct = d[1] || 0;
+    const changeAbs = d[2] || 0;
+    const volume = d[3] || 0;
+    const dayHigh = d[4] || price;
+    const dayLow = d[5] || price;
+    const open = d[6] || price;
+    const prevClose = price - changeAbs;
+    
+    if (price === 0) return { symbol: sym, error: true, chart: null };
+    
+    // 2. Try to get intraday ticks from stock_ticks table via Supabase REST
+    let candles: any[] = [];
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") || "https://mmxkisgdoepojotignkg.supabase.co";
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+      const tickRes = await fetch(
+        `${supabaseUrl}/rest/v1/stock_ticks?symbol=eq.${encodeURIComponent(sym)}&order=tick_time.desc&limit=300`,
+        { headers: { "apikey": serviceKey, "Authorization": `Bearer ${serviceKey}` } }
+      );
+      if (tickRes.ok) {
+        const ticks = await tickRes.json();
+        if (Array.isArray(ticks) && ticks.length > 0) {
+          // Convert ticks to candles (reverse to chronological order)
+          const sorted = ticks.reverse();
+          for (const t of sorted) {
+            const p = t.price || 0;
+            candles.push({
+              t: Math.floor(new Date(t.tick_time).getTime() / 1000),
+              o: p,
+              h: p,
+              l: p,
+              c: p,
+              v: t.volume || 0,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.log("TV chart: stock_ticks fetch failed", e.message);
+    }
+    
+    // 3. If no tick history, build a simple candle from current snapshot
+    if (candles.length === 0) {
+      const now = Math.floor(Date.now() / 1000);
+      candles.push({
+        t: now - 60,
+        o: open, h: Math.max(open, price), l: Math.min(open, price), c: price, v: volume,
+      });
+      candles.push({
+        t: now,
+        o: price, h: dayHigh, l: dayLow, c: price, v: volume,
+      });
+    }
+    
+    return {
+      symbol: sym,
+      error: false,
+      chart: {
+        meta: {
+          regularMarketPrice: price,
+          chartPreviousClose: prevClose,
+          regularMarketOpen: open,
+          regularMarketDayHigh: dayHigh,
+          regularMarketDayLow: dayLow,
+          fiftyTwoWeekHigh: 0,
+          fiftyTwoWeekLow: 0,
+          currency: "INR",
+          exchangeName: "NSE",
+        },
+        candles: candles,
+        source: "tradingview",
+      },
+    };
+  } catch (e) {
+    console.log("TV chart fallback error:", e.message);
+    return { symbol: sym, error: true, chart: null };
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -236,13 +338,23 @@ Deno.serve(async (req: Request) => {
     const symbols: string[] = body.symbols || [];
     
     // Chart mode: return full intraday candle data for charting
+    // Try Yahoo Finance first, auto-fallback to TradingView if Yahoo fails
     if (body.chart && symbols.length > 0) {
       const interval = body.interval || "1m";
       const range = body.range || "1d";
-      const chartResult = await fetchChartData(symbols[0], interval, range);
+      let chartResult = await fetchChartData(symbols[0], interval, range);
+      let source = "yahoo";
+      
+      if (chartResult.error || !chartResult.chart) {
+        console.log(`Chart: Yahoo failed for ${symbols[0]}, trying TradingView fallback...`);
+        chartResult = await fetchChartDataFromTV(symbols[0], interval, range);
+        source = "tradingview";
+      }
+      
       return Response.json({ 
         success: !chartResult.error, 
         data: chartResult,
+        source: source,
       }, {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
