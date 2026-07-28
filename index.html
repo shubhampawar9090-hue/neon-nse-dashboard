@@ -1271,6 +1271,8 @@ body {
 .idx-pcard{background:linear-gradient(135deg,rgba(255,136,0,.04),rgba(0,0,0,.8));border:1px solid var(--border);border-left:3px solid var(--orange);border-radius:6px;padding:10px 12px;position:relative;overflow:hidden}
 .idx-pcard.banknifty{border-left-color:#00e5ff}
 .idx-pcard.sensex{border-left-color:#22c55e}
+.idx-pcard .ipc-live .vix-dot{background:#a855f7}
+.idx-pcard .ipc-live.closed .vix-dot{background:var(--text2)}
 .idx-pcard.vix{border-left-color:#a855f7;background:linear-gradient(135deg,rgba(168,85,247,.04),rgba(0,0,0,.8))}
 .idx-pcard .ipc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .idx-pcard .ipc-name{font-size:13px;font-weight:700;color:var(--orange);letter-spacing:1px;text-transform:uppercase}
@@ -1544,7 +1546,7 @@ body {
       </div>
     </div>
     <div class="idx-pcard vix" id="ipcVix" style="border-color:rgba(138,43,226,.25)">
-      <div class="ipc-head"><span class="ipc-name" style="color:#a855f7">INDIA VIX</span><span class="ipc-live"><span class="dot" style="background:#a855f7"></span>LIVE</span></div>
+      <div class="ipc-head"><span class="ipc-name" style="color:#a855f7">INDIA VIX</span><span class="ipc-live"><span class="dot vix-dot"></span>LIVE</span></div>
       <div class="ipc-price" id="ipcVixPrice">—</div>
       <div class="ipc-chg-row">
         <span class="ipc-chg-val" id="ipcVixChg">—</span>
@@ -1705,6 +1707,7 @@ body {
       <div class="sig-grid" id="holdCards"><div class="loading"><div class="spinner"></div><br>Loading...</div></div>
 
 
+<style>
 /* ===== OPTION SIGNAL CARDS ===== */
 .opt-section{font-size:12px;font-weight:700;letter-spacing:2px;padding:14px 0 8px;text-transform:uppercase;border-top:1px solid var(--border);margin-top:10px}
 .opt-section.ce{color:var(--green)}
@@ -1741,6 +1744,9 @@ body {
 @media(max-width:380px){
   .opt-grid{grid-template-columns:1fr!important}
 }
+</style>
+
+
 
 
       <!-- ===== OPTION SIGNALS ===== -->
@@ -1752,6 +1758,7 @@ body {
       <div class="opt-grid" id="optPeCards"><div class="loading"><div class="spinner"></div><br>Loading option signals...</div></div>
 
 
+<style>
 /* ===== ENHANCED HOVER EFFECTS ===== */
 
 /* Index cards */
@@ -1949,6 +1956,9 @@ body {
 .sig-card:hover .t:hover {
   transform: scale(1.1);
 }
+</style>
+
+
 
       <!-- ===== GAINERS / LOSERS ===== -->
       <div class="divider"><span class="divider-text">GAINERS & LOSERS</span><span class="divider-line"></span></div>
