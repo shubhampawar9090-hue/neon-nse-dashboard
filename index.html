@@ -4117,7 +4117,7 @@ function renderCompare(data){
       +'<td>'+(d.rsi||'\u2014')+'</td>'
       +'<td>'+(d.vwap||'\u2014')+'</td>'
       +'<td style="font-size:10px">'+emaTxt+'</td>'+
-      '<td style="font-size:10px">'+(d.emaCrossSignal&&d.emaCrossSignal!=='None'?'<span style="color:'+(d.emaCrossType==='bullish'?'var(--green)':'var(--red)')+'">'+d.emaCrossSignal+'</span><br><span style="color:var(--muted);font-size:9px">'+(d.emaCrossBars?(d.emaCrossBars+' bars · '):'')+d.emaCrossFreshness</span>':'\u2014')+'</td>'
+      '<td style="font-size:10px">'+(d.emaCrossSignal&&d.emaCrossSignal!=='None'?'<span style="color:'+(d.emaCrossType==='bullish'?'var(--green)':'var(--red)')+'">'+d.emaCrossSignal+'</span><br><span style="color:var(--muted);font-size:9px">'+(d.emaCrossBars?(d.emaCrossBars+' bars · '):'')+d.emaCrossFreshness+'</span>':'\u2014')+'</td>'
       +'<td style="font-size:10px">'+d.chartPattern+'</td>'
       +'<td style="font-size:10px">'+d.breakoutType+'</td>'
       +'<td>'+(d.sl?f0(d.sl):'\u2014')+'</td>'
