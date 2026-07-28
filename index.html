@@ -208,21 +208,6 @@ body {
   border-color: var(--cyan);
   color: var(--cyan);
 }
-.btn-watchlist-add {
-  background-color: var(--cyan);
-  color: #000000;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.btn-watchlist-add:hover {
-  background-color: #00b4d8;
-  box-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
-}
 
 /* ===== APP LAYOUT ===== */
 .app-layout {
@@ -1044,270 +1029,6 @@ body {
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* ===== ELARA AI AGENT ===== */
-.ai-fab {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--cyan), var(--green));
-  border: none;
-  color: #000000;
-  font-weight: bold;
-  font-size: 20px;
-  cursor: pointer;
-  z-index: 9998;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
-  transition: all 0.2s ease-in-out;
-}
-.ai-fab:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 24px rgba(0, 212, 255, 0.6);
-}
-.ai-fab.offline {
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0);
-}
-.ai-fab .ai-badge {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 16px;
-  height: 16px;
-  background-color: var(--red);
-  color: #ffffff;
-  border: 2px solid var(--bg);
-  border-radius: 50%;
-  font-size: 8px;
-  font-weight: 900;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ai-panel {
-  position: fixed;
-  bottom: 88px;
-  right: 24px;
-  width: 400px;
-  max-width: calc(100vw - 48px);
-  height: 580px;
-  max-height: calc(100vh - 120px);
-  background-color: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-  z-index: 9999;
-  display: none;
-  flex-direction: column;
-  overflow: hidden;
-  animation: fadeIn 0.2s ease-out;
-}
-.ai-panel.open {
-  display: flex;
-}
-.ai-hdr {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background-color: var(--bg2);
-  border-bottom: 1px solid var(--border);
-}
-.ai-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--cyan), var(--green));
-  color: #000000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  font-size: 14px;
-}
-.ai-hdr-info {
-  flex: 1;
-}
-.ai-hdr-name {
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--text);
-}
-.ai-hdr-status {
-  font-size: 11px;
-  color: var(--green);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.ai-hdr-status::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  background-color: var(--green);
-  border-radius: 50%;
-  animation: pulse 1.5s infinite;
-}
-.ai-close {
-  background: none;
-  border: none;
-  color: var(--text2);
-  cursor: pointer;
-  font-size: 18px;
-  padding: 4px;
-  transition: color 0.15s;
-}
-.ai-close:hover {
-  color: var(--red);
-}
-.ai-msgs {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.ai-msgs::-webkit-scrollbar {
-  width: 4px;
-}
-.ai-msgs::-webkit-scrollbar-thumb {
-  background-color: var(--border2);
-  border-radius: 4px;
-}
-.ai-msg {
-  max-width: 85%;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.5;
-  animation: fadeIn 0.15s;
-  word-wrap: break-word;
-}
-.ai-msg.user {
-  align-self: flex-end;
-  background-color: var(--cyan);
-  color: #000000;
-  font-weight: 500;
-}
-.ai-msg.agent {
-  align-self: flex-start;
-  background-color: var(--bg2);
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-.ai-msg.agent b, .ai-msg.agent strong {
-  color: var(--cyan);
-}
-.ai-msg.agent em {
-  color: var(--green);
-  font-style: normal;
-  font-weight: 700;
-}
-.ai-thinking {
-  align-self: flex-start;
-  display: flex;
-  gap: 4px;
-  padding: 12px 16px;
-  align-items: center;
-}
-.ai-thinking span {
-  width: 6px;
-  height: 6px;
-  background-color: var(--cyan);
-  border-radius: 50%;
-  animation: thinkDot 1.2s infinite;
-}
-.ai-thinking span:nth-child(2) { animation-delay: .2s; }
-.ai-thinking span:nth-child(3) { animation-delay: .4s; }
-.ai-thinking .think-txt {
-  font-size: 11px;
-  color: var(--text2);
-  margin-left: 6px;
-}
-@keyframes thinkDot { 0%, 60%, 100% { opacity: .3; transform: scale(.8); } 30% { opacity: 1; transform: scale(1.2); } }
-
-.ai-quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 16px 12px;
-  background-color: var(--bg2);
-}
-.ai-quick button {
-  font-size: 10px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background-color: var(--bg);
-  color: var(--text2);
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.15s;
-}
-.ai-quick button:hover {
-  border-color: var(--cyan);
-  color: var(--cyan);
-}
-.ai-input-row {
-  display: flex;
-  gap: 8px;
-  padding: 16px;
-  background-color: var(--bg2);
-  border-top: 1px solid var(--border);
-}
-.ai-input {
-  flex: 1;
-  padding: 10px 14px;
-  background-color: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
-  outline: none;
-  font-size: 13px;
-  resize: none;
-  height: 38px;
-  font-family: inherit;
-}
-.ai-input:focus {
-  border-color: var(--cyan);
-}
-.ai-input::placeholder {
-  color: var(--text2);
-}
-.ai-send {
-  width: 38px;
-  height: 38px;
-  background-color: var(--cyan);
-  color: #000000;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s;
-}
-.ai-send:hover {
-  background-color: #00b4d8;
-}
-.ai-send:disabled {
-  opacity: .3;
-  cursor: not-allowed;
-}
-.ai-err {
-  font-size: 11px;
-  color: var(--red);
-  padding: 4px 16px 0;
-}
-
 /* ===== SENTIMENT METER ===== */
 .sentimeter-wrap {
   background-color: var(--bg2);
@@ -1754,7 +1475,6 @@ body {
         <span class="clock">Yahoo Finance | <b id="clock">--:--:--</b> IST</span>
         <button class="btn-refresh" onclick="loadAll();loadAllNsePrices()">↻ Refresh</button>
         <button class="btn-refresh" id="tvToggleBtn" onclick="toggleTradingView()" style="background:rgba(0,212,255,.15);border-color:#00d4ff;color:#00d4ff">TV: ON</button>
-<button class="btn-watchlist-add">+ WATCHLIST</button>
       </div>
     </div>
   </header>
@@ -1825,10 +1545,6 @@ body {
         <button class="sidebar-item active">
           <span class="sidebar-icon">⊞</span>
           <span class="sidebar-label">DASHBOARD</span>
-        </button>
-        <button class="sidebar-item">
-          <span class="sidebar-icon">🔭</span>
-          <span class="sidebar-label">WATCHLIST</span>
         </button>
         <button class="sidebar-item">
           <span class="sidebar-icon">💼</span>
@@ -2076,7 +1792,7 @@ body {
         <span>•</span>
         <span>🔥 Volume surge detected in Tata Motors and Reliance Industries</span>
         <span>•</span>
-        <span>🚀 Elara AI sentiment indicator leans BULLISH for the next trading session</span>
+        <span>🚀 AI sentiment indicator leans BULLISH for the next trading session</span>
         <span>•</span>
         <span>📊 EMA Crossover breakout on multiple Midcap and Largecap stocks</span>
         <span>•</span>
@@ -2098,34 +1814,6 @@ body {
     <button onclick="scrollToSec('chartSec')"><span class="mn-icon">📈</span>CHART</button>
     <button onclick="scrollToSec('sentiSec')"><span class="mn-icon">◉</span>SENTI</button>
     <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
-<button onclick="aiToggle()"><span class="mn-icon">AI</span>ELARA</button>
-  </div>
-
-  <!-- ===== ELARA AI AGENT ===== -->
-  <button class="ai-fab" id="aiFab" onclick="aiToggle()">⚡<span class="ai-badge">AI</span></button>
-  <div class="ai-panel" id="aiPanel">
-    <div class="ai-hdr">
-      <div class="ai-avatar">⚡</div>
-      <div class="ai-hdr-info">
-        <div class="ai-hdr-name">Elara AI</div>
-        <div class="ai-hdr-status">Online · Full Market Intelligence</div>
-      </div>
-      <button class="ai-close" onclick="aiToggle()">✕</button>
-    </div>
-    <div class="ai-msgs" id="aiMsgs"></div>
-    <div class="ai-quick" id="aiQuick">
-      <button onclick="aiAsk('What are the top buy signals today?')">🟢 Buy Signals</button>
-      <button onclick="aiAsk('Show me stocks with high volume surges')">📊 Volume Surge</button>
-      <button onclick="aiAsk('RELIANCE full analysis')">RELIANCE</button>
-      <button onclick="aiAsk('TATAMOTORS analysis')">TATAMOTORS</button>
-      <button onclick="aiAsk('Top 10 gainers and losers')">📈 Movers</button>
-      <button onclick="aiAsk('Market sentiment overview')">📰 Sentiment</button>
-    </div>
-    <div class="ai-err" id="aiErr"></div>
-    <div class="ai-input-row">
-      <textarea class="ai-input" id="aiInput" placeholder="Ask Elara about any stock, signal, or market trend..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend()}"></textarea>
-      <button class="ai-send" id="aiSendBtn" onclick="aiSend()">➤</button>
-    </div>
   </div>
 
 <script>
@@ -2134,7 +1822,6 @@ const SUPABASE_EDGE_BASE='https://mmxkisgdoepojotignkg.supabase.co/functions/v1'
 const EDGE_PRICE_API=SUPABASE_EDGE_BASE+'/get-nse-data';
 const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
 const EDGE_MOVERS_API=SUPABASE_EDGE_BASE+'/get-nse-movers';
-const EDGE_AI_API=SUPABASE_EDGE_BASE+'/ai-agent';
 
 // === Technical Analysis Functions (computed client-side) ===
 function calcEMA(values,period){
@@ -3640,7 +3327,7 @@ function toggleTradingView() {
 // ===== END TRADINGVIEW WEBSOCKET =====
 
 // ===== ELARA AI AGENT =====
-// Elara AI — now fully client-side (no backend needed)
+// AI panel removed
 var AI_ALIASES={
   'reliance':'RELIANCE','rel':'RELIANCE','ril':'RELIANCE',
   'tcs':'TCS','tata consultancy':'TCS',
@@ -3677,81 +3364,6 @@ var AI_ALIASES={
 var aiConvId=null;
 var aiGreeted=false;
 var aiBusy=false;
-
-function aiToggle(){
-  var p=document.getElementById('aiPanel'),f=document.getElementById('aiFab');
-  if(p.classList.contains('open')){p.classList.remove('open');f.classList.remove('offline');}
-  else{p.classList.add('open');f.classList.add('offline');
-    if(!aiGreeted){aiGreet();aiGreeted=true;}
-  }
-}
-
-function aiGreet(){
-  aiAddMsg('agent','👋 Hi! I\'m <b>Elara</b> — your AI trading assistant with <b>full market intelligence</b>.\n\nI can analyze <b>ANY NSE stock</b> using live Yahoo Finance data — technical analysis, patterns, signals, SL/TP levels, and market trends. I also have access to your full database of 1,800+ NSE stocks.\n\nAsk me anything — stock analysis, buy/sell signals, breakouts, patterns, market sentiment, or just type a stock symbol.');
-}
-
-function aiAddMsg(type,text){
-  var msgs=document.getElementById('aiMsgs');
-  var d=document.createElement('div');
-  d.className='ai-msg '+type;
-  d.innerHTML=text;
-  msgs.appendChild(d);
-  msgs.scrollTop=msgs.scrollHeight;
-}
-
-function aiShowThinking(){
-  var msgs=document.getElementById('aiMsgs');
-  var d=document.createElement('div');
-  d.className='ai-thinking';d.id='aiThinking';
-  d.innerHTML='<span></span><span></span><span></span><span class="think-txt">Elara is analyzing...</span>';
-  msgs.appendChild(d);
-  msgs.scrollTop=msgs.scrollHeight;
-}
-
-function aiHideThinking(){var t=document.getElementById('aiThinking');if(t)t.remove();}
-
-function aiSend(){
-  if(aiBusy)return;
-  var inp=document.getElementById('aiInput');
-  var text=inp.value.trim();
-  if(!text)return;
-  inp.value='';
-  aiAddMsg('user',text.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
-  aiProcess(text);
-}
-
-function aiAsk(q){
-  if(aiBusy)return;
-  aiAddMsg('user',q);
-  aiProcess(q);
-}
-
-async function aiProcess(q){
-  aiBusy=true;
-  document.getElementById('aiSendBtn').disabled=true;
-  document.getElementById('aiErr').textContent='';
-  aiShowThinking();
-  try{
-    var res=await fetch(AI_API,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({content:q,conversation_id:aiConvId})
-    });
-    var data=await res.json();
-    aiHideThinking();
-    if(data.success){
-      aiConvId=data.conversation_id;
-      aiAddMsg('agent',data.response.replace(/</g,'&lt;').replace(/&gt;/g,'>').replace(/&lt;b&gt;/g,'<b>').replace(/&lt;\/b&gt;/g,'</b>').replace(/&lt;strong&gt;/g,'<strong>').replace(/&lt;\/strong&gt;/g,'</strong>').replace(/&lt;em&gt;/g,'<em>').replace(/&lt;\/em&gt;/g,'</em>'));
-    }else{
-      aiAddMsg('agent','⚠️ '+data.error||'Something went wrong. Please try again.');
-    }
-  }catch(e){
-    aiHideThinking();
-    aiAddMsg('agent','⚠️ Network error. Please check your connection and try again.');
-  }
-  aiBusy=false;
-  document.getElementById('aiSendBtn').disabled=false;
-}
 
 // ===== MOBILE NAV SCROLL =====
 function scrollToSec(id){
