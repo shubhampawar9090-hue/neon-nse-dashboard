@@ -9,7 +9,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="NSE Terminal">
 <title>NSE TERMINAL — Redesigned Trading Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root {
@@ -1713,28 +1712,6 @@ body {
 }
 
 /* ===== SUPABASE AUTH ===== */
-.auth-overlay{position:fixed;inset:0;background:rgba(10,15,30,.92);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s}
-.auth-overlay.hidden{display:none}
-.auth-box{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:24px;width:380px;max-width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,.5)}
-.auth-logo{font-size:18px;font-weight:700;color:var(--amber);text-align:center;margin-bottom:4px;letter-spacing:2px;font-family:'Courier New',monospace;text-transform:uppercase}
-.auth-sub{font-size:11px;color:var(--grey);text-align:center;margin-bottom:20px;font-family:'Courier New',monospace}
-.auth-tabs{display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border2);border-radius:6px;overflow:hidden}
-.auth-tab{flex:1;padding:8px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;background:var(--card);color:var(--grey);border:none;font-family:'Courier New',monospace;text-transform:uppercase;transition:all .15s}
-.auth-tab.active{background:rgba(255,136,0,.1);color:var(--amber)}
-.auth-field{margin-bottom:12px}
-.auth-label{font-size:10px;color:var(--amber2);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;font-family:'Courier New',monospace;font-weight:700}
-.auth-input{width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);color:var(--white);font-size:13px;border-radius:6px;outline:none;font-family:'Courier New',monospace;transition:border .15s}
-.auth-input:focus{border-color:var(--amber)}
-.auth-btn{width:100%;padding:10px;background:var(--amber);color:#000;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:1px;transition:all .15s}
-.auth-btn:hover{background:#ffaa00}
-.auth-btn:disabled{opacity:.5;cursor:not-allowed}
-.auth-err{font-size:11px;color:var(--red);text-align:center;margin-top:8px;font-family:'Courier New',monospace;min-height:16px}
-.auth-skip{text-align:center;margin-top:12px;font-size:10px;color:var(--grey);cursor:pointer;font-family:'Courier New',monospace}
-.auth-skip:hover{color:var(--amber)}
-.auth-google{width:100%;padding:10px;background:#fff;color:#333;border:1px solid #ddd;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Courier New',monospace;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s;margin-top:10px}
-.auth-google:hover{background:#f5f5f5}
-.guest-btn{width:100%;padding:8px;background:transparent;color:var(--grey);border:1px solid var(--border2);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:1px;transition:all .15s;margin-top:10px}
-.guest-btn:hover{color:var(--amber);border-color:var(--amber)}
 
 .auth-google svg{width:16px;height:16px}
 .auth-divider{text-align:center;font-size:10px;color:var(--grey);margin:10px 0 6px;font-family:'Courier New',monospace;position:relative}
@@ -1742,11 +1719,6 @@ body {
 .auth-divider:before{left:0}.auth-divider:after{right:0}
 
 /* User badge in header */
-.user-badge{display:flex;align-items:center;gap:6px;padding:2px 10px;border:1px solid var(--amber-dim);background:rgba(255,136,0,.06);border-radius:4px;font-size:10px;font-family:'Courier New',monospace;cursor:pointer;transition:all .15s}
-.user-badge:hover{border-color:var(--amber);background:rgba(255,136,0,.1)}
-.user-badge .ub-icon{width:18px;height:18px;border-radius:50%;background:var(--amber);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#000}
-.user-badge .ub-name{color:var(--amber2)}
-.user-badge .ub-logout{color:var(--grey);font-size:9px;margin-left:4px}
 
 
 /* ===== LIVE TICK MOVERS ===== */
@@ -1770,53 +1742,7 @@ body {
 </style>
 </head>
 <body>
-<!-- ===== AUTH MODAL ===== -->
-<div class="auth-overlay" id="authOverlay">
-  <div class="auth-box">
-    <div class="auth-logo">NSE TERMINAL</div>
-    <div class="auth-sub">Sign in to save watchlists & signals</div>
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tabLogin" onclick="authTab('login')">LOGIN</button>
-      <button class="auth-tab" id="tabSignup" onclick="authTab('signup')">SIGN UP</button>
-    </div>
-    <div id="authFormLogin">
-      <div class="auth-field">
-        <div class="auth-label">EMAIL</div>
-        <input class="auth-input" type="email" id="loginEmail" placeholder="trader@example.com" autocomplete="email">
-      </div>
-      <div class="auth-field">
-        <div class="auth-label">PASSWORD</div>
-        <input class="auth-input" type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
-      </div>
-      <button class="auth-btn" id="loginBtn" onclick="doLogin()">LOGIN</button>
-      <div class="auth-err" id="loginErr"></div>
-<div class="auth-divider">OR</div><button class="auth-google" onclick="doGoogleLogin()"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>SIGN IN WITH GOOGLE</button>
-<button class="guest-btn" onclick="doGuestLogin()">Continue as Guest →</button>
-    </div>
-    <div id="authFormSignup" style="display:none">
-      <div class="auth-field">
-        <div class="auth-label">FULL NAME</div>
-        <input class="auth-input" type="text" id="signupName" placeholder="Shubham Pawar">
-      </div>
-      <div class="auth-field">
-        <div class="auth-label">EMAIL</div>
-        <input class="auth-input" type="email" id="signupEmail" placeholder="trader@example.com" autocomplete="email">
-      </div>
-      <div class="auth-field">
-        <div class="auth-label">PASSWORD</div>
-        <input class="auth-input" type="password" id="signupPass" placeholder="Min 6 characters" autocomplete="new-password">
-      </div>
-      <button class="auth-btn" id="signupBtn" onclick="doSignup()">CREATE ACCOUNT</button>
-      <div class="auth-err" id="signupErr"></div>
-<div class="auth-divider">OR</div><button class="auth-google" onclick="doGoogleLogin()"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>SIGN IN WITH GOOGLE</button>
-<button class="guest-btn" onclick="doGuestLogin()">Continue as Guest →</button>
-    </div>
-
-  </div>
-</div>
-
-
-  <!-- TOP HEADER -->
+<!-- TOP HEADER -->
   <header class="top-header">
     <div class="th-left">
       <div class="logo">
@@ -1833,8 +1759,7 @@ body {
         <span class="clock">Yahoo Finance | <b id="clock">--:--:--</b> IST</span>
         <button class="btn-refresh" onclick="loadAll();loadPriceList();loadAllNsePrices()">↻ Refresh</button>
         <button class="btn-refresh" id="tvToggleBtn" onclick="toggleTradingView()" style="background:rgba(0,212,255,.15);border-color:#00d4ff;color:#00d4ff">TV: ON</button>
-    <div class="user-badge" id="userBadge" style="display:none" onclick="doLogout()"><span class="ub-icon" id="ubIcon">S</span><span class="ub-name" id="ubName">User</span><span class="ub-logout">LOGOUT</span></div>
-        <button class="btn-watchlist-add">+ WATCHLIST</button>
+<button class="btn-watchlist-add">+ WATCHLIST</button>
       </div>
     </div>
   </header>
@@ -3022,6 +2947,10 @@ function normalizeTA(merged){
 
 // Fetch top gainers/losers directly from NSE official API via Supabase Edge Function
 // ===== LIVE TICK MOVERS — render with LTP, Open, PrevClose, Chg% =====
+// Supabase REST API (data only — no auth)
+const SUPABASE_URL='https://mmxkisgdoepojotignkg.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teGtpc2dkb2Vwb2pvdGlnbmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3OTAzNDMsImV4cCI6MjEwMDM2NjM0M30.4o1ylVMgXyBxMhf82MWI2hjgSmqvOf1aoEPkR8VPW00';
+
 var ltPrevPrices={}; // sym -> previous price for flash detection
 var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIGREEN", "ADANIPORTS", "ADANIPOWER", "ALKEM", "AMBER", "AMBUJACEM", "ANGELONE", "APLAPOLLO", "APOLLOHOSP", "ASHOKLEY", "ASIANPAINT", "ASTRAL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJAJHLDNG", "BAJFINANCE", "BANDHANBNK", "BANKBARODA", "BANKINDIA", "BDL", "BEL", "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BLUESTARCO", "BOSCHLTD", "BPCL", "BRITANNIA", "BSE", "CAMS", "CANBK", "CDSL", "CGPOWER", "CHOLAFIN", "CIPLA", "COALINDIA", "COCHINSHIP", "COFORGE", "COLPAL", "CONCOR", "CROMPTON", "CUMMINSIND", "DABUR", "DALBHARAT", "DELHIVERY", "DIVISLAB", "DIXON", "DLF", "DMART", "DRREDDY", "EICHERMOT", "ETERNAL", "EXIDEIND", "FEDERALBNK", "FORCEMOT", "FORTIS", "GAIL", "GLENMARK", "GMRAIRPORT", "GODFRYPHLP", "GODREJCP", "GODREJPROP", "GRASIM", "GVT&D", "HAL", "HAVELLS", "HCLTECH", "HDFCAMC", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO", "HINDPETRO", "HINDUNILVR", "HINDZINC", "HYUNDAI", "ICICIBANK", "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IEX", "INDHOTEL", "INDIANB", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "INOXWIND", "IOC", "IREDA", "IRFC", "ITC", "JINDALSTEL", "JIOFIN", "JSWENERGY", "JSWSTEEL", "JUBLFOOD", "KALYANKJIL", "KAYNES", "KEI", "KFINTECH", "KOTAKBANK", "KPITTECH", "LAURUSLABS", "LICHSGFIN", "LICI", "LODHA", "LT", "LTF", "LTM", "LUPIN", "M&M", "MANAPPURAM", "MANKIND", "MARICO", "MARUTI", "MAXHEALTH", "MAZDOCK", "MCX", "MFSL", "MOTHERSON", "MOTILALOFS", "MPHASIS", "MUTHOOTFIN", "NAM-INDIA", "NATIONALUM", "NAUKRI", "NBCC", "NESTLEIND", "NHPC", "NMDC", "NTPC", "NUVAMA", "NYKAA", "OBEROIRLTY", "OFSS", "OIL", "ONGC", "PAGEIND", "PATANJALI", "PAYTM", "PERSISTENT", "PETRONET", "PFC", "PGEL", "PHOENIXLTD", "PIDILITIND", "PIIND", "PNB", "PNBHOUSING", "POLICYBZR", "POLYCAB", "POWERGRID", "POWERINDIA", "PREMIERENE", "PRESTIGE", "RADICO", "RBLBANK", "RECLTD", "RELIANCE", "RVNL", "SAIL", "SBICARD", "SBILIFE", "SBIN", "SHREECEM", "SHRIRAMFIN", "SIEMENS", "SOLARINDS", "SONACOMS", "SRF", "SUNPHARMA", "SUPREMEIND", "SUZLON", "SWIGGY", "TATACONSUM", "TATAELXSI", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TIINDIA", "TITAN", "TMPV", "TORNTPHARM", "TRENT", "TVSMOTOR", "ULTRACEMCO", "UNIONBANK", "UNITDSPR", "UNOMINDA", "UPL", "VBL", "VEDL", "VMM", "VOLTAS", "WAAREEENER", "WIPRO", "YESBANK", "ZYDUSLIFE"];
   function renderLiveTickMovers(){
@@ -3766,257 +3695,6 @@ function toggleTradingView() {
 }
 
 // ===== END TRADINGVIEW WEBSOCKET =====
-
-// ===== SUPABASE AUTH =====
-const SUPABASE_URL='https://mmxkisgdoepojotignkg.supabase.co';
-const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teGtpc2dkb2Vwb2pvdGlnbmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3OTAzNDMsImV4cCI6MjEwMDM2NjM0M30.4o1ylVMgXyBxMhf82MWI2hjgSmqvOf1aoEPkR8VPW00';
-const sb=window.supabase?supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{
-    auth:{
-      persistSession:true,
-      autoRefreshToken:true,
-      detectSessionInUrl:false,
-      storage:window.localStorage,
-      storageKey:'sb-mmxkisgdoepojotignkg-auth-token'
-    }
-  }):null;
-var currentUser=null;
-
-function authTab(t){
-  if(t==='login'){
-    document.getElementById('tabLogin').classList.add('active');document.getElementById('tabSignup').classList.remove('active');
-    document.getElementById('authFormLogin').style.display='block';document.getElementById('authFormSignup').style.display='none';
-  }else{
-    document.getElementById('tabSignup').classList.add('active');document.getElementById('tabLogin').classList.remove('active');
-    document.getElementById('authFormLogin').style.display='none';document.getElementById('authFormSignup').style.display='block';
-  }
-}
-
-async function doGoogleLogin(){
-  try{
-    var{data,error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.href}});
-    if(error)throw error;
-  }catch(e){
-    document.getElementById('loginErr').textContent='Google login failed: '+(e.message||'');
-  }
-}
-
-async function doLogin(){
-  var btn=document.getElementById('loginBtn');btn.disabled=true;btn.textContent='LOGGING IN...';
-  document.getElementById('loginErr').textContent='';
-  try{
-    var email=document.getElementById('loginEmail').value.trim();
-    var pass=document.getElementById('loginPass').value;
-    if(!email||!pass)throw{message:'Enter email and password'};
-    var{data,error}=await sb.auth.signInWithPassword({email:email,password:pass});
-    if(error)throw error;
-    if(!data.user)throw{message:'Login failed — no user returned'};
-    onAuthSuccess(data.user);
-  }catch(e){
-    var lmsg=e.message||'Login failed';
-    if(lmsg.indexOf('Database error')>=0)lmsg='Supabase database temporarily unavailable. Please try again in a moment.';
-    if(lmsg.indexOf('Invalid login')>=0)lmsg='Wrong email or password';
-    document.getElementById('loginErr').textContent=lmsg;
-  }
-  btn.disabled=false;btn.textContent='LOGIN';
-}
-
-async function doSignup(){
-  var btn=document.getElementById('signupBtn');btn.disabled=true;btn.textContent='CREATING...';
-  document.getElementById('signupErr').textContent='';
-  try{
-    var name=document.getElementById('signupName').value.trim();
-    var email=document.getElementById('signupEmail').value.trim();
-    var pass=document.getElementById('signupPass').value;
-    if(!name||!email||pass.length<6)throw{message:'Fill all fields. Password min 6 chars.'};
-    
-    // Step 1: Create the account
-    var{data,error}=await sb.auth.signUp({email:email,password:pass,options:{data:{full_name:name}}});
-    if(error){
-      // If user already exists, try signing in directly
-      if(error.message&&error.message.indexOf('already')>=0){
-        var{data:siData,error:siError}=await sb.auth.signInWithPassword({email:email,password:pass});
-        if(siError)throw siError;
-        if(siData.user){onAuthSuccess(siData.user);return;}
-      }
-      throw error;
-    }
-    
-    // Step 2: Always sign in immediately (don't depend on data.session)
-    var{data:liData,error:liError}=await sb.auth.signInWithPassword({email:email,password:pass});
-    if(!liError&&liData.user){
-      onAuthSuccess(liData.user);
-      return;
-    }
-    
-    // Step 3: If sign-in failed, try using signUp's session if available
-    if(data.user&&data.session){
-      onAuthSuccess(data.user);
-      return;
-    }
-    
-    // Step 4: If all else fails, show success message and switch to login
-    if(data.user){
-      document.getElementById('signupErr').style.color='var(--green)';
-      document.getElementById('signupErr').textContent='Account created! Please log in.';
-      authTab('login');
-      document.getElementById('loginEmail').value=email;
-      return;
-    }
-    
-    throw{message:'Signup failed — no user returned'};
-  }catch(e){
-    document.getElementById('signupErr').textContent=e.message||'Signup failed';
-  }
-  btn.disabled=false;btn.textContent='CREATE ACCOUNT';
-}
-
-function onAuthSuccess(user){
-  if(!user){
-    console.error('onAuthSuccess called with null user');
-    return;
-  }
-  currentUser=user;
-  // Force-hide overlay with multiple methods
-  var ov=document.getElementById('authOverlay');
-  if(ov){
-    ov.classList.add('hidden');
-    ov.style.display='none';
-  }
-  // Set user badge
-  var name='User';
-  if(user.user_metadata&&user.user_metadata.full_name)name=user.user_metadata.full_name;
-  else if(user.email)name=user.email.split('@')[0];
-  var ubName=document.getElementById('ubName');
-  var ubIcon=document.getElementById('ubIcon');
-  var ubadge=document.getElementById('userBadge');
-  if(ubName)ubName.textContent=name;
-  if(ubIcon)ubIcon.textContent=name.charAt(0).toUpperCase();
-  if(ubadge)ubadge.style.display='flex';
-  localStorage.setItem('sb_session','true');
-  console.log('Auth success:',name,user.email);
-}
-
-function doGuestLogin(){
-  currentUser={id:'guest',email:null,user_metadata:{full_name:'Guest'},isGuest:true};
-  var ov=document.getElementById('authOverlay');
-  if(ov){ov.classList.add('hidden');ov.style.display='none';}
-  var ubName=document.getElementById('ubName');
-  var ubIcon=document.getElementById('ubIcon');
-  var ubadge=document.getElementById('userBadge');
-  if(ubName)ubName.textContent='Guest';
-  if(ubIcon)ubIcon.textContent='G';
-  if(ubadge)ubadge.style.display='flex';
-  localStorage.setItem('sb_session','true');
-  localStorage.setItem('sb_guest','true');
-  console.log('Guest login');
-}
-
-function doLogout(){
-  if(sb)sb.auth.signOut();
-  localStorage.removeItem('sb_guest');
-  currentUser=null;
-  var ubadge=document.getElementById('userBadge');
-  if(ubadge)ubadge.style.display='none';
-  var ov=document.getElementById('authOverlay');
-  if(ov){ov.classList.remove('hidden');ov.style.display='flex';}
-  localStorage.removeItem('sb_session');
-}
-
-function showAuthOverlay(){
-  if(currentUser)return; // Don't re-show if already logged in (guest or real)
-  var ov=document.getElementById('authOverlay');
-  if(ov){ov.classList.remove('hidden');ov.style.display='flex';}
-}
-
-// Check existing session on load — persist login across refreshes
-// Guest mode check first (URL param or localStorage)
-if(window.location.search.indexOf('guest=true')>=0||localStorage.getItem('sb_guest')==='true'){
-  doGuestLogin();
-}else if(sb){
-  // Method 1: Try getSession (reads from persisted storage)
-  sb.auth.getSession().then(function(res){
-    if(res.data&&res.data.session&&res.data.session.user){
-      onAuthSuccess(res.data.session.user);
-    }else{
-      // Method 2: Check localStorage directly for Supabase token
-      var sbKey='sb-mmxkisgdoepojotignkg-auth-token';
-      var stored=localStorage.getItem(sbKey);
-      if(stored){
-        try{
-          var parsed=JSON.parse(stored);
-          if(parsed&&parsed.access_token){
-            // Token exists in storage — try to refresh and get user
-            sb.auth.getUser().then(function(u){
-              if(u.data&&u.data.user){
-                onAuthSuccess(u.data.user);
-              }else{
-                showAuthOverlay();
-              }
-            }).catch(function(){
-              showAuthOverlay();
-            });
-          }else{
-            showAuthOverlay();
-          }
-        }catch(e){
-          showAuthOverlay();
-        }
-      }else{
-        showAuthOverlay();
-      }
-    }
-  }).catch(function(){
-    showAuthOverlay();
-  });
-
-  // Method 3: Listen for auth state changes (catches INITIAL_SESSION, refreshes, etc.)
-  sb.auth.onAuthStateChange(function(event,session){
-    if(event==='SIGNED_OUT'){
-      currentUser=null;
-      document.getElementById('userBadge').style.display='none';
-      document.getElementById('authOverlay').classList.remove('hidden');
-      localStorage.removeItem('sb_session');
-    }else if(event==='SIGNED_IN'&&session&&session.user){
-      onAuthSuccess(session.user);
-    }else if(event==='INITIAL_SESSION'&&session&&session.user){
-      onAuthSuccess(session.user);
-    }else if(event==='TOKEN_REFRESHED'&&session&&session.user){
-      onAuthSuccess(session.user);
-    }
-    // For INITIAL_SESSION with null session, don't show overlay here —
-    // the getSession() callback handles that
-  });
-
-  // Method 4: Fallback — if overlay still visible after 2s, try one more getSession
-  setTimeout(function(){
-    var overlay=document.getElementById('authOverlay');
-    if(overlay&&!overlay.classList.contains('hidden')){
-      sb.auth.getSession().then(function(res){
-        if(res.data&&res.data.session&&res.data.session.user){
-          onAuthSuccess(res.data.session.user);
-        }
-      }).catch(function(){});
-    }
-  },2000);
-}else{
-  // Supabase SDK failed to load — still show the page
-  console.warn('Supabase SDK not loaded');
-  document.getElementById('authOverlay').classList.add('hidden');
-}
-
-// Ultimate fallback: if currentUser is set but overlay still visible after 4s, force-hide it
-setTimeout(function(){
-  if(currentUser){
-    var ov=document.getElementById('authOverlay');
-    if(ov){
-      ov.classList.add('hidden');
-      ov.style.display='none';
-    }
-    console.log('Ultimate fallback: force-hid overlay');
-  }
-},4000);
-
-
 
 // ===== ELARA AI AGENT =====
 // Elara AI — now fully client-side (no backend needed)
