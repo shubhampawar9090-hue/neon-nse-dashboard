@@ -27,3 +27,4 @@ screeni-py
 supabase/
 *.temp/
 screeni-py-clone/
+.agents/.env
