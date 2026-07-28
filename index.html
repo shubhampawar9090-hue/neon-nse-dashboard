@@ -1279,6 +1279,10 @@ body {
 .idx-pcard.vix .ipc-name{color:#a855f7}
 .idx-pcard .ipc-live{font-size:9px;color:var(--green);display:flex;align-items:center;gap:4px}
 .idx-pcard .ipc-live .dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1s infinite}
+.idx-pcard .ipc-live.closed{color:var(--text2);opacity:.6}
+.idx-pcard .ipc-live.closed .dot{background:var(--text2);animation:none}
+#liveBadge.closed{color:var(--text2);background:rgba(255,255,255,.05);animation:none}
+.lt-badge.closed{color:var(--text2);background:rgba(255,255,255,.05);animation:none}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 .idx-pcard .ipc-price{font-size:22px;font-weight:700;color:var(--text);font-family:'Courier New',monospace;letter-spacing:.5px}
 .idx-pcard .ipc-chg-row{display:flex;gap:10px;align-items:center;margin:4px 0 8px;font-family:'Courier New',monospace}
@@ -2013,6 +2017,30 @@ function f0(n){return n!=null?Number(n).toLocaleString('en-IN',{minimumFractionD
 function fv(n){if(!n)return '—';if(n>=1e7)return(n/1e7).toFixed(2)+'Cr';if(n>=1e5)return(n/1e5).toFixed(2)+'L';if(n>=1e3)return(n/1e3).toFixed(2)+'K';return''+n}
 function cs(s){var m={'^NSEI':'NIFTY 50','^BSESN':'SENSEX','^NSEBANK':'BANKNIFTY'};if(m[s])return m[s];return s.replace(/\.NS$|\.BO$/,'').replace(/\^/,'')}
 function mktOpen(){var n=new Date();var s=n.toLocaleString('en-US',{timeZone:'Asia/Kolkata',hour12:false});var d=new Date(s);var day=d.getDay();var m=d.getHours()*60+d.getMinutes();if(day===0||day===6)return false;if(m<555||m>930)return false;return true}
+function updateLiveBadges(){
+  var open=mktOpen();
+  // Index card LIVE badges
+  document.querySelectorAll('.ipc-live').forEach(function(el){
+    el.classList.toggle('closed',!open);
+    el.querySelector('.dot')&&el.querySelector('.dot').style.setProperty('animation',open?'blink 1s infinite':'none');
+    // Change text
+    var txt=el.childNodes[el.childNodes.length-1];
+    if(txt&&txt.nodeType===3) txt.textContent=open?'LIVE':'CLOSED';
+  });
+  // Chart LIVE badge
+  var lb=document.getElementById('liveBadge');
+  if(lb){lb.classList.toggle('closed',!open);lb.textContent=open?'● LIVE':'● CLOSED';}
+  // Live tick mover badges
+  ['ltBadgeG','ltBadgeL'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el){el.classList.toggle('closed',!open);el.textContent=open?'● LIVE':'● CLOSED';}
+  });
+  // TICK LIVE badges on gainers/losers
+  ['tickBadgeG','tickBadgeL'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.style.display=open?'inline-block':'none';
+  });
+}
 
 function updStatus(){
   var open=mktOpen();
@@ -2237,6 +2265,7 @@ function renderIndexPriceCards(){
 
 // Fetch on load and refresh every 15 seconds during market hours
 function schedHeaderIndices(){
+  updateLiveBadges();
   fetchHeaderIndices();
   fetchIndexPriceCards();
   setInterval(fetchIndexPriceCards, 1000); // Tick every 1 second
