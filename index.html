@@ -2369,7 +2369,7 @@ async function fetchHeaderIndices(){
   var entries=await Promise.all(symbols.map(async function(sym){
     try{
       var url=EDGE_PRICE_API;
-      var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:[sym],chart:true,interval:'1d',range:'5d'})});
+      var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:[sym],chart:true,interval:'1d',range:'5d'})});
       var j=await res.json();
       if(!j.success||!j.data||!j.data.chart)return null;
       var meta=j.data.chart.meta;
@@ -2432,7 +2432,7 @@ var ipcCache={};
 async function fetchIndexPriceCards(){
   var symbols=Object.keys(ipcSymbols);
   try{
-    var res=await fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:symbols})});
+    var res=await fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:symbols})});
     if(!res.ok)throw new Error('Edge API '+res.status);
     var j=await res.json();
     if(!j.success||!j.data)throw new Error('No data');
@@ -2448,7 +2448,7 @@ async function fetchIndexPriceCards(){
     await Promise.all(symbols.map(async function(sym){
       try{
         var url=EDGE_PRICE_API;
-        var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:[sym],chart:true,interval:'1d',range:'5d'})});
+        var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:[sym],chart:true,interval:'1d',range:'5d'})});
         var j=await res.json();
         if(!j.success||!j.data||!j.data.chart)return;
         var meta=j.data.chart.meta;
@@ -3254,7 +3254,7 @@ async function loadAllNsePrices(){
   
   // PRIMARY: NSE Movers API (official NSE real-time gainers/losers)
   try{
-    var resp=await fetch(EDGE_MOVERS_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    var resp=await fetch(EDGE_MOVERS_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({})});
     if(resp.ok){
       var pd=await resp.json();
       if(pd&&pd.success&&pd.data&&pd.data.gainers&&pd.data.gainers.length>0){
@@ -3396,11 +3396,11 @@ async function loadAll(){
   // Primary: Supabase Edge Functions
   try{
     var t1=Date.now();
-    var p1=fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:pxSyms})}).then(function(r){
+    var p1=fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:pxSyms})}).then(function(r){
       if(!r.ok)throw new Error('Price API '+r.status);
       return r.json();
     });
-    var p2=fetch(EDGE_TA_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:taSyms,timeframe:currentMode})}).then(function(r){
+    var p2=fetch(EDGE_TA_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:taSyms,timeframe:currentMode})}).then(function(r){
       if(!r.ok)throw new Error('TA API '+r.status);
       return r.json();
     });
@@ -3926,7 +3926,7 @@ async function loadChart(sym){
   
   try{
     var url=EDGE_PRICE_API;
-    var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:[sym],chart:true,interval:'1m',range:'1d'})});
+    var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:[sym],chart:true,interval:'1m',range:'1d'})});
     var json=await res.json();
     if(!json.success||!json.data||!json.data.chart){console.log('Chart: no data for',sym);return;}
     
@@ -4007,7 +4007,7 @@ async function tickUpdateChart(){
   if(!priceChart||!chartData)return;
   try{
     var url=EDGE_PRICE_API;
-    var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbols:[chartSym],chart:true,interval:'1m',range:'1d'})});
+    var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:[chartSym],chart:true,interval:'1m',range:'1d'})});
     var json=await res.json();
     if(!json.success||!json.data||!json.data.chart)return;
     var meta=json.data.chart.meta;
