@@ -1751,6 +1751,205 @@ body {
       <div class="opt-section pe">📉 OPTION BUY SIGNALS — PE (PUT)</div>
       <div class="opt-grid" id="optPeCards"><div class="loading"><div class="spinner"></div><br>Loading option signals...</div></div>
 
+
+/* ===== ENHANCED HOVER EFFECTS ===== */
+
+/* Index cards */
+.idx-card, .gauge-card {
+  transition: all 0.2s ease;
+}
+.idx-card:hover, .gauge-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,212,255,.12);
+  border-color: rgba(0,212,255,.3);
+}
+
+/* Signal cards */
+.sig-card {
+  transition: all 0.2s ease;
+}
+.sig-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 8px 20px rgba(0,0,0,.3);
+}
+.sig-card.buy:hover {
+  border-color: var(--green);
+  box-shadow: 0 8px 20px rgba(0,255,136,.1);
+}
+.sig-card.sell:hover {
+  border-color: var(--red);
+  box-shadow: 0 8px 20px rgba(255,45,85,.1);
+}
+.sig-card.hold:hover {
+  border-color: var(--amber);
+  box-shadow: 0 8px 20px rgba(255,136,0,.1);
+}
+
+/* Option cards */
+.opt-card {
+  transition: all 0.2s ease;
+}
+.opt-card:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 6px 16px rgba(0,0,0,.25);
+}
+.opt-card:hover:not(.pe-card) {
+  border-color: rgba(0,255,136,.4);
+}
+.opt-card.pe-card:hover {
+  border-color: rgba(255,45,85,.4);
+}
+
+/* Table rows */
+.tbl tr {
+  transition: all 0.12s ease;
+}
+.tbl tr:hover td {
+  background-color: rgba(0,212,255,.06);
+  cursor: pointer;
+}
+
+/* Sidebar items */
+.sidebar-item {
+  transition: all 0.15s ease;
+}
+.sidebar-item:hover {
+  color: var(--cyan);
+  background-color: rgba(0,212,255,.06);
+  transform: translateX(2px);
+}
+
+/* Mode buttons */
+.mode-btn {
+  transition: all 0.15s ease;
+}
+.mode-btn:hover:not(.active) {
+  color: var(--cyan);
+  background-color: rgba(0,212,255,.08);
+  border-color: rgba(0,212,255,.2);
+}
+
+/* Refresh button */
+.btn-refresh {
+  transition: all 0.15s ease;
+}
+.btn-refresh:hover {
+  background-color: rgba(0,212,255,.08);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  transform: translateY(-1px);
+}
+
+/* Heatmap cells */
+.heatmap-cell {
+  transition: all 0.15s ease;
+}
+.heatmap-cell:hover {
+  transform: scale(1.1);
+  z-index: 5;
+  box-shadow: 0 0 10px rgba(0,0,0,.4);
+  border-radius: 3px;
+}
+
+/* Compare table */
+.compare-tbl tr {
+  transition: all 0.12s ease;
+}
+.compare-tbl tr:hover td {
+  background-color: rgba(0,212,255,.06);
+}
+
+/* Live ticker table */
+.lt-tbl tr {
+  transition: all 0.12s ease;
+}
+.lt-tbl tr:hover {
+  background-color: rgba(0,212,255,.06);
+  cursor: pointer;
+}
+
+/* Divider text */
+.divider-text {
+  transition: all 0.2s ease;
+}
+.divider:hover .divider-text {
+  color: var(--cyan);
+}
+
+/* Panel headers */
+.panel-hdr {
+  transition: all 0.15s ease;
+}
+.panel:hover .panel-hdr {
+  background-color: rgba(0,212,255,.04);
+}
+
+/* Section headers */
+.sig-section, .opt-section {
+  transition: all 0.2s ease;
+}
+.sig-section:hover, .opt-section:hover {
+  text-shadow: 0 0 8px currentColor;
+  letter-spacing: 3px;
+}
+
+/* Sentimeter stats */
+.sentimeter-stat {
+  transition: all 0.15s ease;
+}
+.sentimeter-stat:hover {
+  transform: scale(1.05);
+}
+
+/* Chart select */
+.chart-select {
+  transition: all 0.15s ease;
+}
+.chart-select:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+/* Mobile nav buttons */
+.mn-btn {
+  transition: all 0.15s ease;
+}
+.mn-btn:hover, .mn-btn:active {
+  color: var(--cyan);
+  background-color: rgba(0,212,255,.08);
+}
+
+/* SL/TP boxes in signal cards */
+.sig-card .sl-tp .box {
+  transition: all 0.15s ease;
+}
+.sig-card:hover .sl-tp .box {
+  background-color: rgba(255,255,255,.03);
+}
+.sig-card:hover .sl-tp .box.sl {
+  border-color: rgba(255,45,85,.3);
+}
+.sig-card:hover .sl-tp .box.tp {
+  border-color: rgba(0,255,136,.3);
+}
+
+/* Option strike highlight */
+.opt-card .oc-strike {
+  transition: all 0.2s ease;
+}
+.opt-card:hover .oc-strike {
+  background-color: rgba(255,136,0,.12);
+  text-shadow: 0 0 6px rgba(255,136,0,.3);
+}
+
+/* Tag badges */
+.sig-card .t, .opt-card .oc-type {
+  transition: all 0.12s ease;
+}
+.sig-card:hover .t:hover {
+  transform: scale(1.1);
+}
+
       <!-- ===== GAINERS / LOSERS ===== -->
       <div class="divider"><span class="divider-text">GAINERS & LOSERS</span><span class="divider-line"></span></div>
       <div class="gl-row">
