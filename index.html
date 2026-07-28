@@ -2494,6 +2494,10 @@ function renderCard(d){
   if(d.near52WeekHigh)tags+='<span class="t s">52W High</span>';if(d.near52WeekLow)tags+='<span class="t d">52W Low</span>';
   if(d.chartPattern&&d.chartPattern!=='Consolidation'&&d.chartPattern!=='Uptrend'&&d.chartPattern!=='Downtrend')tags+='<span class="t '+(d.chartPatternType==='bullish'?'s':(d.chartPatternType==='bearish'?'d':'w'))+'">'+d.chartPattern+'</span>';
   if(d.trend)tags+='<span class="t">'+d.trend+'</span>';
+  if(d.candlePattern&&d.candlePattern!=='None'&&d.candlePattern!=='Unknown'){var cp=d.candlePatternType==='bullish'?'s':(d.candlePatternType==='bearish'?'d':'w');tags+='<span class="t '+cp+'">🕯 '+d.candlePattern+'</span>';}
+  if(d.chartPattern&&d.chartPattern!=='Consolidation'&&d.chartPattern!=='Uptrend'&&d.chartPattern!=='Downtrend'&&d.chartPattern!=='Unknown'&&d.chartPattern!=='Insufficient Data'){var xp=d.chartPatternType==='bullish'?'s':(d.chartPatternType==='bearish'?'d':'w');tags+='<span class="t '+xp+'">📊 '+d.chartPattern+'</span>';}
+  if(d.srConfirmation)tags+='<span class="t o">📐 SR Confirm: '+d.srLevel+'</span>';
+  if(d.volumeSurge)tags+='<span class="t s" style="font-weight:700">Vol Surge</span>';
   if(d.orbSignal==='Bullish ORB')tags+='<span class="t o">ORB+</span>';
   if(d.orbSignal==='Bearish ORB')tags+='<span class="t o" style="color:var(--red)">ORB-</span>';
   if(d.emaCrossSignal&&d.emaCrossSignal!=='None'&&d.emaCrossFreshness!=='Fading'){tags+='<span class="t '+(d.emaCrossType==='bullish'?'s':'d')+'" style="font-weight:700">'+d.emaCrossSignal+'</span>';}
@@ -2519,7 +2523,18 @@ function renderCard(d){
     '<div class="box tp"><div class="lbl">TP1</div><div class="val">'+(tp1!=null?f(tp1):'—')+'</div></div>'+
     '<div class="box tp"><div class="lbl">TP2</div><div class="val">'+(tp2!=null?f(tp2):'—')+'</div></div>'+
     '<div class="box tp"><div class="lbl">TP3</div><div class="val">'+(d.tp3!=null?f(d.tp3):'—')+'</div></div>'+
-    '</div></div>';
+    '</div>';
+  // SR levels row
+  var srh='';
+  if(d.srLevels&&d.srLevels.d1_support){
+    srh='<div class="sc-sr-row" style="display:flex;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05);font-size:9px;font-family:Courier New,monospace">'+
+      '<span style="color:var(--text2)">SR:</span>'+
+      '<span style="color:var(--green)">D1 S ₹'+f0(d.srLevels.d1_support)+'</span>'+
+      '<span style="color:var(--red)">D1 R ₹'+f0(d.srLevels.d1_resistance)+'</span>'+
+      '<span style="color:var(--text2)">H4 ₹'+f0(d.srLevels.h4_support)+'-'+f0(d.srLevels.h4_resistance)+'</span>'+
+      '</div>';
+  }
+  h+=srh+'</div>';
   return h;
 }
 
@@ -2652,6 +2667,16 @@ function renderGL(data){
 
 // ===== DATA NORMALIZER: fills in defaults for fields the TA Edge Function doesn't compute =====
 function normalizeTA(merged){
+  // New pattern & SR fields — safe defaults
+  merged.forEach(function(item){
+    if(!item.candlePattern) item.candlePattern = 'None';
+    if(!item.candlePatternType) item.candlePatternType = 'neutral';
+    if(!item.chartPatternType) item.chartPatternType = item.chartPattern ? (item.chartPattern.indexOf('Up')>=0||item.chartPattern.indexOf('Bull')>=0?'bullish':item.chartPattern.indexOf('Down')>=0||item.chartPattern.indexOf('Bear')>=0?'bearish':'neutral') : 'neutral';
+    if(!item.srLevels) item.srLevels = {};
+    if(!item.srConfirmation) item.srConfirmation = false;
+    if(!item.srLevel) item.srLevel = 'none';
+    if(!item.srDetail) item.srDetail = '';
+    if(!item.volumeSurge) item.volumeSurge = false;
   return merged.map(function(d){
     // Clone to avoid mutating original
     var item=Object.assign({},d);
