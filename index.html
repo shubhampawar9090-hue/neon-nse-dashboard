@@ -968,6 +968,31 @@ body {
 .sl-tp .sl .val { color: var(--red); }
 .sl-tp .tp .val { color: var(--green); }
 
+/* Signal card — intraday OHLC row */
+.sc-intra{display:flex;gap:4px;margin-top:6px;padding:4px 6px;background:rgba(255,255,255,.03);border-radius:4px}
+.sc-intra .intra-row{display:flex;gap:8px;flex-wrap:wrap;width:100%}
+.sc-intra .intra-row>div{display:flex;flex-direction:column;align-items:center;flex:1;min-width:50px}
+.sc-intra .mini-l{font-size:8px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.sc-intra .mini-v{font-size:11px;font-family:Courier New,monospace;font-weight:600;color:var(--text)}
+.sc-intra .mini-v.g{color:var(--green)}
+.sc-intra .mini-v.r{color:var(--red)}
+
+/* Signal card — EMA/RSI/VWAP/ATR row */
+.sc-emas{display:flex;align-items:center;gap:6px;margin-top:6px;padding:4px 6px;background:rgba(255,255,255,.02);border-radius:4px;flex-wrap:wrap}
+.sc-emas .sc-ema-lbl{font-size:8px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.sc-emas .sc-ema-val{font-size:11px;font-family:Courier New,monospace;font-weight:600;color:var(--text);margin-right:2px}
+.sc-emas .sc-ema-val.g{color:var(--green)}
+.sc-emas .sc-ema-val.r{color:var(--red)}
+
+/* Signal card — tags row */
+.sc-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.sc-tags .t{font-size:8px;padding:1px 5px;border-radius:3px;border:1px solid;font-weight:600;display:inline-flex;align-items:center;gap:2px}
+.sc-tags .t.s{color:var(--green);border-color:rgba(0,255,136,.25);background:rgba(0,255,136,.05)}
+.sc-tags .t.d{color:var(--red);border-color:rgba(255,45,85,.25);background:rgba(255,45,85,.05)}
+.sc-tags .t.w{color:var(--amber);border-color:rgba(255,170,0,.25);background:rgba(255,170,0,.05)}
+.sc-tags .t.o{color:var(--cyan);border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.05)}
+
+
 /* Dual Action Buttons */
 .sl-tp::before {
   content: "BUY";
@@ -2732,7 +2757,13 @@ function renderCard(d){
     '<div class="box tp"><div class="lbl">TP1</div><div class="val">'+(tp1!=null?f(tp1):'—')+'</div></div>'+
     '<div class="box tp"><div class="lbl">TP2</div><div class="val">'+(tp2!=null?f(tp2):'—')+'</div></div>'+
     '<div class="box tp"><div class="lbl">TP3</div><div class="val">'+(d.tp3!=null?f(d.tp3):'—')+'</div></div>'+
-    '</div>';
+    '</div>'+
+    (ih?'<div class="sc-intra">'+ih+'</div>':'')+
+    '<div class="sc-emas"><span class="sc-ema-lbl">EMA</span><span class="sc-ema-val '+ec+'">'+es+'</span>'+
+    '<span class="sc-ema-lbl">RSI</span><span class="sc-ema-val '+rc+'">'+(d.rsi!=null?Math.round(d.rsi):'—')+'</span>'+
+    '<span class="sc-ema-lbl">VWAP</span><span class="sc-ema-val '+vc+'">'+(d.vwap!=null?f0(d.vwap):'—')+'</span>'+
+    '<span class="sc-ema-lbl">ATR</span><span class="sc-ema-val">'+(d.atr!=null?f0(d.atr):'—')+'</span></div>'+
+    (tags?'<div class="sc-tags">'+tags+'</div>':'');
   // SR levels row
   var srh='';
   if(d.srLevels&&d.srLevels.d1_support){
@@ -2914,16 +2945,30 @@ function normalizeTA(merged){
     }
     
     // EMA crossover from emaCrossover field
-    if(item.emaCrossover&&!item.emaCrossSignal){
-      item.emaCrossSignal=item.emaCrossover.signal||item.emaCrossover.type||'None';
-      item.emaCrossType=item.emaCrossover.direction||'';
-      item.emaCrossBars=item.emaCrossover.bars||0;
-      item.emaCrossFreshness=item.emaCrossBars<=3?'Fresh':(item.emaCrossBars<=6?'Recent':'Fading');
-      item.emaCrossLabel=item.emaCrossover.label||item.emaCrossSignal;
+    // Backend returns: {golden:bool, death:bool, cross:"none"|"golden"|"death"}
+    // Backend also returns: emaCrossSignal:"None"|"Golden Cross"|"Death Cross"
+    if(item.emaCrossover){
+      var cross=item.emaCrossover.cross||'none';
+      if(cross==='golden'){item.emaCrossType='bullish';}
+      else if(cross==='death'){item.emaCrossType='bearish';}
+      else{item.emaCrossType='';}
+      // Set emaCrossSignal from cross if not already set
+      if(!item.emaCrossSignal||item.emaCrossSignal==='None'){
+        if(cross==='golden')item.emaCrossSignal='Golden Cross';
+        else if(cross==='death')item.emaCrossSignal='Death Cross';
+        else item.emaCrossSignal='None';
+      }
+      // Active cross = not "none" — treat as Fresh since backend doesn't return bars
+      if(cross!=='none'){
+        item.emaCrossFreshness='Fresh';
+        item.emaCrossLabel=cross==='golden'?'9/21 Bullish':'9/21 Bearish';
+      } else {
+        item.emaCrossFreshness='Fading';
+        item.emaCrossLabel='—';
+      }
     }
     if(!item.emaCrossSignal)item.emaCrossSignal='None';
     if(!item.emaCrossType)item.emaCrossType='';
-    if(!item.emaCrossBars)item.emaCrossBars=0;
     if(!item.emaCrossFreshness)item.emaCrossFreshness='Fading';
     if(!item.emaCrossLabel)item.emaCrossLabel='—';
     
