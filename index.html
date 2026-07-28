@@ -2876,6 +2876,7 @@ function normalizeTA(merged){
     if(!item.srLevel) item.srLevel = 'none';
     if(!item.srDetail) item.srDetail = '';
     if(!item.volumeSurge) item.volumeSurge = false;
+  });
   return merged.map(function(d){
     // Clone to avoid mutating original
     var item=Object.assign({},d);
