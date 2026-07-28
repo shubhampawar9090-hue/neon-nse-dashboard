@@ -1704,6 +1704,53 @@ body {
       <div class="sig-section hold">🟡 HOLD / WATCH</div>
       <div class="sig-grid" id="holdCards"><div class="loading"><div class="spinner"></div><br>Loading...</div></div>
 
+
+/* ===== OPTION SIGNAL CARDS ===== */
+.opt-section{font-size:12px;font-weight:700;letter-spacing:2px;padding:14px 0 8px;text-transform:uppercase;border-top:1px solid var(--border);margin-top:10px}
+.opt-section.ce{color:var(--green)}
+.opt-section.pe{color:var(--red)}
+.opt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;padding:8px 0}
+.opt-card{background:linear-gradient(135deg,rgba(0,255,136,.03),rgba(0,0,0,.8));border:1px solid rgba(0,255,136,.15);border-left:3px solid var(--green);border-radius:6px;padding:10px 12px;position:relative;overflow:hidden}
+.opt-card.pe-card{background:linear-gradient(135deg,rgba(255,45,85,.03),rgba(0,0,0,.8));border-color:rgba(255,45,85,.15);border-left-color:var(--red)}
+.opt-card .oc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.opt-card .oc-sym{font-size:14px;font-weight:700;color:var(--text)}
+.opt-card .oc-type{font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;letter-spacing:1px}
+.opt-card .oc-type.ce{background:rgba(0,255,136,.12);color:var(--green)}
+.opt-card .oc-type.pe{background:rgba(255,45,85,.12);color:var(--red)}
+.opt-card .oc-spot{font-size:11px;color:var(--text2);font-family:'Courier New',monospace;margin-bottom:6px}
+.opt-card .oc-row{display:flex;gap:8px;margin-bottom:4px;font-family:'Courier New',monospace}
+.opt-card .oc-field{flex:1;display:flex;flex-direction:column}
+.opt-card .oc-field .lbl{font-size:8px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.opt-card .oc-field .val{font-size:12px;font-weight:700;color:var(--text)}
+.opt-card .oc-field .val.green{color:var(--green)}
+.opt-card .oc-field .val.red{color:var(--red)}
+.opt-card .oc-strike{font-size:16px;font-weight:700;color:var(--amber);font-family:'Courier New',monospace;text-align:center;padding:4px;background:rgba(255,136,0,.06);border-radius:4px;margin:6px 0}
+.opt-card .oc-reason{font-size:10px;color:var(--text2);margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)}
+.opt-card .oc-badge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700}
+.opt-card .oc-badge.itm{background:rgba(0,255,136,.1);color:var(--green)}
+.opt-card .oc-badge.atm{background:rgba(255,136,0,.1);color:var(--amber)}
+.opt-card .oc-badge.otm{background:rgba(0,212,255,.1);color:var(--cyan)}
+@media(max-width:767px){
+  .opt-grid{grid-template-columns:repeat(2,1fr)!important;gap:5px}
+  .opt-card{padding:8px 10px}
+  .opt-card .oc-sym{font-size:12px}
+  .opt-card .oc-strike{font-size:14px}
+  .opt-card .oc-field .val{font-size:11px}
+  .opt-card .oc-reason{font-size:9px}
+}
+@media(max-width:380px){
+  .opt-grid{grid-template-columns:1fr!important}
+}
+
+
+      <!-- ===== OPTION SIGNALS ===== -->
+      <div id="optSec"></div>
+      <div class="opt-section ce">📞 OPTION BUY SIGNALS — CE (CALL)</div>
+      <div class="opt-grid" id="optCeCards"><div class="loading"><div class="spinner"></div><br>Loading option signals...</div></div>
+      
+      <div class="opt-section pe">📉 OPTION BUY SIGNALS — PE (PUT)</div>
+      <div class="opt-grid" id="optPeCards"><div class="loading"><div class="spinner"></div><br>Loading option signals...</div></div>
+
       <!-- ===== GAINERS / LOSERS ===== -->
       <div class="divider"><span class="divider-text">GAINERS & LOSERS</span><span class="divider-line"></span></div>
       <div class="gl-row">
@@ -1834,6 +1881,7 @@ body {
     <button onclick="scrollToSec('chartSec')"><span class="mn-icon">📈</span>CHART</button>
     <button onclick="scrollToSec('sentiSec')"><span class="mn-icon">◉</span>SENTI</button>
     <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
+  <button onclick="scrollToSec('optSec')"><span class="mn-icon">📊</span>OPTIONS</button>
   </div>
 
 <script>
@@ -2484,6 +2532,102 @@ function renderTA(data){
   document.getElementById('sellCards').innerHTML=s.map(renderCard).join('')||'<div class="loading">No sell signals</div>';
   document.getElementById('holdCards').innerHTML=h.map(renderCard).join('')||'<div class="loading">No hold signals</div>';
   window._taLoaded=true;
+  renderOptionSignals(data);
+}
+
+// ===== OPTION SIGNAL GENERATOR =====
+function getStrikeInterval(price){
+  if(price<50)return 2.5;
+  if(price<250)return 5;
+  if(price<500)return 10;
+  if(price<1000)return 20;
+  if(price<5000)return 50;
+  return 100;
+}
+function roundStrike(price,interval){
+  return Math.round(price/interval)*interval;
+}
+function estimateOptionPremium(atr, moneyness){
+  // moneyness: 0=ATM, 1=ITM, -1=OTM
+  if(moneyness===1)return atr*1.2; // ITM premium ~ 1.2x ATR
+  if(moneyness===-1)return atr*0.5; // OTM premium ~ 0.5x ATR
+  return atr*0.8; // ATM premium ~ 0.8x ATR
+}
+function renderOptionSignals(data){
+  var v=data.filter(function(d){return!d.error&&d.signal&&d.atr&&d.price>0;});
+  
+  // CE candidates: BUY & STRONG BUY signals
+  var ceStocks=v.filter(function(d){return d.signal.indexOf('BUY')>=0;})
+    .sort(function(a,b){return(b.buyScore||0)-(a.buyScore||0);})
+    .slice(0,8);
+  
+  // PE candidates: SELL & STRONG SELL signals
+  var peStocks=v.filter(function(d){return d.signal.indexOf('SELL')>=0;})
+    .sort(function(a,b){return(b.sellScore||0)-(a.sellScore||0);})
+    .slice(0,8);
+  
+  function buildOptCard(d,isCE){
+    var price=d.price;
+    var atr=d.atr||0;
+    var interval=getStrikeInterval(price);
+    var isStrong=isCE?d.signal.indexOf('STRONG')>=0:d.signal.indexOf('STRONG')>=0;
+    
+    // Strike selection: Strong=ITM, Normal=ATM
+    var moneyness=isStrong?1:0;
+    var strike=roundStrike(price,interval);
+    if(isStrong){
+      strike=isCE?strike-interval:strike+interval; // ITM: lower strike for CE, higher for PE
+    }
+    strike=Math.max(strike,interval); // ensure positive
+    
+    var premium=estimateOptionPremium(atr,moneyness);
+    var optSL=premium*0.5; // 50% SL on premium
+    var optTP1=premium*1.0; // 100% target
+    var optTP2=premium*1.5; // 150% target
+    var moneynessLabel=moneyness===1?(isCE?'ITM':'ITM'):'ATM';
+    var moneynessClass=moneyness===1?'itm':'atm';
+    
+    // Rationale
+    var reasons=[];
+    if(d.emaCrossSignal&&d.emaCrossSignal!=='None')reasons.push(d.emaCrossSignal);
+    if(d.trend)reasons.push(d.trend+' trend');
+    if((d.volumeRatio||0)>1.5)reasons.push('Vol surge '+d.volumeRatio+'x');
+    if(d.rsi){
+      if(d.rsi>70)reasons.push('RSI '+Math.round(d.rsi)+' overbought');
+      else if(d.rsi<30)reasons.push('RSI '+Math.round(d.rsi)+' oversold');
+      else reasons.push('RSI '+Math.round(d.rsi));
+    }
+    if(d.breakoutType&&d.breakoutType.indexOf('Breakout')>=0)reasons.push('Breakout');
+    if(d.breakoutType&&d.breakoutType.indexOf('Breakdown')>=0)reasons.push('Breakdown');
+    var reason=reasons.length?reasons.join(' · '):d.signal;
+    
+    var fmt=function(x){return x.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})};
+    
+    var h='<div class="opt-card'+(isCE?'':' pe-card')+'">'+
+      '<div class="oc-head"><div class="oc-sym">'+cs(d.symbol)+'</div>'+
+      '<div class="oc-type '+(isCE?'ce':'pe')+'">'+(isCE?'CE':'PE')+'</div></div>'+
+      '<div class="oc-spot">Spot: ₹'+fmt(price)+' · '+d.changePercent.toFixed(2)+'%</div>'+
+      '<div class="oc-strike">Strike: ₹'+fmt(strike)+' <span class="oc-badge '+moneynessClass+'">'+moneynessLabel+'</span></div>'+
+      '<div class="oc-row">'+
+      '<div class="oc-field"><span class="lbl">Est. Premium</span><span class="val">₹'+fmt(premium)+'</span></div>'+
+      '<div class="oc-field"><span class="lbl">SL (50%)</span><span class="val red">₹'+fmt(optSL)+'</span></div>'+
+      '</div>'+
+      '<div class="oc-row">'+
+      '<div class="oc-field"><span class="lbl">TP1 (100%)</span><span class="val green">₹'+fmt(optTP1)+'</span></div>'+
+      '<div class="oc-field"><span class="lbl">TP2 (150%)</span><span class="val green">₹'+fmt(optTP2)+'</span></div>'+
+      '</div>'+
+      '<div class="oc-reason">'+reason+'</div>'+
+      '</div>';
+    return h;
+  }
+  
+  document.getElementById('optCeCards').innerHTML=ceStocks.length
+    ?ceStocks.map(function(d){return buildOptCard(d,true);}).join('')
+    :'<div class="loading">No CE (Call) option signals</div>';
+  
+  document.getElementById('optPeCards').innerHTML=peStocks.length
+    ?peStocks.map(function(d){return buildOptCard(d,false);}).join('')
+    :'<div class="loading">No PE (Put) option signals</div>';
 }
 
 function renderGL(data){
@@ -2964,7 +3108,7 @@ function fmtVol(v){
 
 async function loadAll(){
   updStatus();
-  if(!window._taLoaded){['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});}
+  if(!window._taLoaded){['buyCards','sellCards','holdCards','optCeCards','optPeCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});}
   var priceResults,taResults;
   
   // Primary: Supabase Edge Functions
