@@ -1055,79 +1055,6 @@ body {
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* ===== SENTIMENT METER ===== */
-.sentimeter-wrap {
-  background-color: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
-.sentimeter-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--cyan);
-  margin-bottom: 16px;
-}
-.sentimeter-body {
-  display: flex;
-  gap: 24px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.sentimeter-gauge {
-  position: relative;
-  width: 200px;
-  height: 100px;
-}
-.sentimeter-gauge canvas {
-  width: 200px !important;
-  height: 100px !important;
-}
-.sentimeter-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
-  flex: 1;
-}
-.sentimeter-stat {
-  background-color: var(--bg);
-  border: 1px solid var(--border);
-  padding: 10px;
-  border-radius: 6px;
-  text-align: center;
-}
-.sentimeter-stat .ss-label {
-  font-size: 9px;
-  color: var(--text2);
-  text-transform: uppercase;
-  font-weight: bold;
-}
-.sentimeter-stat .ss-val {
-  font-size: 22px;
-  font-weight: 700;
-  font-family: Consolas, monospace;
-  margin-top: 4px;
-}
-.sentimeter-stat.buy .ss-val { color: var(--green); }
-.sentimeter-stat.sell .ss-val { color: var(--red); }
-.sentimeter-stat.hold .ss-val { color: var(--yellow); }
-.sentimeter-stat.total .ss-val { color: var(--cyan); }
-.sentimeter-verdict {
-  background-color: var(--bg);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--cyan);
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--text2);
-  margin-top: 12px;
-  line-height: 1.5;
-}
-.sentimeter-verdict b {
-  color: var(--text);
-}
-
 /* ===== CHART PANEL ===== */
 .chart-panel {
   background-color: var(--bg2);
@@ -1438,14 +1365,6 @@ body {
   }
   .sig-grid {
     grid-template-columns: 1fr;
-  }
-  .sentimeter-body {
-    flex-direction: column;
-  }
-  .sentimeter-gauge {
-    width: 100%;
-    display: flex;
-    justify-content: center;
   }
   .heatmap-grid {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -1926,14 +1845,6 @@ body {
   letter-spacing: 3px;
 }
 
-/* Sentimeter stats */
-.sentimeter-stat {
-  transition: all 0.15s ease;
-}
-.sentimeter-stat:hover {
-  transform: scale(1.05);
-}
-
 /* Chart select */
 .chart-select {
   transition: all 0.15s ease;
@@ -1997,27 +1908,6 @@ body {
           <div class="panel-hdr"><span class="panel-name" style="color:var(--red)">🔴 Top 10 Losers + Vol Surge</span></div>
           <div class="tbl-wrap" style="max-height:none"><table class="tbl"><thead><tr><th>#</th><th>Stock</th><th>Price</th><th>Chg%</th><th>Vol×</th></tr></thead><tbody id="lBody"></tbody></table></div>
         </div>
-      </div>
-
-      <!-- ===== MARKET SENTIMENT METER ===== -->
-      <div id="sentiSec"></div>
-      <div class="divider"><span class="divider-text">MARKET SENTIMENT METER</span><span class="divider-line"></span></div>
-      <div class="sentimeter-wrap">
-        <div class="sentimeter-title">📊 Aggregated Signal Strength — All Tracked Stocks</div>
-        <div class="sentimeter-body">
-          <div class="sentimeter-gauge">
-            <canvas id="sentiGauge"></canvas>
-          </div>
-          <div class="sentimeter-stats">
-            <div class="sentimeter-stat buy"><div class="ss-label">Strong Buy</div><div class="ss-val" id="sentiSBuy">0</div></div>
-            <div class="sentimeter-stat buy"><div class="ss-label">Buy</div><div class="ss-val" id="sentiBuy">0</div></div>
-            <div class="sentimeter-stat hold"><div class="ss-label">Hold</div><div class="ss-val" id="sentiHold">0</div></div>
-            <div class="sentimeter-stat sell"><div class="ss-label">Sell</div><div class="ss-val" id="sentiSell">0</div></div>
-            <div class="sentimeter-stat sell"><div class="ss-label">Strong Sell</div><div class="ss-val" id="sentiSSell">0</div></div>
-            <div class="sentimeter-stat total"><div class="ss-label">Total</div><div class="ss-val" id="sentiTotal">0</div></div>
-          </div>
-        </div>
-        <div class="sentimeter-verdict" id="sentiVerdict">Calculating market sentiment...</div>
       </div>
 
       <!-- ===== LIVE CHART ===== -->
@@ -2094,7 +1984,7 @@ body {
         <span>•</span>
         <span>🔥 Volume surge detected in Tata Motors and Reliance Industries</span>
         <span>•</span>
-        <span>🚀 AI sentiment indicator leans BULLISH for the next trading session</span>
+        <span>📈 Live NSE Dashboard — Real-time Market Data & Signals</span>
         <span>•</span>
         <span>📊 EMA Crossover breakout on multiple Midcap and Largecap stocks</span>
         <span>•</span>
@@ -3377,7 +3267,6 @@ function updateMoversPanel(live){
   }).join(''):'<tr><td colspan="11" class="empty-row">No losers</td></tr>';
 
 renderLiveTickMovers();
-  setInterval(renderLiveTickMovers, 10000); // F&O panel refresh every 10s
 }
 
 function fmtVol(v){
@@ -3451,7 +3340,7 @@ async function loadAll(){
   
   renderIndices(priceResults||[]);
   renderIndexCardsFromData(priceResults||[]);
-  if(merged.length){renderGL(merged);renderScreeners(merged);renderTA(merged);renderSentiment(merged);renderCompare(merged);loadAllNsePrices();
+  if(merged.length){if(!window._moversLoaded){renderGL(merged);window._moversLoaded=true;}renderScreeners(merged);renderTA(merged);renderCompare(merged);loadAllNsePrices();
     // Trigger TradingView poll for newly displayed stocks
     setTimeout(function(){ if (tvActive) tvPollScanner(); }, 500);
   }
@@ -3847,63 +3736,7 @@ function scrollToSec(id){
 
 // ===== MARKET SENTIMENT METER =====
 var sentiChart=null;
-function renderSentiment(data){
-  var v=data.filter(function(d){return!d.error;});
-  var sbuy=v.filter(function(d){return d.signal==='STRONG BUY';}).length;
-  var buy=v.filter(function(d){return d.signal==='BUY';}).length;
-  var hold=v.filter(function(d){return d.signal==='HOLD';}).length;
-  var sell=v.filter(function(d){return d.signal==='SELL';}).length;
-  var ssell=v.filter(function(d){return d.signal==='STRONG SELL';}).length;
-  var total=v.length;
-  document.getElementById('sentiSBuy').textContent=sbuy;
-  document.getElementById('sentiBuy').textContent=buy;
-  document.getElementById('sentiHold').textContent=hold;
-  document.getElementById('sentiSell').textContent=sell;
-  document.getElementById('sentiSSell').textContent=ssell;
-  document.getElementById('sentiTotal').textContent=total;
 
-  // Calculate score: -100 to +100
-  var score=total>0?((sbuy*2+buy-hold-sell-ssell*2)/total)*100:0;
-  var bullPct=Math.round(((sbuy+buy)/total)*100)||0;
-  var bearPct=Math.round(((sell+ssell)/total)*100)||0;
-
-  var verdict='';
-  if(score>40)verdict='<b>🟢 STRONG BULLISH</b> — '+bullPct+'% buy signals, '+bearPct+'% sell. Market is in strong upward momentum. Favorable for long positions.';
-  else if(score>15)verdict='<b>🟢 BULLISH</b> — '+bullPct+'% buy signals vs '+bearPct+'% sell. Positive but cautious. Look for confirmation.';
-  else if(score>-15)verdict='<b>🟡 NEUTRAL / SIDEWAYS</b> — Mixed signals ('+bullPct+'% buy, '+bearPct+'% sell). No clear trend. Wait for breakout.';
-  else if(score>-40)verdict='<b>🔴 BEARISH</b> — '+bearPct+'% sell signals vs '+bullPct+'% buy. Negative pressure. Consider defensive positions.';
-  else verdict='<b>🔴 STRONG BEARISH</b> — '+bearPct+'% sell signals. Heavy selling pressure. Avoid new longs.';
-  document.getElementById('sentiVerdict').innerHTML=verdict;
-
-  // Draw gauge
-  var cvs=document.getElementById('sentiGauge');
-  if(!cvs)return;
-  var ctx=cvs.getContext('2d');
-  var w=200,h=100,cx=100,cy=90,r=80;
-  ctx.clearRect(0,0,w,h);
-  // Arc background
-  var startAng=Math.PI,endAng=2*Math.PI;
-  // Segments
-  var segs=[{from:-100,to:-60,color:'#ff0000'},{from:-60,to:-15,color:'#ff4444'},{from:-15,to:15,color:'#ffee00'},{from:15,to:60,color:'#44ff44'},{from:60,to:100,color:'#00ff00'}];
-  segs.forEach(function(s){
-    var a1=startAng+(s.from+100)/200*Math.PI;
-    var a2=startAng+(s.to+100)/200*Math.PI;
-    ctx.beginPath();ctx.arc(cx,cy,r,a1,a2);ctx.lineWidth=14;ctx.strokeStyle=s.color;ctx.stroke();
-  });
-  // Needle
-  var ang=startAng+(score+100)/200*Math.PI;
-  ctx.beginPath();ctx.moveTo(cx,cy);
-  ctx.lineTo(cx+Math.cos(ang)*(r-8),cy+Math.sin(ang)*(r-8));
-  ctx.lineWidth=2;ctx.strokeStyle='#ff8800';ctx.lineCap='round';ctx.stroke();
-  // Center dot
-  ctx.beginPath();ctx.arc(cx,cy,4,0,2*Math.PI);ctx.fillStyle='#ff8800';ctx.fill();
-  // Score text
-  ctx.font='bold 16px Courier New';ctx.textAlign='center';
-  ctx.fillStyle=score>15?'#00ff00':(score<-15?'#ff0000':'#ffee00');
-  ctx.fillText((score>0?'+':'')+Math.round(score),cx,cy-25);
-  ctx.font='9px Courier New';ctx.fillStyle='#666';
-  ctx.fillText('SENTIMENT',cx,cy-12);
-}
 
 // ===== LIVE PRICE CHART =====
 var priceChart=null;
