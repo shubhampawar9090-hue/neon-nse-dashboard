@@ -1658,12 +1658,12 @@ body {
       <div class="divider" style="margin-top:14px"><span class="divider-text">LIVE TICK MOVERS</span><span class="divider-line"></span></div>
       <div class="movers-row">
         <div class="lt-panel">
-          <div class="lt-hdr"><span style="color:var(--green)">🟢 TOP 10 F&O GAINERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeG">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountG"></span></div>
-          <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>High</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltGBody"></tbody></table></div>
+          <div class="lt-hdr"><span style="color:var(--green)">🟢 TOP 20 F&O GAINERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeG">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountG"></span></div>
+          <div class="tbl-wrap" style="max-height:680px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>High</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltGBody"></tbody></table></div>
         </div>
         <div class="lt-panel loser">
-          <div class="lt-hdr"><span style="color:var(--red)">🔴 TOP 10 F&O LOSERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeL">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountL"></span></div>
-          <div class="tbl-wrap" style="max-height:380px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>High</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltLBody"></tbody></table></div>
+          <div class="lt-hdr"><span style="color:var(--red)">🔴 TOP 20 F&O LOSERS — LIVE TICK</span><span class="lt-badge" id="ltBadgeL">● LIVE</span><span style="margin-left:auto;font-size:9px;color:var(--text2)" id="ltCountL"></span></div>
+          <div class="tbl-wrap" style="max-height:680px;overflow-y:auto"><table class="lt-tbl"><thead><tr><th>#</th><th>Stock</th><th>LTP</th><th>Open</th><th>High</th><th>PrevClose</th><th>Chg%</th></tr></thead><tbody id="ltLBody"></tbody></table></div>
         </div>
       </div>
 
@@ -3105,9 +3105,9 @@ var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIG
       });
       
       // Gainers: sorted desc by change_pct from the query, filter positive, take top 10
-      var g = fnoRows.filter(function(d){return d.changePercent > 0;}).slice(0, 10);
+      var g = fnoRows.filter(function(d){return d.changePercent > 0;}).slice(0, 20);
       // Losers: sorted asc by change_pct from the query, filter negative, take top 10
-      var l = fnoRows.filter(function(d){return d.changePercent < 0;}).slice(0, 10);
+      var l = fnoRows.filter(function(d){return d.changePercent < 0;}).slice(0, 20);
       
       document.getElementById('ltCountG').textContent = g.length;
       document.getElementById('ltCountL').textContent = l.length;
