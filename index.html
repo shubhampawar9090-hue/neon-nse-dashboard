@@ -2034,7 +2034,7 @@ body {
             <option value="INFY.NS">INFY</option>
             <option value="ICICIBANK.NS">ICICIBANK</option>
             <option value="SBIN.NS">SBIN</option>
-            <option value="TATAMOTORS.NS">TATAMOTORS</option>
+            <option value="TMPV.NS">TMPV (Tata Motors PV)</option>
             <option value="BHARTIARTL.NS">BHARTIARTL</option>
             <option value="ITC.NS">ITC</option>
             <option value="LT.NS">LT</option>
@@ -2104,7 +2104,7 @@ body {
     <div class="nt-strip">
       <span class="nt-strip-title">TOP GAINERS/LOSERS</span>
       <marquee scrollamount="3" class="nt-marquee">
-        <span class="pos">RELIANCE +2.45%</span> | <span class="neg">TCS -1.15%</span> | <span class="pos">HDFCBANK +1.85%</span> | <span class="pos">INFY +0.65%</span> | <span class="neg">ICICIBANK -0.45%</span> | <span class="pos">SBIN +3.12%</span> | <span class="pos">TATAMOTORS +4.20%</span> | <span class="neg">BHARTIARTL -1.50%</span> | <span class="pos">ITC +1.10%</span> | <span class="pos">LT +2.15%</span>
+        <span class="pos">RELIANCE +2.45%</span> | <span class="neg">TCS -1.15%</span> | <span class="pos">HDFCBANK +1.85%</span> | <span class="pos">INFY +0.65%</span> | <span class="neg">ICICIBANK -0.45%</span> | <span class="pos">SBIN +3.12%</span> | <span class="pos">TMPV +1.19%</span> | <span class="neg">BHARTIARTL -1.50%</span> | <span class="pos">ITC +1.10%</span> | <span class="pos">LT +2.15%</span>
       </marquee>
     </div>
   </footer>
@@ -2292,7 +2292,7 @@ async function fetchTA(symbol,timeframe){
 }
 var currentMode='5m';
 var taSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TMPV.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS','HCLTECH.NS','BAJFINANCE.NS','ASIANPAINT.NS','NESTLEIND.NS','ONGC.NS','NTPC.NS','POWERGRID.NS','COALINDIA.NS','ADANIENT.NS','ADANIPORTS.NS','TATASTEEL.NS','JSWSTEEL.NS','NAUKRI.NS','BSE.NS','DIXON.NS'];
-var pxSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TMPV.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS'];
+var pxSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TMPV.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS','NAUKRI.NS','BSE.NS','DIXON.NS'];
 var nseMovers=null;
 
 function f(n){return '₹'+Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
@@ -3810,7 +3810,7 @@ var AI_ALIASES={
   'itc':'ITC','larsen toubro':'LT','lnt':'LT','lt':'LT',
   'bajaj finance':'BAJFINANCE','bajfinance':'BAJFINANCE',
   'maruti':'MARUTI','maruti suzuki':'MARUTI',
-  'tata motors':'TATAMOTORS','tatamotors':'TATAMOTORS',
+  'tata motors':'TMPV','tatamotors':'TMPV','tmpv':'TMPV',
   'sun pharma':'SUNPHARMA','sunpharma':'SUNPHARMA',
   'adani enterprises':'ADANIENT','adani':'ADANIENT',
   'trent':'TRENT','zomato':'ZOMATO','food':'ZOMATO',
