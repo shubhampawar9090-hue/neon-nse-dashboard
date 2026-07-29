@@ -3613,11 +3613,10 @@ function renderNews(data){
   }).join('');
 }
 
-// Refresh all NSE symbols every 2 minutes
+// Tick-by-tick auto refresh: 5s when market live, 30s when closed
 var allSymInterval=setInterval(function(){
-  var iv=mktOpen();
   loadAllNsePrices();
-},10000);
+},5000);
 sched();
 schedHeaderIndices();
 
