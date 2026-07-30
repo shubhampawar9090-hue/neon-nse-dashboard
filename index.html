@@ -735,6 +735,22 @@ body {
   font-size: 10px;
   margin-bottom: 6px;
 }
+.sc-sigtime {
+  font-size: 9px;
+  color: var(--text2);
+  font-family: 'Courier New', monospace;
+  margin-bottom: 6px;
+  padding: 2px 6px;
+  background: rgba(255,136,0,.06);
+  border-radius: 3px;
+  border-left: 2px solid var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sc-sigtime .sigtime-icon {
+  font-size: 10px;
+}
 .chg-val {
   font-weight: 700;
   font-family: Consolas, monospace;
@@ -1666,7 +1682,7 @@ body {
 .opt-card .oc-type.ce{background:rgba(0,255,136,.12);color:var(--green)}
 .opt-card .oc-type.pe{background:rgba(255,45,85,.12);color:var(--red)}
 .opt-card .oc-spot{font-size:11px;color:var(--text2);font-family:'Courier New',monospace;margin-bottom:6px}
-.opt-card .oc-row{display:flex;gap:8px;margin-bottom:4px;font-family:'Courier New',monospace}
+.opt-card .oc-row{display:flex;gap:6px;margin-bottom:4px;font-family:'Courier New',monospace}.opt-card .oc-row .oc-field{min-width:0}.opt-card .oc-field .val{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .opt-card .oc-field{flex:1;display:flex;flex-direction:column}
 .opt-card .oc-field .lbl{font-size:8px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
 .opt-card .oc-field .val{font-size:12px;font-weight:700;color:var(--text)}
@@ -2823,8 +2839,10 @@ function renderCard(d){
     var psTxt=ps==='ACTIVE'?'● ACTIVE':(ps==='SL_HIT'?'✗ SL HIT':'✓ '+ps.replace('_',' '));
     posBadge='<span class="pos-status '+psCls+'">'+psTxt+'</span>';
   }
+  var sigTime=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
   var h='<div class="sig-card '+cc+'"><div class="sc-head"><div><div class="sc-name">'+cs(d.symbol)+'</div><div class="sc-price">'+f(d.price)+'</div></div><div class="sc-badge '+bc+'">'+d.signal+'</div></div>'+
     '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(priceChange>=0?'+':'')+f0(priceChange)+')</span><span class="vol-txt">Vol: '+volStr+' ('+d.volumeRatio+'x)</span>'+posBadge+'</div>'+
+    '<div class="sc-sigtime"><span class="sigtime-icon">⏱</span> Signal: '+sigTime+'</div>'+
     '<div class="sl-tp">'+
     '<div class="box sl"><div class="lbl">SL</div><div class="val">'+(sl!=null?f(sl):'—')+'</div></div>'+
     '<div class="box entry"><div class="lbl">Entry</div><div class="val">'+(d.entry!=null?f(d.entry):f(d.price))+'</div></div>'+
@@ -2913,6 +2931,7 @@ function renderOptionSignals(data){
     var optSL=premium*0.5; // 50% SL on premium
     var optTP1=premium*1.0; // 100% target
     var optTP2=premium*1.5; // 150% target
+    var optTP3=premium*2.0; // 200% target
     var moneynessLabel=moneyness===1?(isCE?'ITM':'ITM'):'ATM';
     var moneynessClass=moneyness===1?'itm':'atm';
     
@@ -2932,18 +2951,20 @@ function renderOptionSignals(data){
     
     var fmt=function(x){return x.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})};
     
+    var optTime=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
     var h='<div class="opt-card'+(isCE?'':' pe-card')+'">'+
       '<div class="oc-head"><div class="oc-sym">'+cs(d.symbol)+'</div>'+
       '<div class="oc-type '+(isCE?'ce':'pe')+'">'+(isCE?'CE':'PE')+'</div></div>'+
-      '<div class="oc-spot">Spot: ₹'+fmt(price)+' · '+d.changePercent.toFixed(2)+'%</div>'+
+      '<div class="oc-spot">Spot: ₹'+fmt(price)+' · '+d.changePercent.toFixed(2)+'% <span style="float:right;color:var(--text2);font-size:9px">⏱ '+optTime+'</span></div>'+
       '<div class="oc-strike">Strike: ₹'+fmt(strike)+' <span class="oc-badge '+moneynessClass+'">'+moneynessLabel+'</span></div>'+
       '<div class="oc-row">'+
-      '<div class="oc-field"><span class="lbl">Est. Premium</span><span class="val">₹'+fmt(premium)+'</span></div>'+
+      '<div class="oc-field"><span class="lbl">Entry</span><span class="val" style="color:var(--cyan)">₹'+fmt(premium)+'</span></div>'+
       '<div class="oc-field"><span class="lbl">SL (50%)</span><span class="val red">₹'+fmt(optSL)+'</span></div>'+
       '</div>'+
       '<div class="oc-row">'+
       '<div class="oc-field"><span class="lbl">TP1 (100%)</span><span class="val green">₹'+fmt(optTP1)+'</span></div>'+
       '<div class="oc-field"><span class="lbl">TP2 (150%)</span><span class="val green">₹'+fmt(optTP2)+'</span></div>'+
+      '<div class="oc-field"><span class="lbl">TP3 (200%)</span><span class="val green">₹'+fmt(optTP3)+'</span></div>'+
       '</div>'+
       '<div class="oc-reason">'+reason+'</div>'+
       '</div>';
