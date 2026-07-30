@@ -2723,8 +2723,8 @@ function schedHeaderIndices(){
   updateLiveBadges();
   fetchHeaderIndices();
   fetchIndexPriceCards();
-  setInterval(fetchIndexPriceCards, 1000); // Tick every 1 second
-  var iv=mktOpen()?5000:30000;
+  setInterval(fetchIndexPriceCards, 5000); // Throttled to 5s to reduce egress
+  var iv=mktOpen()?15000:60000;
   setTimeout(schedHeaderIndices,iv);
 }
 
@@ -3259,7 +3259,7 @@ const SUPABASE_URL='https://mmxkisgdoepojotignkg.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1teGtpc2dkb2Vwb2pvdGlnbmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3OTAzNDMsImV4cCI6MjEwMDM2NjM0M30.4o1ylVMgXyBxMhf82MWI2hjgSmqvOf1aoEPkR8VPW00';
 
 var ltPrevPrices={}; // sym -> previous price for flash detection
-var FNO_SYMBOLS=["360ONE", "ABB", "ABCAPITAL", "ADANIENSOL", "ADANIENT", "ADANIGREEN", "ADANIPORTS", "ADANIPOWER", "ALKEM", "AMBER", "AMBUJACEM", "ANGELONE", "APLAPOLLO", "APOLLOHOSP", "ASHOKLEY", "ASIANPAINT", "ASTRAL", "AUBANK", "AUROPHARMA", "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJAJHLDNG", "BAJFINANCE", "BANDHANBNK", "BANKBARODA", "BANKINDIA", "BDL", "BEL", "BHARATFORG", "BHARTIARTL", "BHEL", "BIOCON", "BLUESTARCO", "BOSCHLTD", "BPCL", "BRITANNIA", "BSE", "CAMS", "CANBK", "CDSL", "CGPOWER", "CHOLAFIN", "CIPLA", "COALINDIA", "COCHINSHIP", "COFORGE", "COLPAL", "CONCOR", "CROMPTON", "CUMMINSIND", "DABUR", "DALBHARAT", "DELHIVERY", "DIVISLAB", "DIXON", "DLF", "DMART", "DRREDDY", "EICHERMOT", "ETERNAL", "FEDERALBNK", "FORCEMOT", "FORTIS", "GAIL", "GLENMARK", "GMRAIRPORT", "GODFRYPHLP", "GODREJCP", "GODREJPROP", "GRASIM", "GVT&D", "HAL", "HAVELLS", "HCLTECH", "HDFCAMC", "HDFCBANK", "HDFCLIFE", "HEROMOTOCO", "HINDALCO", "HINDPETRO", "HINDUNILVR", "HINDZINC", "HYUNDAI", "ICICIBANK", "ICICIGI", "ICICIPRULI", "IDEA", "IDFCFIRSTB", "IEX", "INDHOTEL", "INDIANB", "INDIGO", "INDUSINDBK", "INDUSTOWER", "INFY", "INOXWIND", "IOC", "IREDA", "IRFC", "ITC", "JINDALSTEL", "JIOFIN", "JSWENERGY", "JSWSTEEL", "JUBLFOOD", "KALYANKJIL", "KAYNES", "KEI", "KFINTECH", "KOTAKBANK", "KPITTECH", "LAURUSLABS", "LICHSGFIN", "LICI", "LODHA", "LT", "LTF", "LTM", "LUPIN", "M&M", "MANAPPURAM", "MANKIND", "MARICO", "MARUTI", "MAXHEALTH", "MAZDOCK", "MCX", "MFSL", "MOTHERSON", "MOTILALOFS", "MPHASIS", "MUTHOOTFIN", "NAM-INDIA", "NATIONALUM", "NAUKRI", "NBCC", "NESTLEIND", "NHPC", "NMDC", "NTPC", "NYKAA", "OBEROIRLTY", "OFSS", "OIL", "ONGC", "PAGEIND", "PATANJALI", "PAYTM", "PERSISTENT", "PETRONET", "PFC", "PGEL", "PHOENIXLTD", "PIDILITIND", "PIIND", "PNB", "PNBHOUSING", "POLICYBZR", "POLYCAB", "POWERGRID", "POWERINDIA", "PREMIERENE", "PRESTIGE", "RADICO", "RBLBANK", "RECLTD", "RELIANCE", "RVNL", "SAIL", "SBICARD", "SBILIFE", "SBIN", "SHREECEM", "SHRIRAMFIN", "SIEMENS", "SOLARINDS", "SONACOMS", "SRF", "SUNPHARMA", "SUPREMEIND", "SUZLON", "SWIGGY", "TATACONSUM", "TATAELXSI", "TATAPOWER", "TATASTEEL", "TCS", "TECHM", "TIINDIA", "TITAN", "TMPV", "TORNTPHARM", "TRENT", "TVSMOTOR", "ULTRACEMCO", "UNIONBANK", "UNITDSPR", "UNOMINDA", "UPL", "VBL", "VEDL", "VMM", "VOLTAS", "WAAREEENER", "WIPRO", "YESBANK", "ZYDUSLIFE"];
+var FNO_SYMBOLS=["RELIANCE","TCS","HDFCBANK","INFY","ICICIBANK","SBIN","BHARTIARTL","ITC","LICI","LT","AXISBANK","KOTAKBANK","HINDUNILVR","MARUTI","ASIANPAINT","TATASTEEL","WIPRO","SUNPHARMA","TATAMOTORS","BAJFINANCE","HCLTECH","ONGC","TATACONSUM","NTPC","POWERGRID","COALINDIA","JSWSTEEL","HINDALCO","DLF","GRASIM","ULTRACEMCO","CIPLA","DRREDDY","EICHERMOT","ADANIENT","ADANIPORTS","BAJAJ-AUTO","TITAN","TECHM","DIVISLAB","BRITANNIA","SHRIRAMFIN","BAJAJFINSV","BPCL","IOC","GAIL","HEROMOTOCO","M&M","INDUSINDBK","SBILIFE"];
   function renderLiveTickMovers(){
   var fnoList = FNO_SYMBOLS;
   // Step 1: Get latest tick_time
@@ -3676,7 +3676,7 @@ function showFetchError(msg){
 setMode('5m');
 loadAllNsePrices();
 loadMarketNews();
-function sched(){var iv=mktOpen()?({'5m':3000,'15m':5000,'1h':10000,'swing':30000}[currentMode]||3000):120000;setTimeout(function(){loadAll().then(function(){sched();});},iv);}
+function sched(){var iv=mktOpen()?({'5m':15000,'15m':20000,'1h':30000,'swing':60000}[currentMode]||15000):300000;setTimeout(function(){loadAll().then(function(){sched();});},iv);}
 
 // ===== MARKET NEWS =====
 var allNewsData=[];
@@ -4030,7 +4030,7 @@ function startTradingViewTicks() {
   tvPollScanner();
   // Set up polling interval (every 2 seconds)
   if (!tvPollInterval) {
-    tvPollInterval = setInterval(tvPollScanner, 2000);
+    tvPollInterval = setInterval(tvPollScanner, 15000);
   }
   tvUpdateButton();
   console.log('TV: Starting real-time polling from TradingView scanner API...');
@@ -4198,7 +4198,7 @@ async function loadChart(sym){
     
     // Start tick-by-tick live updates every 3 seconds during market hours
     if(mktOpen()){
-      chartInterval=setInterval(function(){tickUpdateChart();},1000);
+      chartInterval=setInterval(function(){tickUpdateChart();},5000);
     }
   }catch(e){
     console.log('Chart load error:',e);
@@ -4374,7 +4374,7 @@ async function loadPCR(indices, btn) {
     // Auto-refresh every 5 seconds during market hours
     if (pcrAutoRefresh) clearInterval(pcrAutoRefresh);
     if (isMarket) {
-      pcrAutoRefresh = setInterval(() => loadPCR(null, null), 5000);
+      pcrAutoRefresh = setInterval(() => loadPCR(null, null), 30000);
     }
   } catch(e) {
     grid.innerHTML = '<div class="loading">PCR data temporarily unavailable</div>';
