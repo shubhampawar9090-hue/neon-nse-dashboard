@@ -1722,39 +1722,45 @@ body {
 .pcr-section{margin:16px 0;padding:0}
 .pcr-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
 .pcr-header h2{font-size:16px;font-weight:700;color:var(--text1);margin:0;letter-spacing:1px}
-.pcr-tabs{display:flex;gap:6px}
-.pcr-tab{padding:6px 14px;border:1px solid rgba(255,136,0,.3);background:transparent;color:var(--text2);font-family:'Courier New',monospace;font-size:11px;cursor:pointer;border-radius:0;transition:all .15s}
+.pcr-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.pcr-tab{padding:5px 12px;border:1px solid rgba(255,136,0,.3);background:transparent;color:var(--text2);font-family:'Courier New',monospace;font-size:10px;cursor:pointer;border-radius:0;transition:all .15s}
 .pcr-tab.active{background:rgba(255,136,0,.15);color:#ff8800;border-color:#ff8800}
 .pcr-tab:hover{background:rgba(255,136,0,.1)}
-.pcr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
-.pcr-card{background:#0a0e14;border:1px solid rgba(255,136,0,.15);padding:16px;transition:all .2s}
+.pcr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:16px}
+.pcr-card{background:#0a0e14;border:1px solid rgba(255,136,0,.15);padding:14px;transition:all .2s;position:relative}
 .pcr-card:hover{border-color:rgba(255,136,0,.4);box-shadow:0 4px 16px rgba(255,136,0,.08)}
-.pcr-card .pcr-title{font-size:13px;font-weight:700;color:var(--text1);margin-bottom:10px;letter-spacing:1px}
-.pcr-card .pcr-spot{font-size:11px;color:var(--text2);margin-bottom:12px}
-.pcr-gauge{position:relative;width:120px;height:70px;margin:0 auto 12px}
-.pcr-gauge .pcr-val{position:absolute;top:50%;left:50%;transform:translate(-50%,-30%);text-align:center}
-.pcr-gauge .pcr-num{font-size:24px;font-weight:700;color:#ff8800;font-family:'Courier New',monospace}
-.pcr-gauge .pcr-label{font-size:9px;color:var(--text2);letter-spacing:1px}
-.pcr-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.pcr-stat{background:#0d1117;padding:8px 10px;border-left:2px solid}
-.pcr-stat.ce{border-color:#ff4444}
-.pcr-stat.pe{border-color:#00ff88}
-.pcr-stat .lbl{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
-.pcr-stat .val{font-size:14px;font-weight:700;color:var(--text1);font-family:'Courier New',monospace}
-.pcr-sentiment{text-align:center;padding:6px;font-size:11px;font-weight:700;letter-spacing:1px}
-.pcr-sentiment.bullish{color:#00ff88;background:rgba(0,255,136,.08)}
-.pcr-sentiment.bearish{color:#ff4444;background:rgba(255,68,68,.08)}
-.pcr-sentiment.neutral{color:#ff8800;background:rgba(255,136,0,.08)}
-.pcr-oi-table{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:10px;margin-top:8px}
-.pcr-oi-table th{color:var(--text2);font-size:9px;text-transform:uppercase;padding:4px 6px;border-bottom:1px solid rgba(255,136,0,.2);text-align:right}
+.pcr-card .pcr-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.pcr-card .pcr-title{font-size:13px;font-weight:700;color:var(--text1);letter-spacing:1px}
+.pcr-card .pcr-strikes{font-size:9px;color:var(--text2)}
+.pcr-card .pcr-spot{font-size:20px;font-weight:700;color:var(--text1);font-family:'Courier New',monospace;margin-bottom:8px}
+.pcr-card .pcr-pcr-row{display:flex;gap:12px;margin-bottom:8px;padding:6px 0;border-top:1px solid rgba(255,136,0,.1);border-bottom:1px solid rgba(255,136,0,.1)}
+.pcr-card .pcr-pcr-item{flex:1}
+.pcr-card .pcr-pcr-item .lbl{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.pcr-card .pcr-pcr-item .val{font-size:14px;font-weight:700;font-family:'Courier New',monospace}
+.pcr-card .pcr-oi-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.pcr-card .pcr-oi-item{background:#0d1117;padding:6px 8px;border-left:2px solid}
+.pcr-card .pcr-oi-item.ce{border-color:#ff4444}
+.pcr-card .pcr-oi-item.pe{border-color:#00ff88}
+.pcr-card .pcr-oi-item .lbl{font-size:8px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.pcr-card .pcr-oi-item .val{font-size:12px;font-weight:700;color:var(--text1);font-family:'Courier New',monospace}
+.pcr-card .pcr-oi-item .delta{font-size:10px;font-family:'Courier New',monospace}
+.pcr-card .pcr-oi-item .delta.up{color:#00ff88}
+.pcr-card .pcr-oi-item .delta.down{color:#ff4444}
+.pcr-card .pcr-sentiment{text-align:center;padding:4px;font-size:10px;font-weight:700;letter-spacing:1px;margin-top:6px}
+.pcr-card .pcr-sentiment.bullish{color:#00ff88;background:rgba(0,255,136,.08)}
+.pcr-card .pcr-sentiment.bearish{color:#ff4444;background:rgba(255,68,68,.08)}
+.pcr-card .pcr-sentiment.neutral{color:#ff8800;background:rgba(255,136,0,.08)}
+.pcr-card .pcr-timestamp{font-size:8px;color:var(--text2);text-align:right;margin-top:4px}
+.pcr-card .pcr-maxpain{font-size:9px;color:var(--text2);text-align:center;margin-top:4px;padding:3px;background:rgba(255,136,0,.05)}
+.pcr-card .pcr-maxpain span{color:#ff8800;font-weight:700}
+.pcr-oi-table{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:9px;margin-top:8px}
+.pcr-oi-table th{color:var(--text2);font-size:8px;text-transform:uppercase;padding:3px 4px;border-bottom:1px solid rgba(255,136,0,.2);text-align:right}
 .pcr-oi-table th:first-child{text-align:left}
-.pcr-oi-table td{padding:4px 6px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03)}
+.pcr-oi-table td{padding:3px 4px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03)}
 .pcr-oi-table td:first-child{text-align:left;font-weight:700}
-.pcr-oi-bar{display:inline-block;height:6px;vertical-align:middle;margin-right:4px}
+.pcr-oi-bar{display:inline-block;height:5px;vertical-align:middle;margin-right:3px}
 .pcr-oi-bar.ce{background:rgba(255,68,68,.5)}
 .pcr-oi-bar.pe{background:rgba(0,255,136,.5)}
-.pcr-maxpain{font-size:10px;color:var(--text2);text-align:center;margin-top:8px;padding:4px;background:rgba(255,136,0,.05)}
-.pcr-maxpain span{color:#ff8800;font-weight:700}
 .idx-movers{margin:16px 0}
 .idx-movers-table{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:11px}
 .idx-movers-table th{color:var(--text2);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 8px;border-bottom:1px solid rgba(255,136,0,.2);text-align:right}
@@ -1765,8 +1771,8 @@ body {
 .idx-movers .up{color:#00ff88}
 .idx-movers .down{color:#ff4444}
 .idx-movers .impact-bar{display:inline-block;height:4px;background:#ff8800;vertical-align:middle;margin-left:6px}
-@media(max-width:768px){.pcr-grid{grid-template-columns:1fr}.pcr-card .pcr-title{font-size:12px}.pcr-gauge .pcr-num{font-size:20px}}
-@media(max-width:380px){.pcr-stats{grid-template-columns:1fr}}
+@media(max-width:768px){.pcr-grid{grid-template-columns:1fr}.pcr-card .pcr-spot{font-size:18px}}
+@media(max-width:380px){.pcr-oi-row{grid-template-columns:1fr}}
 </style>
 
       <!-- ===== PCR & OPTION CHAIN ANALYSIS ===== -->
@@ -1774,10 +1780,14 @@ body {
         <div class="pcr-header">
           <h2>&#x1F4CA; OPTION CHAIN &amp; PCR ANALYSIS</h2>
           <div class="pcr-tabs">
-            <button class="pcr-tab active" onclick="loadPCR('NIFTY,BANKNIFTY',this)">NIFTY + BANKNIFTY</button>
+            <button class="pcr-tab active" onclick="loadPCR('NIFTY,BANKNIFTY,FINNIFTY,MIDCAP,SENSEX',this)">ALL</button>
             <button class="pcr-tab" onclick="loadPCR('NIFTY',this)">NIFTY</button>
             <button class="pcr-tab" onclick="loadPCR('BANKNIFTY',this)">BANKNIFTY</button>
+            <button class="pcr-tab" onclick="loadPCR('FINNIFTY',this)">FINNIFTY</button>
+            <button class="pcr-tab" onclick="loadPCR('MIDCAP',this)">MIDCAP</button>
+            <button class="pcr-tab" onclick="loadPCR('SENSEX',this)">SENSEX</button>
           </div>
+          <span id="pcrStatus" class="tick-badge" style="display:none;font-size:9px;font-weight:800;color:var(--green);background:var(--green-dim);padding:2px 6px;border-radius:4px;">● LIVE</span>
         </div>
         <div class="pcr-grid" id="pcrGrid"><div class="loading"><div class="spinner"></div><br>Loading PCR data...</div></div>
       </div>
@@ -4336,20 +4346,36 @@ function renderCompare(data){
 startTradingViewTicks();
 
 // ===== PCR & OPTION CHAIN ANALYSIS =====
-async function loadPCR(indices='NIFTY,BANKNIFTY', btn) {
+var pcrAutoRefresh = null;
+var pcrCurrentIndices = 'NIFTY,BANKNIFTY,FINNIFTY,MIDCAP,SENSEX';
+
+async function loadPCR(indices, btn) {
+  if (indices) pcrCurrentIndices = indices;
   if (btn) {
     document.querySelectorAll('.pcr-tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
   }
   const grid = document.getElementById('pcrGrid');
-  grid.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading PCR data...</div>';
+  if (!grid.innerHTML.includes('pcr-card')) grid.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading PCR data...</div>';
   try {
-    const res = await fetch(EDGE_PCR_API + '?indices=' + indices, {
+    const res = await fetch(EDGE_PCR_API + '?indices=' + pcrCurrentIndices, {
       headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY }
     });
     const d = await res.json();
     if (!d.success || !d.data.length) throw new Error('No PCR data');
     grid.innerHTML = d.data.map(renderPCRCard).join('');
+    // Show LIVE badge during market hours
+    var now = new Date();
+    var istHour = now.getUTCHours() + 5.5;
+    var hour = istHour % 24;
+    var day = now.getUTCDay();
+    var isMarket = day >= 1 && day <= 5 && hour >= 9.25 && hour < 15.5;
+    document.getElementById('pcrStatus').style.display = isMarket ? 'inline-block' : 'none';
+    // Auto-refresh every 5 seconds during market hours
+    if (pcrAutoRefresh) clearInterval(pcrAutoRefresh);
+    if (isMarket) {
+      pcrAutoRefresh = setInterval(() => loadPCR(null, null), 5000);
+    }
   } catch(e) {
     grid.innerHTML = '<div class="loading">PCR data temporarily unavailable</div>';
   }
@@ -4357,17 +4383,8 @@ async function loadPCR(indices='NIFTY,BANKNIFTY', btn) {
 
 function renderPCRCard(item) {
   const pcrColor = item.pcr > 1.2 ? '#ff4444' : item.pcr > 0.9 ? '#ff8800' : '#00ff88';
+  const volPcrColor = (item.volPcr||0) > 1.2 ? '#ff4444' : (item.volPcr||0) > 0.9 ? '#ff8800' : '#00ff88';
   const sentClass = item.pcr > 1.2 ? 'bearish' : item.pcr > 0.9 ? 'neutral' : 'bullish';
-  
-  // SVG gauge: semicircle from 0 to 3
-  const pct = Math.min(item.pcr / 3, 1);
-  const angle = pct * 180;
-  const r = 52, cx = 60, cy = 60;
-  const rad = (angle - 90) * Math.PI / 180;
-  const x = cx + r * Math.cos(rad);
-  const y = cy + r * Math.sin(rad);
-  const arcPath = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)}`;
-  const bgArc = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
 
   const fmtOI = (v) => {
     if (v >= 10000000) return (v/10000000).toFixed(2) + 'Cr';
@@ -4375,11 +4392,16 @@ function renderPCRCard(item) {
     if (v >= 1000) return (v/1000).toFixed(1) + 'K';
     return v.toString();
   };
+  const fmtDelta = (v) => {
+    const sign = v >= 0 ? '+' : '';
+    return sign + fmtOI(Math.abs(v));
+  };
+  const deltaClass = (v) => v >= 0 ? 'up' : 'down';
 
   const strikes = item.topStrikes.map(s => {
     const maxOI = Math.max(...item.topStrikes.map(x => Math.max(x.ceOI, x.peOI)));
-    const ceW = maxOI > 0 ? (s.ceOI / maxOI * 40) : 0;
-    const peW = maxOI > 0 ? (s.peOI / maxOI * 40) : 0;
+    const ceW = maxOI > 0 ? (s.ceOI / maxOI * 35) : 0;
+    const peW = maxOI > 0 ? (s.peOI / maxOI * 35) : 0;
     return `<tr>
       <td>${s.strike}</td>
       <td><span class="pcr-oi-bar ce" style="width:${ceW}px"></span>${fmtOI(s.ceOI)}</td>
@@ -4387,35 +4409,43 @@ function renderPCRCard(item) {
     </tr>`;
   }).join('');
 
+  const ts = item.timestamp ? new Date(item.timestamp).toLocaleString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : '';
+
   return `<div class="pcr-card">
-    <div class="pcr-title">${item.index}</div>
-    <div class="pcr-spot">Spot: ₹${item.spotPrice.toLocaleString('en-IN')} | Expiry: ${item.expiryDate}</div>
-    <div class="pcr-gauge">
-      <svg width="120" height="70" viewBox="0 0 120 70">
-        <path d="${bgArc}" fill="none" stroke="#1a1a2e" stroke-width="6"/>
-        <path d="${arcPath}" fill="none" stroke="${pcrColor}" stroke-width="6"/>
-      </svg>
-      <div class="pcr-val">
-        <div class="pcr-num" style="color:${pcrColor}">${item.pcr}</div>
-        <div class="pcr-label">PCR</div>
+    <div class="pcr-title-row">
+      <div class="pcr-title">${item.index}</div>
+      <div class="pcr-strikes">${item.strikeCount||item.topStrikes.length} strikes</div>
+    </div>
+    <div class="pcr-spot">₹${item.spotPrice.toLocaleString('en-IN')}</div>
+    <div class="pcr-pcr-row">
+      <div class="pcr-pcr-item">
+        <div class="lbl">OI PCR</div>
+        <div class="val" style="color:${pcrColor}">${item.pcr}</div>
+      </div>
+      <div class="pcr-pcr-item">
+        <div class="lbl">VOL PCR</div>
+        <div class="val" style="color:${volPcrColor}">${item.volPcr||0}</div>
       </div>
     </div>
-    <div class="pcr-stats">
-      <div class="pcr-stat ce">
-        <div class="lbl">BULLS (CE OI)</div>
-        <div class="val">₹${fmtOI(item.ceOI)}</div>
+    <div class="pcr-oi-row">
+      <div class="pcr-oi-item ce">
+        <div class="lbl">CALL OI</div>
+        <div class="val">${fmtOI(item.ceOI)}</div>
+        <div class="delta ${deltaClass(item.ceChgOI||0)}">Δ ${fmtDelta(item.ceChgOI||0)}</div>
       </div>
-      <div class="pcr-stat pe">
-        <div class="lbl">BEARS (PE OI)</div>
-        <div class="val">₹${fmtOI(item.peOI)}</div>
+      <div class="pcr-oi-item pe">
+        <div class="lbl">PUT OI</div>
+        <div class="val">${fmtOI(item.peOI)}</div>
+        <div class="delta ${deltaClass(item.peChgOI||0)}">Δ ${fmtDelta(item.peChgOI||0)}</div>
       </div>
     </div>
     <div class="pcr-sentiment ${sentClass}">${item.sentiment}</div>
+    <div class="pcr-maxpain">MAX PAIN: <span>₹${item.maxPain.toLocaleString('en-IN')}</span></div>
     <table class="pcr-oi-table">
       <tr><th>STRIKE</th><th>CE OI</th><th>PE OI</th></tr>
       ${strikes}
     </table>
-    <div class="pcr-maxpain">MAX PAIN: <span>₹${item.maxPain.toLocaleString('en-IN')}</span> | BULL/BEAR: <span>${item.bullBearRatio}</span></div>
+    <div class="pcr-timestamp">${ts}</div>
   </div>`;
 }
 
@@ -4483,7 +4513,7 @@ const NIFTY_500_STOCKS = NIFTY_50_STOCKS.concat(['ADANIPORTS','AMBUJACEM','AUROP
 
 // Load PCR and Index Movers on page load
 document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(() => { loadPCR('NIFTY,BANKNIFTY'); }, 2000);
+  setTimeout(() => { loadPCR('NIFTY,BANKNIFTY,FINNIFTY,MIDCAP,SENSEX'); }, 2000);
   setTimeout(loadIndexMovers, 5000);
 });
 
