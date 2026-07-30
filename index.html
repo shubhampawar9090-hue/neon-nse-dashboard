@@ -1718,6 +1718,78 @@ body {
       <div class="opt-section pe">📉 OPTION BUY SIGNALS — PE (PUT)</div>
       <div class="opt-grid" id="optPeCards"><div class="loading"><div class="spinner"></div><br>Loading option signals...</div></div>
 
+<style>
+.pcr-section{margin:16px 0;padding:0}
+.pcr-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.pcr-header h2{font-size:16px;font-weight:700;color:var(--text1);margin:0;letter-spacing:1px}
+.pcr-tabs{display:flex;gap:6px}
+.pcr-tab{padding:6px 14px;border:1px solid rgba(255,136,0,.3);background:transparent;color:var(--text2);font-family:'Courier New',monospace;font-size:11px;cursor:pointer;border-radius:0;transition:all .15s}
+.pcr-tab.active{background:rgba(255,136,0,.15);color:#ff8800;border-color:#ff8800}
+.pcr-tab:hover{background:rgba(255,136,0,.1)}
+.pcr-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.pcr-card{background:#0a0e14;border:1px solid rgba(255,136,0,.15);padding:16px;transition:all .2s}
+.pcr-card:hover{border-color:rgba(255,136,0,.4);box-shadow:0 4px 16px rgba(255,136,0,.08)}
+.pcr-card .pcr-title{font-size:13px;font-weight:700;color:var(--text1);margin-bottom:10px;letter-spacing:1px}
+.pcr-card .pcr-spot{font-size:11px;color:var(--text2);margin-bottom:12px}
+.pcr-gauge{position:relative;width:120px;height:70px;margin:0 auto 12px}
+.pcr-gauge .pcr-val{position:absolute;top:50%;left:50%;transform:translate(-50%,-30%);text-align:center}
+.pcr-gauge .pcr-num{font-size:24px;font-weight:700;color:#ff8800;font-family:'Courier New',monospace}
+.pcr-gauge .pcr-label{font-size:9px;color:var(--text2);letter-spacing:1px}
+.pcr-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.pcr-stat{background:#0d1117;padding:8px 10px;border-left:2px solid}
+.pcr-stat.ce{border-color:#ff4444}
+.pcr-stat.pe{border-color:#00ff88}
+.pcr-stat .lbl{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
+.pcr-stat .val{font-size:14px;font-weight:700;color:var(--text1);font-family:'Courier New',monospace}
+.pcr-sentiment{text-align:center;padding:6px;font-size:11px;font-weight:700;letter-spacing:1px}
+.pcr-sentiment.bullish{color:#00ff88;background:rgba(0,255,136,.08)}
+.pcr-sentiment.bearish{color:#ff4444;background:rgba(255,68,68,.08)}
+.pcr-sentiment.neutral{color:#ff8800;background:rgba(255,136,0,.08)}
+.pcr-oi-table{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:10px;margin-top:8px}
+.pcr-oi-table th{color:var(--text2);font-size:9px;text-transform:uppercase;padding:4px 6px;border-bottom:1px solid rgba(255,136,0,.2);text-align:right}
+.pcr-oi-table th:first-child{text-align:left}
+.pcr-oi-table td{padding:4px 6px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03)}
+.pcr-oi-table td:first-child{text-align:left;font-weight:700}
+.pcr-oi-bar{display:inline-block;height:6px;vertical-align:middle;margin-right:4px}
+.pcr-oi-bar.ce{background:rgba(255,68,68,.5)}
+.pcr-oi-bar.pe{background:rgba(0,255,136,.5)}
+.pcr-maxpain{font-size:10px;color:var(--text2);text-align:center;margin-top:8px;padding:4px;background:rgba(255,136,0,.05)}
+.pcr-maxpain span{color:#ff8800;font-weight:700}
+.idx-movers{margin:16px 0}
+.idx-movers-table{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:11px}
+.idx-movers-table th{color:var(--text2);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 8px;border-bottom:1px solid rgba(255,136,0,.2);text-align:right}
+.idx-movers-table th:first-child{text-align:left}
+.idx-movers-table td{padding:5px 8px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03)}
+.idx-movers-table td:first-child{text-align:left;font-weight:700;color:var(--text1)}
+.idx-movers-table tr:hover{background:rgba(255,136,0,.05)}
+.idx-movers .up{color:#00ff88}
+.idx-movers .down{color:#ff4444}
+.idx-movers .impact-bar{display:inline-block;height:4px;background:#ff8800;vertical-align:middle;margin-left:6px}
+@media(max-width:768px){.pcr-grid{grid-template-columns:1fr}.pcr-card .pcr-title{font-size:12px}.pcr-gauge .pcr-num{font-size:20px}}
+@media(max-width:380px){.pcr-stats{grid-template-columns:1fr}}
+</style>
+
+      <!-- ===== PCR & OPTION CHAIN ANALYSIS ===== -->
+      <div class="pcr-section" id="pcrSection">
+        <div class="pcr-header">
+          <h2>&#x1F4CA; OPTION CHAIN &amp; PCR ANALYSIS</h2>
+          <div class="pcr-tabs">
+            <button class="pcr-tab active" onclick="loadPCR('NIFTY,BANKNIFTY',this)">NIFTY + BANKNIFTY</button>
+            <button class="pcr-tab" onclick="loadPCR('NIFTY',this)">NIFTY</button>
+            <button class="pcr-tab" onclick="loadPCR('BANKNIFTY',this)">BANKNIFTY</button>
+          </div>
+        </div>
+        <div class="pcr-grid" id="pcrGrid"><div class="loading"><div class="spinner"></div><br>Loading PCR data...</div></div>
+      </div>
+
+      <!-- ===== INDEX MOVERS ===== -->
+      <div class="idx-movers" id="idxMoversSection">
+        <div class="pcr-header">
+          <h2>&#x1F3AF; INDEX MOVERS &mdash; WHO'S MOVING THE MARKET</h2>
+        </div>
+        <div id="idxMoversBody"><div class="loading"><div class="spinner"></div><br>Loading index movers...</div></div>
+      </div>
+
 
 <style>
 /* ===== ENHANCED HOVER EFFECTS ===== */
@@ -4262,6 +4334,160 @@ function renderCompare(data){
 
 // Start TradingView WebSocket AFTER all variables are initialized
 startTradingViewTicks();
+
+// ===== PCR & OPTION CHAIN ANALYSIS =====
+async function loadPCR(indices='NIFTY,BANKNIFTY', btn) {
+  if (btn) {
+    document.querySelectorAll('.pcr-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  const grid = document.getElementById('pcrGrid');
+  grid.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading PCR data...</div>';
+  try {
+    const res = await fetch(EDGE_PCR_API + '?indices=' + indices, {
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY }
+    });
+    const d = await res.json();
+    if (!d.success || !d.data.length) throw new Error('No PCR data');
+    grid.innerHTML = d.data.map(renderPCRCard).join('');
+  } catch(e) {
+    grid.innerHTML = '<div class="loading">PCR data temporarily unavailable</div>';
+  }
+}
+
+function renderPCRCard(item) {
+  const pcrColor = item.pcr > 1.2 ? '#ff4444' : item.pcr > 0.9 ? '#ff8800' : '#00ff88';
+  const sentClass = item.pcr > 1.2 ? 'bearish' : item.pcr > 0.9 ? 'neutral' : 'bullish';
+  
+  // SVG gauge: semicircle from 0 to 3
+  const pct = Math.min(item.pcr / 3, 1);
+  const angle = pct * 180;
+  const r = 52, cx = 60, cy = 60;
+  const rad = (angle - 90) * Math.PI / 180;
+  const x = cx + r * Math.cos(rad);
+  const y = cy + r * Math.sin(rad);
+  const arcPath = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)}`;
+  const bgArc = `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`;
+
+  const fmtOI = (v) => {
+    if (v >= 10000000) return (v/10000000).toFixed(2) + 'Cr';
+    if (v >= 100000) return (v/100000).toFixed(2) + 'L';
+    if (v >= 1000) return (v/1000).toFixed(1) + 'K';
+    return v.toString();
+  };
+
+  const strikes = item.topStrikes.map(s => {
+    const maxOI = Math.max(...item.topStrikes.map(x => Math.max(x.ceOI, x.peOI)));
+    const ceW = maxOI > 0 ? (s.ceOI / maxOI * 40) : 0;
+    const peW = maxOI > 0 ? (s.peOI / maxOI * 40) : 0;
+    return `<tr>
+      <td>${s.strike}</td>
+      <td><span class="pcr-oi-bar ce" style="width:${ceW}px"></span>${fmtOI(s.ceOI)}</td>
+      <td><span class="pcr-oi-bar pe" style="width:${peW}px"></span>${fmtOI(s.peOI)}</td>
+    </tr>`;
+  }).join('');
+
+  return `<div class="pcr-card">
+    <div class="pcr-title">${item.index}</div>
+    <div class="pcr-spot">Spot: ₹${item.spotPrice.toLocaleString('en-IN')} | Expiry: ${item.expiryDate}</div>
+    <div class="pcr-gauge">
+      <svg width="120" height="70" viewBox="0 0 120 70">
+        <path d="${bgArc}" fill="none" stroke="#1a1a2e" stroke-width="6"/>
+        <path d="${arcPath}" fill="none" stroke="${pcrColor}" stroke-width="6"/>
+      </svg>
+      <div class="pcr-val">
+        <div class="pcr-num" style="color:${pcrColor}">${item.pcr}</div>
+        <div class="pcr-label">PCR</div>
+      </div>
+    </div>
+    <div class="pcr-stats">
+      <div class="pcr-stat ce">
+        <div class="lbl">BULLS (CE OI)</div>
+        <div class="val">₹${fmtOI(item.ceOI)}</div>
+      </div>
+      <div class="pcr-stat pe">
+        <div class="lbl">BEARS (PE OI)</div>
+        <div class="val">₹${fmtOI(item.peOI)}</div>
+      </div>
+    </div>
+    <div class="pcr-sentiment ${sentClass}">${item.sentiment}</div>
+    <table class="pcr-oi-table">
+      <tr><th>STRIKE</th><th>CE OI</th><th>PE OI</th></tr>
+      ${strikes}
+    </table>
+    <div class="pcr-maxpain">MAX PAIN: <span>₹${item.maxPain.toLocaleString('en-IN')}</span> | BULL/BEAR: <span>${item.bullBearRatio}</span></div>
+  </div>`;
+}
+
+// ===== INDEX MOVERS =====
+async function loadIndexMovers() {
+  const body = document.getElementById('idxMoversBody');
+  try {
+    // Fetch NIFTY 50 constituents from our TA data (already loaded)
+    if (typeof mergedData === 'undefined' || !mergedData.length) {
+      body.innerHTML = '<div class="loading">Waiting for market data...</div>';
+      setTimeout(loadIndexMovers, 3000);
+      return;
+    }
+
+    // Get the top 10 stocks by absolute impact on index
+    const niftyStocks = mergedData.filter(d => {
+      const sym = d.symbol || '';
+      return NIFTY_50_STOCKS.includes(sym) || NIFTY_500_STOCKS.includes(sym);
+    });
+
+    // Calculate impact: (change% × weight) — approximate using market cap proxy
+    const movers = niftyStocks
+      .map(d => {
+        const changePct = parseFloat(d.changePercent || d.change_pct || 0);
+        const price = parseFloat(d.price || 0);
+        const impact = Math.abs(changePct);
+        return {
+          symbol: d.symbol,
+          name: d.name || d.symbol,
+          price: price,
+          changePct: changePct,
+          impact: impact,
+          signal: d.signal || ''
+        };
+      })
+      .sort((a, b) => b.impact - a.impact)
+      .slice(0, 12);
+
+    if (!movers.length) throw new Error('No data');
+
+    const maxImpact = Math.max(...movers.map(m => m.impact), 1);
+    
+    body.innerHTML = `<table class="idx-movers-table">
+      <tr><th>STOCK</th><th>LTP</th><th>CHG%</th><th>IMPACT</th></tr>
+      ${movers.map(m => {
+        const cls = m.changePct >= 0 ? 'up' : 'down';
+        const arrow = m.changePct >= 0 ? '▲' : '▼';
+        const barW = (m.impact / maxImpact * 60).toFixed(0);
+        return `<tr>
+          <td>${m.symbol}</td>
+          <td>₹${m.price.toFixed(2)}</td>
+          <td class="${cls}">${arrow} ${Math.abs(m.changePct).toFixed(2)}%</td>
+          <td><span class="impact-bar" style="width:${barW}px"></span></td>
+        </tr>`;
+      }).join('')}
+    </table>`;
+  } catch(e) {
+    body.innerHTML = '<div class="loading">Index movers data unavailable</div>';
+  }
+}
+
+// NIFTY 50 stock list for index movers
+const NIFTY_50_STOCKS = ['RELIANCE','TCS','HDFCBANK','INFY','ICICIBANK','HINDUNILVR','ITC','SBIN','BHARTIARTL','LT','KOTAKBANK','AXISBANK','ASIANPAINT','MARUTI','SUNPHARMA','TITAN','ULTRACEMCO','WIPRO','BAJFINANCE','NESTLEIND','OCIL','JSWSTEEL','HCLTECH','NTPC','POWERGRID','TATAMOTORS','TATASTEEL','M&M','TECHM','COALINDIA','EICHERMOT','GRASIM','HDFCLIFE','DRREDDY','BRITANNIA','ADANIENT','SHRIRAMFIN','BAJAJFINSV','DIVISLAB','CIPLA','BAJAJ-AUTO','APOLLOHOSP','TATACONSUM','SBI-LIFE','HEROMOTOCO','BPCL','UPL','INDUSINDBK','TATAPOWER'];
+const NIFTY_500_STOCKS = NIFTY_50_STOCKS.concat(['ADANIPORTS','AMBUJACEM','AUROPHARMA','DMART','DABUR','GODREJCP','HDFCAMC','ICICIGI','IGL','INDIGO','L&FH','MUTHOOTFIN','PIDILITIND','SIEMENS','TVSMOTOR','VOLTAS','ZOMATO','ETERNAL','DLF','IDFCFIRSTB','PIIND','SBICARD','BANDHANBNK','BEL','GAIL','HAL','IOC','NHPC','NMDC','OIL','PGHH','RECLTD','SJVN','TATAELXSI','TRENT','VEDL','YESBANK','ACC','AMARAJABAT','BALKRISIND','BERGEPAINT','COLPAL','EXIDEIND','FEDERALBNK','GLENMARK','GMRINFRA','HAVELLS','ICICIPRULI','IRCTC','LICHSGFIN','MFSL','MCDOWELL-N','MPHASIS','MRF','PGHL','RBLBANK','SAIL','SRF','TATACHEM','TATASTEEL','TORNTPHARM','UBL','UNIONBANK','VGUARD','VMART']);
+
+// Load PCR and Index Movers on page load
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => { loadPCR('NIFTY,BANKNIFTY'); }, 2000);
+  setTimeout(loadIndexMovers, 5000);
+});
+
+
 </script>
 </body>
 </html>
