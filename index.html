@@ -2978,12 +2978,12 @@ function renderOptionSignals(data){
         '<div class="oc-spot" style="font-size:9px;color:var(--text2)">Expiry: '+opt.expiryDate+' ('+opt.daysToExpiry+'d) · IV '+opt.impliedVol+'% · Δ '+opt.delta+'</div>'+
         '<div class="oc-row">'+
         '<div class="oc-field"><span class="lbl">Entry</span><span class="val" style="color:var(--cyan)">₹'+fmt(opt.premium)+'</span></div>'+
-        '<div class="oc-field"><span class="lbl">SL (50%)</span><span class="val red">₹'+fmt(opt.sl)+'</span></div>'+
+        '<div class="oc-field"><span class="lbl">SL (50% loss)</span><span class="val red">₹'+fmt(opt.sl)+'</span></div>'+
         '</div>'+
         '<div class="oc-row">'+
-        '<div class="oc-field"><span class="lbl">TP1 (100%)</span><span class="val green">₹'+fmt(opt.tp1)+'</span></div>'+
-        '<div class="oc-field"><span class="lbl">TP2 (150%)</span><span class="val green">₹'+fmt(opt.tp2)+'</span></div>'+
-        '<div class="oc-field"><span class="lbl">TP3 (200%)</span><span class="val green">₹'+fmt(opt.tp3)+'</span></div>'+
+        '<div class="oc-field"><span class="lbl">TP1 (+50%)</span><span class="val green">₹'+fmt(opt.tp1)+'</span></div>'+
+        '<div class="oc-field"><span class="lbl">TP2 (+100%)</span><span class="val green">₹'+fmt(opt.tp2)+'</span></div>'+
+        '<div class="oc-field"><span class="lbl">TP3 (+200%)</span><span class="val green">₹'+fmt(opt.tp3)+'</span></div>'+
         '</div>'+
         '<div class="oc-reason">'+reason+'</div>'+
         '</div>';
