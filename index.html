@@ -2214,6 +2214,7 @@ const EDGE_PRICE_API=SUPABASE_EDGE_BASE+'/get-nse-data';
 const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
 const EDGE_MOVERS_API=SUPABASE_EDGE_BASE+'/get-nse-movers';
 const EDGE_NEWS_API=SUPABASE_EDGE_BASE+'/get-market-news';
+const EDGE_OPTION_API=SUPABASE_EDGE_BASE+'/get-option-chain';
 
 // === Technical Analysis Functions (computed client-side) ===
 function calcEMA(values,period){
@@ -2894,12 +2895,9 @@ function getStrikeInterval(price){
 function roundStrike(price,interval){
   return Math.round(price/interval)*interval;
 }
-function estimateOptionPremium(atr, moneyness){
-  // moneyness: 0=ATM, 1=ITM, -1=OTM
-  if(moneyness===1)return atr*1.2; // ITM premium ~ 1.2x ATR
-  if(moneyness===-1)return atr*0.5; // OTM premium ~ 0.5x ATR
-  return atr*0.8; // ATM premium ~ 0.8x ATR
-}
+
+// Render option cards from real-time Black-Scholes data
+var _optionCache={ce:[],pe:[],time:0};
 function renderOptionSignals(data){
   var v=data.filter(function(d){return!d.error&&d.signal&&d.atr&&d.price>0;});
   
@@ -2913,71 +2911,100 @@ function renderOptionSignals(data){
     .sort(function(a,b){return(b.sellScore||0)-(a.sellScore||0);})
     .slice(0,8);
   
-  function buildOptCard(d,isCE){
-    var price=d.price;
-    var atr=d.atr||0;
-    var interval=getStrikeInterval(price);
-    var isStrong=isCE?d.signal.indexOf('STRONG')>=0:d.signal.indexOf('STRONG')>=0;
-    
-    // Strike selection: Strong=ITM, Normal=ATM
-    var moneyness=isStrong?1:0;
-    var strike=roundStrike(price,interval);
-    if(isStrong){
-      strike=isCE?strike-interval:strike+interval; // ITM: lower strike for CE, higher for PE
-    }
-    strike=Math.max(strike,interval); // ensure positive
-    
-    var premium=estimateOptionPremium(atr,moneyness);
-    var optSL=premium*0.5; // 50% SL on premium
-    var optTP1=premium*1.0; // 100% target
-    var optTP2=premium*1.5; // 150% target
-    var optTP3=premium*2.0; // 200% target
-    var moneynessLabel=moneyness===1?(isCE?'ITM':'ITM'):'ATM';
-    var moneynessClass=moneyness===1?'itm':'atm';
-    
-    // Rationale
-    var reasons=[];
-    if(d.emaCrossSignal&&d.emaCrossSignal!=='None')reasons.push(d.emaCrossSignal);
-    if(d.trend)reasons.push(d.trend+' trend');
-    if((d.volumeRatio||0)>1.5)reasons.push('Vol surge '+d.volumeRatio+'x');
-    if(d.rsi){
-      if(d.rsi>70)reasons.push('RSI '+Math.round(d.rsi)+' overbought');
-      else if(d.rsi<30)reasons.push('RSI '+Math.round(d.rsi)+' oversold');
-      else reasons.push('RSI '+Math.round(d.rsi));
-    }
-    if(d.breakoutType&&d.breakoutType.indexOf('Breakout')>=0)reasons.push('Breakout');
-    if(d.breakoutType&&d.breakoutType.indexOf('Breakdown')>=0)reasons.push('Breakdown');
-    var reason=reasons.length?reasons.join(' · '):d.signal;
-    
-    var fmt=function(x){return x.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})};
-    
-    var optTime=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
-    var h='<div class="opt-card'+(isCE?'':' pe-card')+'">'+
-      '<div class="oc-head"><div class="oc-sym">'+cs(d.symbol)+'</div>'+
-      '<div class="oc-type '+(isCE?'ce':'pe')+'">'+(isCE?'CE':'PE')+'</div></div>'+
-      '<div class="oc-spot">Spot: ₹'+fmt(price)+' · '+d.changePercent.toFixed(2)+'% <span style="float:right;color:var(--text2);font-size:9px">⏱ '+optTime+'</span></div>'+
-      '<div class="oc-strike">Strike: ₹'+fmt(strike)+' <span class="oc-badge '+moneynessClass+'">'+moneynessLabel+'</span></div>'+
-      '<div class="oc-row">'+
-      '<div class="oc-field"><span class="lbl">Entry</span><span class="val" style="color:var(--cyan)">₹'+fmt(premium)+'</span></div>'+
-      '<div class="oc-field"><span class="lbl">SL (50%)</span><span class="val red">₹'+fmt(optSL)+'</span></div>'+
-      '</div>'+
-      '<div class="oc-row">'+
-      '<div class="oc-field"><span class="lbl">TP1 (100%)</span><span class="val green">₹'+fmt(optTP1)+'</span></div>'+
-      '<div class="oc-field"><span class="lbl">TP2 (150%)</span><span class="val green">₹'+fmt(optTP2)+'</span></div>'+
-      '<div class="oc-field"><span class="lbl">TP3 (200%)</span><span class="val green">₹'+fmt(optTP3)+'</span></div>'+
-      '</div>'+
-      '<div class="oc-reason">'+reason+'</div>'+
-      '</div>';
-    return h;
+  // Build positions for Black-Scholes API call
+  var positions=[];
+  ceStocks.forEach(function(d){
+    positions.push({symbol:d.symbol,spotPrice:d.price,atr:d.atr,signal:d.signal,type:'CE',timeframe:currentMode});
+  });
+  peStocks.forEach(function(d){
+    positions.push({symbol:d.symbol,spotPrice:d.price,atr:d.atr,signal:d.signal,type:'PE',timeframe:currentMode});
+  });
+  
+  if(positions.length===0){
+    document.getElementById('optCeCards').innerHTML='<div class="loading">No CE (Call) option signals</div>';
+    document.getElementById('optPeCards').innerHTML='<div class="loading">No PE (Put) option signals</div>';
+    return;
   }
   
-  document.getElementById('optCeCards').innerHTML=ceStocks.length
-    ?ceStocks.map(function(d){return buildOptCard(d,true);}).join('')
-    :'<div class="loading">No CE (Call) option signals</div>';
+  // Show loading state
+  document.getElementById('optCeCards').innerHTML='<div class="loading"><div class="spinner"></div><br>Fetching live option prices...</div>';
+  document.getElementById('optPeCards').innerHTML='<div class="loading"><div class="spinner"></div><br>Fetching live option prices...</div>';
   
-  document.getElementById('optPeCards').innerHTML=peStocks.length
-    ?peStocks.map(function(d){return buildOptCard(d,false);}).join('')
-    :'<div class="loading">No PE (Put) option signals</div>';
+  // Fetch real option prices from Black-Scholes Edge Function
+  fetch(EDGE_OPTION_API,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
+    body:JSON.stringify({positions:positions})
+  }).then(function(r){
+    if(!r.ok)throw new Error('Option API '+r.status);
+    return r.json();
+  }).then(function(resp){
+    if(!resp.success||!resp.data)throw new Error('No option data');
+    
+    var ceData=resp.data.filter(function(d){return d.type==='CE'&&!d.error;});
+    var peData=resp.data.filter(function(d){return d.type==='PE'&&!d.error;});
+    
+    // Find the TA data for each option to get reasons
+    var fmt=function(x){return x.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})};
+    var optTime=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
+    
+    function buildOptCard(opt){
+      // Find matching TA data for reasons
+      var d=data.find(function(x){return x.symbol===opt.symbol;});
+      
+      var reasons=[];
+      if(d){
+        if(d.emaCrossSignal&&d.emaCrossSignal!=='None')reasons.push(d.emaCrossSignal);
+        if(d.trend)reasons.push(d.trend+' trend');
+        if((d.volumeRatio||0)>1.5)reasons.push('Vol surge '+d.volumeRatio+'x');
+        if(d.rsi){
+          if(d.rsi>70)reasons.push('RSI '+Math.round(d.rsi)+' overbought');
+          else if(d.rsi<30)reasons.push('RSI '+Math.round(d.rsi)+' oversold');
+          else reasons.push('RSI '+Math.round(d.rsi));
+        }
+        if(d.breakoutType&&d.breakoutType.indexOf('Breakout')>=0)reasons.push('Breakout');
+        if(d.breakoutType&&d.breakoutType.indexOf('Breakdown')>=0)reasons.push('Breakdown');
+      }
+      var reason=reasons.length?reasons.join(' · '):opt.signal;
+      
+      var isCE=opt.type==='CE';
+      var moneynessClass=opt.moneyness==='ITM'?'itm':(opt.moneyness==='ATM'?'atm':'otm');
+      
+      return '<div class="opt-card'+(isCE?'':' pe-card')+'">'+
+        '<div class="oc-head"><div class="oc-sym">'+cs(opt.symbol)+'</div>'+
+        '<div class="oc-type '+(isCE?'ce':'pe')+'">'+(isCE?'CE':'PE')+'</div></div>'+
+        '<div class="oc-spot">Spot: ₹'+fmt(opt.spotPrice)+' <span style="float:right;color:var(--text2);font-size:9px">⏱ '+optTime+'</span></div>'+
+        '<div class="oc-strike">Strike: ₹'+fmt(opt.strike)+' <span class="oc-badge '+moneynessClass+'">'+opt.moneyness+'</span></div>'+
+        '<div class="oc-spot" style="font-size:9px;color:var(--text2)">Expiry: '+opt.expiryDate+' ('+opt.daysToExpiry+'d) · IV '+opt.impliedVol+'% · Δ '+opt.delta+'</div>'+
+        '<div class="oc-row">'+
+        '<div class="oc-field"><span class="lbl">Entry</span><span class="val" style="color:var(--cyan)">₹'+fmt(opt.premium)+'</span></div>'+
+        '<div class="oc-field"><span class="lbl">SL (50%)</span><span class="val red">₹'+fmt(opt.sl)+'</span></div>'+
+        '</div>'+
+        '<div class="oc-row">'+
+        '<div class="oc-field"><span class="lbl">TP1 (100%)</span><span class="val green">₹'+fmt(opt.tp1)+'</span></div>'+
+        '<div class="oc-field"><span class="lbl">TP2 (150%)</span><span class="val green">₹'+fmt(opt.tp2)+'</span></div>'+
+        '<div class="oc-field"><span class="lbl">TP3 (200%)</span><span class="val green">₹'+fmt(opt.tp3)+'</span></div>'+
+        '</div>'+
+        '<div class="oc-reason">'+reason+'</div>'+
+        '</div>';
+    }
+    
+    document.getElementById('optCeCards').innerHTML=ceData.length
+      ?ceData.map(buildOptCard).join('')
+      :'<div class="loading">No CE (Call) option signals</div>';
+    
+    document.getElementById('optPeCards').innerHTML=peData.length
+      ?peData.map(buildOptCard).join('')
+      :'<div class="loading">No PE (Put) option signals</div>';
+    
+    // Cache results
+    _optionCache={ce:ceData,pe:peData,time:Date.now()};
+    
+  }).catch(function(e){
+    console.error('Option API failed:',e.message);
+    document.getElementById('optCeCards').innerHTML='<div class="loading">Option prices temporarily unavailable</div>';
+    document.getElementById('optPeCards').innerHTML='<div class="loading">Option prices temporarily unavailable</div>';
+  });
 }
 
 function renderGL(data){
