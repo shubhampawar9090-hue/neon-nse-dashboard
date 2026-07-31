@@ -2922,7 +2922,7 @@ function renderCard(d){
     var psTxt=ps==='ACTIVE'?'● ACTIVE':(ps==='SL_HIT'?'✗ SL HIT':'✓ '+ps.replace('_',' '));
     posBadge='<span class="pos-status '+psCls+'">'+psTxt+'</span>';
   }
-  var sigTime=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
+  var sigTime=d.signalTime||new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
   var h='<div class="sig-card '+cc+'"><div class="sc-head"><div><div class="sc-name">'+cs(d.symbol)+'</div><div class="sc-price">'+f(d.price)+'</div></div><div class="sc-badge '+bc+'">'+d.signal+'</div></div>'+
     '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(priceChange>=0?'+':'')+f0(priceChange)+')</span><span class="vol-txt">Vol: '+volStr+' ('+d.volumeRatio+'x)</span>'+posBadge+'</div>'+
     '<div class="sc-sigtime"><span class="sigtime-icon">⏱</span> Signal: '+sigTime+'</div>'+
@@ -3029,6 +3029,8 @@ function renderOptionSignals(data){
     // Find the TA data for each option to get reasons
     var fmt=function(x){return x.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})};
     var optTime=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
+    // Helper to get signal time per symbol from TA data
+    function getSigTime(sym){var ta=data.find(function(x){return x.symbol===sym;});return ta&&ta.signalTime||optTime;}
     
     function buildOptCard(opt){
       // Find matching TA data for reasons
@@ -3055,7 +3057,7 @@ function renderOptionSignals(data){
       return '<div class="opt-card'+(isCE?'':' pe-card')+'">'+
         '<div class="oc-head"><div class="oc-sym">'+cs(opt.symbol)+'</div>'+
         '<div class="oc-type '+(isCE?'ce':'pe')+'">'+(isCE?'CE':'PE')+'</div></div>'+
-        '<div class="oc-spot">Spot: ₹'+fmt(opt.spotPrice)+' <span style="float:right;color:var(--text2);font-size:9px">⏱ '+optTime+'</span></div>'+
+        '<div class="oc-spot">Spot: ₹'+fmt(opt.spotPrice)+' <span style="float:right;color:var(--text2);font-size:9px">⏱ '+getSigTime(opt.symbol)+'</span></div>'+
         '<div class="oc-strike">Strike: ₹'+fmt(opt.strike)+' <span class="oc-badge '+moneynessClass+'">'+opt.moneyness+'</span></div>'+
         '<div class="oc-spot" style="font-size:9px;color:var(--text2)">Expiry: '+opt.expiryDate+' ('+opt.daysToExpiry+'d) · IV '+opt.impliedVol+'% · Δ '+opt.delta+'</div>'+
         '<div class="oc-row">'+
