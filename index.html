@@ -2297,6 +2297,7 @@ const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
 const EDGE_MOVERS_API=SUPABASE_EDGE_BASE+'/get-nse-movers';
 const EDGE_NEWS_API=SUPABASE_EDGE_BASE+'/get-market-news';
 const EDGE_OPTION_API=SUPABASE_EDGE_BASE+'/get-option-chain';
+const EDGE_PCR_API=SUPABASE_EDGE_BASE+'/get-pcr-data';
 
 // === Technical Analysis Functions (computed client-side) ===
 function calcEMA(values,period){
@@ -3655,7 +3656,7 @@ async function loadAll(){
   
   renderIndices(priceResults||[]);
   renderIndexCardsFromData(priceResults||[]);
-  if(merged.length){if(!window._moversLoaded){renderGL(merged);window._moversLoaded=true;}renderScreeners(merged);renderTA(merged);renderCompare(merged);loadAllNsePrices();
+  if(merged.length){window.mergedData=merged;if(!window._moversLoaded){renderGL(merged);window._moversLoaded=true;}renderScreeners(merged);renderTA(merged);renderCompare(merged);loadAllNsePrices();
     // Trigger TradingView poll for newly displayed stocks
     setTimeout(function(){ if (tvActive) tvPollScanner(); }, 500);
   }
@@ -4456,14 +4457,14 @@ async function loadIndexMovers() {
   const body = document.getElementById('idxMoversBody');
   try {
     // Fetch NIFTY 50 constituents from our TA data (already loaded)
-    if (typeof mergedData === 'undefined' || !mergedData.length) {
+    if (typeof window.mergedData === 'undefined' || !window.mergedData.length) {
       body.innerHTML = '<div class="loading">Waiting for market data...</div>';
       setTimeout(loadIndexMovers, 3000);
       return;
     }
 
     // Get the top 10 stocks by absolute impact on index
-    const niftyStocks = mergedData.filter(d => {
+    const niftyStocks = window.mergedData.filter(d => {
       const sym = d.symbol || '';
       return NIFTY_50_STOCKS.includes(sym) || NIFTY_500_STOCKS.includes(sym);
     });
