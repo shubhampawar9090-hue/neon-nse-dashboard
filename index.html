@@ -1668,137 +1668,10 @@ body {
       <div class="sig-grid" id="holdCards"><div class="loading"><div class="spinner"></div><br>Loading...</div></div>
 
 
-<style>
-/* ===== OPTION SIGNAL CARDS ===== */
-.opt-section{font-size:12px;font-weight:700;letter-spacing:2px;padding:14px 0 8px;text-transform:uppercase;border-top:1px solid var(--border);margin-top:10px}
-.opt-section.ce{color:var(--green)}
-.opt-section.pe{color:var(--red)}
-.opt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;padding:8px 0}
-.opt-card{background:linear-gradient(135deg,rgba(0,255,136,.03),rgba(0,0,0,.8));border:1px solid rgba(0,255,136,.15);border-left:3px solid var(--green);border-radius:6px;padding:10px 12px;position:relative;overflow:hidden}
-.opt-card.pe-card{background:linear-gradient(135deg,rgba(255,45,85,.03),rgba(0,0,0,.8));border-color:rgba(255,45,85,.15);border-left-color:var(--red)}
-.opt-card .oc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.opt-card .oc-sym{font-size:14px;font-weight:700;color:var(--text)}
-.opt-card .oc-type{font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;letter-spacing:1px}
-.opt-card .oc-type.ce{background:rgba(0,255,136,.12);color:var(--green)}
-.opt-card .oc-type.pe{background:rgba(255,45,85,.12);color:var(--red)}
-.opt-card .oc-spot{font-size:11px;color:var(--text2);font-family:'Courier New',monospace;margin-bottom:6px}
-.opt-card .oc-row{display:flex;gap:6px;margin-bottom:4px;font-family:'Courier New',monospace}.opt-card .oc-row .oc-field{min-width:0}.opt-card .oc-field .val{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.opt-card .oc-field{flex:1;display:flex;flex-direction:column}
-.opt-card .oc-field .lbl{font-size:8px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
-.opt-card .oc-field .val{font-size:12px;font-weight:700;color:var(--text)}
-.opt-card .oc-field .val.green{color:var(--green)}
-.opt-card .oc-field .val.red{color:var(--red)}
-.opt-card .oc-strike{font-size:16px;font-weight:700;color:var(--amber);font-family:'Courier New',monospace;text-align:center;padding:4px;background:rgba(255,136,0,.06);border-radius:4px;margin:6px 0}
-.opt-card .oc-reason{font-size:10px;color:var(--text2);margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)}
-.opt-card .oc-badge{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:700}
-.opt-card .oc-badge.itm{background:rgba(0,255,136,.1);color:var(--green)}
-.opt-card .oc-badge.atm{background:rgba(255,136,0,.1);color:var(--amber)}
-.opt-card .oc-badge.otm{background:rgba(0,212,255,.1);color:var(--cyan)}
-@media(max-width:767px){
-  .opt-grid{grid-template-columns:repeat(2,1fr)!important;gap:5px}
-  .opt-card{padding:8px 10px}
-  .opt-card .oc-sym{font-size:12px}
-  .opt-card .oc-strike{font-size:14px}
-  .opt-card .oc-field .val{font-size:11px}
-  .opt-card .oc-reason{font-size:9px}
-}
-@media(max-width:380px){
-  .opt-grid{grid-template-columns:1fr!important}
-}
-</style>
 
 
 
 
-      <!-- ===== OPTION SIGNALS ===== -->
-      <div id="optSec"></div>
-      <div class="opt-section ce">📞 OPTION BUY SIGNALS — CE (CALL)</div>
-      <div class="opt-grid" id="optCeCards"><div class="loading"><div class="spinner"></div><br>Loading option signals...</div></div>
-      
-      <div class="opt-section pe">📉 OPTION BUY SIGNALS — PE (PUT)</div>
-      <div class="opt-grid" id="optPeCards"><div class="loading"><div class="spinner"></div><br>Loading option signals...</div></div>
-
-<style>
-.pcr-section{margin:16px 0;padding:0}
-.pcr-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
-.pcr-header h2{font-size:16px;font-weight:700;color:var(--text1);margin:0;letter-spacing:1px}
-.pcr-tabs{display:flex;gap:6px;flex-wrap:wrap}
-.pcr-tab{padding:5px 12px;border:1px solid rgba(255,136,0,.3);background:transparent;color:var(--text2);font-family:'Courier New',monospace;font-size:10px;cursor:pointer;border-radius:0;transition:all .15s}
-.pcr-tab.active{background:rgba(255,136,0,.15);color:#ff8800;border-color:#ff8800}
-.pcr-tab:hover{background:rgba(255,136,0,.1)}
-.pcr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:16px}
-.pcr-card{background:#0a0e14;border:1px solid rgba(255,136,0,.15);padding:14px;transition:all .2s;position:relative}
-.pcr-card:hover{border-color:rgba(255,136,0,.4);box-shadow:0 4px 16px rgba(255,136,0,.08)}
-.pcr-card .pcr-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-.pcr-card .pcr-title{font-size:13px;font-weight:700;color:var(--text1);letter-spacing:1px}
-.pcr-card .pcr-strikes{font-size:9px;color:var(--text2)}
-.pcr-card .pcr-spot{font-size:20px;font-weight:700;color:var(--text1);font-family:'Courier New',monospace;margin-bottom:8px}
-.pcr-card .pcr-pcr-row{display:flex;gap:12px;margin-bottom:8px;padding:6px 0;border-top:1px solid rgba(255,136,0,.1);border-bottom:1px solid rgba(255,136,0,.1)}
-.pcr-card .pcr-pcr-item{flex:1}
-.pcr-card .pcr-pcr-item .lbl{font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
-.pcr-card .pcr-pcr-item .val{font-size:14px;font-weight:700;font-family:'Courier New',monospace}
-.pcr-card .pcr-oi-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
-.pcr-card .pcr-oi-item{background:#0d1117;padding:6px 8px;border-left:2px solid}
-.pcr-card .pcr-oi-item.ce{border-color:#ff4444}
-.pcr-card .pcr-oi-item.pe{border-color:#00ff88}
-.pcr-card .pcr-oi-item .lbl{font-size:8px;color:var(--text2);text-transform:uppercase;letter-spacing:1px}
-.pcr-card .pcr-oi-item .val{font-size:12px;font-weight:700;color:var(--text1);font-family:'Courier New',monospace}
-.pcr-card .pcr-oi-item .delta{font-size:10px;font-family:'Courier New',monospace}
-.pcr-card .pcr-oi-item .delta.up{color:#00ff88}
-.pcr-card .pcr-oi-item .delta.down{color:#ff4444}
-.pcr-card .pcr-sentiment{text-align:center;padding:4px;font-size:10px;font-weight:700;letter-spacing:1px;margin-top:6px}
-.pcr-card .pcr-sentiment.bullish{color:#00ff88;background:rgba(0,255,136,.08)}
-.pcr-card .pcr-sentiment.bearish{color:#ff4444;background:rgba(255,68,68,.08)}
-.pcr-card .pcr-sentiment.neutral{color:#ff8800;background:rgba(255,136,0,.08)}
-.pcr-card .pcr-timestamp{font-size:8px;color:var(--text2);text-align:right;margin-top:4px}
-.pcr-card .pcr-maxpain{font-size:9px;color:var(--text2);text-align:center;margin-top:4px;padding:3px;background:rgba(255,136,0,.05)}
-.pcr-card .pcr-maxpain span{color:#ff8800;font-weight:700}
-.pcr-oi-table{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:9px;margin-top:8px}
-.pcr-oi-table th{color:var(--text2);font-size:8px;text-transform:uppercase;padding:3px 4px;border-bottom:1px solid rgba(255,136,0,.2);text-align:right}
-.pcr-oi-table th:first-child{text-align:left}
-.pcr-oi-table td{padding:3px 4px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03)}
-.pcr-oi-table td:first-child{text-align:left;font-weight:700}
-.pcr-oi-bar{display:inline-block;height:5px;vertical-align:middle;margin-right:3px}
-.pcr-oi-bar.ce{background:rgba(255,68,68,.5)}
-.pcr-oi-bar.pe{background:rgba(0,255,136,.5)}
-.idx-movers{margin:16px 0}
-.idx-movers-table{width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:11px}
-.idx-movers-table th{color:var(--text2);font-size:9px;text-transform:uppercase;letter-spacing:1px;padding:6px 8px;border-bottom:1px solid rgba(255,136,0,.2);text-align:right}
-.idx-movers-table th:first-child{text-align:left}
-.idx-movers-table td{padding:5px 8px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03)}
-.idx-movers-table td:first-child{text-align:left;font-weight:700;color:var(--text1)}
-.idx-movers-table tr:hover{background:rgba(255,136,0,.05)}
-.idx-movers .up{color:#00ff88}
-.idx-movers .down{color:#ff4444}
-.idx-movers .impact-bar{display:inline-block;height:4px;background:#ff8800;vertical-align:middle;margin-left:6px}
-@media(max-width:768px){.pcr-grid{grid-template-columns:1fr}.pcr-card .pcr-spot{font-size:18px}}
-@media(max-width:380px){.pcr-oi-row{grid-template-columns:1fr}}
-</style>
-
-      <!-- ===== PCR & OPTION CHAIN ANALYSIS ===== -->
-      <div class="pcr-section" id="pcrSection">
-        <div class="pcr-header">
-          <h2>&#x1F4CA; OPTION CHAIN &amp; PCR ANALYSIS</h2>
-          <div class="pcr-tabs">
-            <button class="pcr-tab active" onclick="loadPCR('NIFTY,BANKNIFTY,FINNIFTY,MIDCAP,SENSEX',this)">ALL</button>
-            <button class="pcr-tab" onclick="loadPCR('NIFTY',this)">NIFTY</button>
-            <button class="pcr-tab" onclick="loadPCR('BANKNIFTY',this)">BANKNIFTY</button>
-            <button class="pcr-tab" onclick="loadPCR('FINNIFTY',this)">FINNIFTY</button>
-            <button class="pcr-tab" onclick="loadPCR('MIDCAP',this)">MIDCAP</button>
-            <button class="pcr-tab" onclick="loadPCR('SENSEX',this)">SENSEX</button>
-          </div>
-          <span id="pcrStatus" class="tick-badge" style="display:none;font-size:9px;font-weight:800;color:var(--green);background:var(--green-dim);padding:2px 6px;border-radius:4px;">● LIVE</span>
-        </div>
-        <div class="pcr-grid" id="pcrGrid"><div class="loading"><div class="spinner"></div><br>Loading PCR data...</div></div>
-      </div>
-
-      <!-- ===== INDEX MOVERS ===== -->
-      <div class="idx-movers" id="idxMoversSection">
-        <div class="pcr-header">
-          <h2>&#x1F3AF; INDEX MOVERS &mdash; WHO'S MOVING THE MARKET</h2>
-        </div>
-        <div id="idxMoversBody"><div class="loading"><div class="spinner"></div><br>Loading index movers...</div></div>
-      </div>
 
 
 <style>
@@ -1835,20 +1708,6 @@ body {
   box-shadow: 0 8px 20px rgba(255,136,0,.1);
 }
 
-/* Option cards */
-.opt-card {
-  transition: all 0.2s ease;
-}
-.opt-card:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 6px 16px rgba(0,0,0,.25);
-}
-.opt-card:hover:not(.pe-card) {
-  border-color: rgba(0,255,136,.4);
-}
-.opt-card.pe-card:hover {
-  border-color: rgba(255,45,85,.4);
-}
 
 /* Table rows */
 .tbl tr {
@@ -1935,10 +1794,10 @@ body {
 }
 
 /* Section headers */
-.sig-section, .opt-section {
+.sig-section {
   transition: all 0.2s ease;
 }
-.sig-section:hover, .opt-section:hover {
+.sig-section:hover {
   text-shadow: 0 0 8px currentColor;
   letter-spacing: 3px;
 }
@@ -1975,17 +1834,9 @@ body {
   border-color: rgba(0,255,136,.3);
 }
 
-/* Option strike highlight */
-.opt-card .oc-strike {
-  transition: all 0.2s ease;
-}
-.opt-card:hover .oc-strike {
-  background-color: rgba(255,136,0,.12);
-  text-shadow: 0 0 6px rgba(255,136,0,.3);
-}
 
 /* Tag badges */
-.sig-card .t, .opt-card .oc-type {
+.sig-card .t {
   transition: all 0.12s ease;
 }
 .sig-card:hover .t:hover {
@@ -2296,8 +2147,6 @@ const EDGE_PRICE_API=SUPABASE_EDGE_BASE+'/get-nse-data';
 const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
 const EDGE_MOVERS_API=SUPABASE_EDGE_BASE+'/get-nse-movers';
 const EDGE_NEWS_API=SUPABASE_EDGE_BASE+'/get-market-news';
-const EDGE_OPTION_API=SUPABASE_EDGE_BASE+'/get-option-chain';
-const EDGE_PCR_API=SUPABASE_EDGE_BASE+'/get-pcr-data';
 
 // === Technical Analysis Functions (computed client-side) ===
 function calcEMA(values,period){
@@ -2963,10 +2812,9 @@ function renderTA(data){
   document.getElementById('sellCards').innerHTML=s.map(renderCard).join('')||'<div class="loading">No sell signals</div>';
   document.getElementById('holdCards').innerHTML=h.map(renderCard).join('')||'<div class="loading">No hold signals</div>';
   window._taLoaded=true;
-  renderOptionSignals(data);
 }
 
-// ===== OPTION SIGNAL GENERATOR =====
+
 function getStrikeInterval(price){
   if(price<50)return 2.5;
   if(price<250)return 5;
@@ -2977,119 +2825,6 @@ function getStrikeInterval(price){
 }
 function roundStrike(price,interval){
   return Math.round(price/interval)*interval;
-}
-
-// Render option cards from real-time Black-Scholes data
-var _optionCache={ce:[],pe:[],time:0};
-function renderOptionSignals(data){
-  var v=data.filter(function(d){return!d.error&&d.signal&&d.atr&&d.price>0;});
-  
-  // CE candidates: BUY & STRONG BUY signals
-  var ceStocks=v.filter(function(d){return d.signal.indexOf('BUY')>=0;})
-    .sort(function(a,b){return(b.buyScore||0)-(a.buyScore||0);})
-    .slice(0,8);
-  
-  // PE candidates: SELL & STRONG SELL signals
-  var peStocks=v.filter(function(d){return d.signal.indexOf('SELL')>=0;})
-    .sort(function(a,b){return(b.sellScore||0)-(a.sellScore||0);})
-    .slice(0,8);
-  
-  // Build positions for Black-Scholes API call
-  var positions=[];
-  ceStocks.forEach(function(d){
-    positions.push({symbol:d.symbol,spotPrice:d.price,atr:d.atr,signal:d.signal,type:'CE',timeframe:currentMode});
-  });
-  peStocks.forEach(function(d){
-    positions.push({symbol:d.symbol,spotPrice:d.price,atr:d.atr,signal:d.signal,type:'PE',timeframe:currentMode});
-  });
-  
-  if(positions.length===0){
-    document.getElementById('optCeCards').innerHTML='<div class="loading">No CE (Call) option signals</div>';
-    document.getElementById('optPeCards').innerHTML='<div class="loading">No PE (Put) option signals</div>';
-    return;
-  }
-  
-  // Show loading state
-  document.getElementById('optCeCards').innerHTML='<div class="loading"><div class="spinner"></div><br>Fetching live option prices...</div>';
-  document.getElementById('optPeCards').innerHTML='<div class="loading"><div class="spinner"></div><br>Fetching live option prices...</div>';
-  
-  // Fetch real option prices from Black-Scholes Edge Function
-  fetch(EDGE_OPTION_API,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},
-    body:JSON.stringify({positions:positions})
-  }).then(function(r){
-    if(!r.ok)throw new Error('Option API '+r.status);
-    return r.json();
-  }).then(function(resp){
-    if(!resp.success||!resp.data)throw new Error('No option data');
-    
-    var ceData=resp.data.filter(function(d){return d.type==='CE'&&!d.error;});
-    var peData=resp.data.filter(function(d){return d.type==='PE'&&!d.error;});
-    
-    // Find the TA data for each option to get reasons
-    var fmt=function(x){return x.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})};
-    var optTime=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
-    // Helper to get signal time per symbol from TA data
-    function getSigTime(sym){var ta=data.find(function(x){return x.symbol===sym;});return ta&&ta.signalTime||optTime;}
-    
-    function buildOptCard(opt){
-      // Find matching TA data for reasons
-      var d=data.find(function(x){return x.symbol===opt.symbol;});
-      
-      var reasons=[];
-      if(d){
-        if(d.emaCrossSignal&&d.emaCrossSignal!=='None')reasons.push(d.emaCrossSignal);
-        if(d.trend)reasons.push(d.trend+' trend');
-        if((d.volumeRatio||0)>1.5)reasons.push('Vol surge '+d.volumeRatio+'x');
-        if(d.rsi){
-          if(d.rsi>70)reasons.push('RSI '+Math.round(d.rsi)+' overbought');
-          else if(d.rsi<30)reasons.push('RSI '+Math.round(d.rsi)+' oversold');
-          else reasons.push('RSI '+Math.round(d.rsi));
-        }
-        if(d.breakoutType&&d.breakoutType.indexOf('Breakout')>=0)reasons.push('Breakout');
-        if(d.breakoutType&&d.breakoutType.indexOf('Breakdown')>=0)reasons.push('Breakdown');
-      }
-      var reason=reasons.length?reasons.join(' · '):opt.signal;
-      
-      var isCE=opt.type==='CE';
-      var moneynessClass=opt.moneyness==='ITM'?'itm':(opt.moneyness==='ATM'?'atm':'otm');
-      
-      return '<div class="opt-card'+(isCE?'':' pe-card')+'">'+
-        '<div class="oc-head"><div class="oc-sym">'+cs(opt.symbol)+'</div>'+
-        '<div class="oc-type '+(isCE?'ce':'pe')+'">'+(isCE?'CE':'PE')+'</div></div>'+
-        '<div class="oc-spot">Spot: ₹'+fmt(opt.spotPrice)+' <span style="float:right;color:var(--text2);font-size:9px">⏱ '+getSigTime(opt.symbol)+'</span></div>'+
-        '<div class="oc-strike">Strike: ₹'+fmt(opt.strike)+' <span class="oc-badge '+moneynessClass+'">'+opt.moneyness+'</span></div>'+
-        '<div class="oc-spot" style="font-size:9px;color:var(--text2)">Expiry: '+opt.expiryDate+' ('+opt.daysToExpiry+'d) · IV '+opt.impliedVol+'% · Δ '+opt.delta+'</div>'+
-        '<div class="oc-row">'+
-        '<div class="oc-field"><span class="lbl">Entry</span><span class="val" style="color:var(--cyan)">₹'+fmt(opt.premium)+'</span></div>'+
-        '<div class="oc-field"><span class="lbl">SL (50% loss)</span><span class="val red">₹'+fmt(opt.sl)+'</span></div>'+
-        '</div>'+
-        '<div class="oc-row">'+
-        '<div class="oc-field"><span class="lbl">TP1 (+50%)</span><span class="val green">₹'+fmt(opt.tp1)+'</span></div>'+
-        '<div class="oc-field"><span class="lbl">TP2 (+100%)</span><span class="val green">₹'+fmt(opt.tp2)+'</span></div>'+
-        '<div class="oc-field"><span class="lbl">TP3 (+200%)</span><span class="val green">₹'+fmt(opt.tp3)+'</span></div>'+
-        '</div>'+
-        '<div class="oc-reason">'+reason+'</div>'+
-        '</div>';
-    }
-    
-    document.getElementById('optCeCards').innerHTML=ceData.length
-      ?ceData.map(buildOptCard).join('')
-      :'<div class="loading">No CE (Call) option signals</div>';
-    
-    document.getElementById('optPeCards').innerHTML=peData.length
-      ?peData.map(buildOptCard).join('')
-      :'<div class="loading">No PE (Put) option signals</div>';
-    
-    // Cache results
-    _optionCache={ce:ceData,pe:peData,time:Date.now()};
-    
-  }).catch(function(e){
-    console.error('Option API failed:',e.message);
-    document.getElementById('optCeCards').innerHTML='<div class="loading">Option prices temporarily unavailable</div>';
-    document.getElementById('optPeCards').innerHTML='<div class="loading">Option prices temporarily unavailable</div>';
-  });
 }
 
 function renderGL(data){
@@ -3595,7 +3330,7 @@ function fmtVol(v){
 
 async function loadAll(){
   updStatus();
-  if(!window._taLoaded){['buyCards','sellCards','holdCards','optCeCards','optPeCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});}
+  if(!window._taLoaded){['buyCards','sellCards','holdCards'].forEach(function(id){document.getElementById(id).innerHTML='<div class="loading"><div class="spinner"></div><br>Loading...</div>';});}
   var priceResults,taResults;
   
   // Primary: Supabase Edge Functions
@@ -3656,7 +3391,7 @@ async function loadAll(){
   
   renderIndices(priceResults||[]);
   renderIndexCardsFromData(priceResults||[]);
-  if(merged.length){window.mergedData=merged;if(!window._moversLoaded){renderGL(merged);window._moversLoaded=true;}renderScreeners(merged);renderTA(merged);renderCompare(merged);loadAllNsePrices();
+  if(merged.length){if(!window._moversLoaded){renderGL(merged);window._moversLoaded=true;}renderScreeners(merged);renderTA(merged);renderCompare(merged);loadAllNsePrices();
     // Trigger TradingView poll for newly displayed stocks
     setTimeout(function(){ if (tvActive) tvPollScanner(); }, 500);
   }
@@ -4348,177 +4083,10 @@ function renderCompare(data){
 // Start TradingView WebSocket AFTER all variables are initialized
 startTradingViewTicks();
 
-// ===== PCR & OPTION CHAIN ANALYSIS =====
-var pcrAutoRefresh = null;
-var pcrCurrentIndices = 'NIFTY,BANKNIFTY,FINNIFTY,MIDCAP,SENSEX';
-
-async function loadPCR(indices, btn) {
-  if (indices) pcrCurrentIndices = indices;
-  if (btn) {
-    document.querySelectorAll('.pcr-tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-  }
-  const grid = document.getElementById('pcrGrid');
-  if (!grid.innerHTML.includes('pcr-card')) grid.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading PCR data...</div>';
-  try {
-    const res = await fetch(EDGE_PCR_API + '?indices=' + pcrCurrentIndices, {
-      headers: { 'Authorization': 'Bearer ' + SUPABASE_KEY }
-    });
-    const d = await res.json();
-    if (!d.success || !d.data.length) throw new Error('No PCR data');
-    grid.innerHTML = d.data.map(renderPCRCard).join('');
-    // Show LIVE badge during market hours
-    var now = new Date();
-    var istHour = now.getUTCHours() + 5.5;
-    var hour = istHour % 24;
-    var day = now.getUTCDay();
-    var isMarket = day >= 1 && day <= 5 && hour >= 9.25 && hour < 15.5;
-    document.getElementById('pcrStatus').style.display = isMarket ? 'inline-block' : 'none';
-    // Auto-refresh every 5 seconds during market hours
-    if (pcrAutoRefresh) clearInterval(pcrAutoRefresh);
-    if (isMarket) {
-      pcrAutoRefresh = setInterval(() => loadPCR(null, null), 30000);
-    }
   } catch(e) {
     grid.innerHTML = '<div class="loading">PCR data temporarily unavailable</div>';
   }
 }
-
-function renderPCRCard(item) {
-  const pcrColor = item.pcr > 1.2 ? '#ff4444' : item.pcr > 0.9 ? '#ff8800' : '#00ff88';
-  const volPcrColor = (item.volPcr||0) > 1.2 ? '#ff4444' : (item.volPcr||0) > 0.9 ? '#ff8800' : '#00ff88';
-  const sentClass = item.pcr > 1.2 ? 'bearish' : item.pcr > 0.9 ? 'neutral' : 'bullish';
-
-  const fmtOI = (v) => {
-    if (v >= 10000000) return (v/10000000).toFixed(2) + 'Cr';
-    if (v >= 100000) return (v/100000).toFixed(2) + 'L';
-    if (v >= 1000) return (v/1000).toFixed(1) + 'K';
-    return v.toString();
-  };
-  const fmtDelta = (v) => {
-    const sign = v >= 0 ? '+' : '';
-    return sign + fmtOI(Math.abs(v));
-  };
-  const deltaClass = (v) => v >= 0 ? 'up' : 'down';
-
-  const strikes = item.topStrikes.map(s => {
-    const maxOI = Math.max(...item.topStrikes.map(x => Math.max(x.ceOI, x.peOI)));
-    const ceW = maxOI > 0 ? (s.ceOI / maxOI * 35) : 0;
-    const peW = maxOI > 0 ? (s.peOI / maxOI * 35) : 0;
-    return `<tr>
-      <td>${s.strike}</td>
-      <td><span class="pcr-oi-bar ce" style="width:${ceW}px"></span>${fmtOI(s.ceOI)}</td>
-      <td><span class="pcr-oi-bar pe" style="width:${peW}px"></span>${fmtOI(s.peOI)}</td>
-    </tr>`;
-  }).join('');
-
-  const ts = item.timestamp ? new Date(item.timestamp).toLocaleString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}) : '';
-
-  return `<div class="pcr-card">
-    <div class="pcr-title-row">
-      <div class="pcr-title">${item.index}</div>
-      <div class="pcr-strikes">${item.strikeCount||item.topStrikes.length} strikes</div>
-    </div>
-    <div class="pcr-spot">₹${item.spotPrice.toLocaleString('en-IN')}</div>
-    <div class="pcr-pcr-row">
-      <div class="pcr-pcr-item">
-        <div class="lbl">OI PCR</div>
-        <div class="val" style="color:${pcrColor}">${item.pcr}</div>
-      </div>
-      <div class="pcr-pcr-item">
-        <div class="lbl">VOL PCR</div>
-        <div class="val" style="color:${volPcrColor}">${item.volPcr||0}</div>
-      </div>
-    </div>
-    <div class="pcr-oi-row">
-      <div class="pcr-oi-item ce">
-        <div class="lbl">CALL OI</div>
-        <div class="val">${fmtOI(item.ceOI)}</div>
-        <div class="delta ${deltaClass(item.ceChgOI||0)}">Δ ${fmtDelta(item.ceChgOI||0)}</div>
-      </div>
-      <div class="pcr-oi-item pe">
-        <div class="lbl">PUT OI</div>
-        <div class="val">${fmtOI(item.peOI)}</div>
-        <div class="delta ${deltaClass(item.peChgOI||0)}">Δ ${fmtDelta(item.peChgOI||0)}</div>
-      </div>
-    </div>
-    <div class="pcr-sentiment ${sentClass}">${item.sentiment}</div>
-    <div class="pcr-maxpain">MAX PAIN: <span>₹${item.maxPain.toLocaleString('en-IN')}</span></div>
-    <table class="pcr-oi-table">
-      <tr><th>STRIKE</th><th>CE OI</th><th>PE OI</th></tr>
-      ${strikes}
-    </table>
-    <div class="pcr-timestamp">${ts}</div>
-  </div>`;
-}
-
-// ===== INDEX MOVERS =====
-async function loadIndexMovers() {
-  const body = document.getElementById('idxMoversBody');
-  try {
-    // Fetch NIFTY 50 constituents from our TA data (already loaded)
-    if (typeof window.mergedData === 'undefined' || !window.mergedData.length) {
-      body.innerHTML = '<div class="loading">Waiting for market data...</div>';
-      setTimeout(loadIndexMovers, 3000);
-      return;
-    }
-
-    // Get the top 10 stocks by absolute impact on index
-    const niftyStocks = window.mergedData.filter(d => {
-      const sym = d.symbol || '';
-      return NIFTY_50_STOCKS.includes(sym) || NIFTY_500_STOCKS.includes(sym);
-    });
-
-    // Calculate impact: (change% × weight) — approximate using market cap proxy
-    const movers = niftyStocks
-      .map(d => {
-        const changePct = parseFloat(d.changePercent || d.change_pct || 0);
-        const price = parseFloat(d.price || 0);
-        const impact = Math.abs(changePct);
-        return {
-          symbol: d.symbol,
-          name: d.name || d.symbol,
-          price: price,
-          changePct: changePct,
-          impact: impact,
-          signal: d.signal || ''
-        };
-      })
-      .sort((a, b) => b.impact - a.impact)
-      .slice(0, 12);
-
-    if (!movers.length) throw new Error('No data');
-
-    const maxImpact = Math.max(...movers.map(m => m.impact), 1);
-    
-    body.innerHTML = `<table class="idx-movers-table">
-      <tr><th>STOCK</th><th>LTP</th><th>CHG%</th><th>IMPACT</th></tr>
-      ${movers.map(m => {
-        const cls = m.changePct >= 0 ? 'up' : 'down';
-        const arrow = m.changePct >= 0 ? '▲' : '▼';
-        const barW = (m.impact / maxImpact * 60).toFixed(0);
-        return `<tr>
-          <td>${m.symbol}</td>
-          <td>₹${m.price.toFixed(2)}</td>
-          <td class="${cls}">${arrow} ${Math.abs(m.changePct).toFixed(2)}%</td>
-          <td><span class="impact-bar" style="width:${barW}px"></span></td>
-        </tr>`;
-      }).join('')}
-    </table>`;
-  } catch(e) {
-    body.innerHTML = '<div class="loading">Index movers data unavailable</div>';
-  }
-}
-
-// NIFTY 50 stock list for index movers
-const NIFTY_50_STOCKS = ['RELIANCE','TCS','HDFCBANK','INFY','ICICIBANK','HINDUNILVR','ITC','SBIN','BHARTIARTL','LT','KOTAKBANK','AXISBANK','ASIANPAINT','MARUTI','SUNPHARMA','TITAN','ULTRACEMCO','WIPRO','BAJFINANCE','NESTLEIND','OCIL','JSWSTEEL','HCLTECH','NTPC','POWERGRID','TATAMOTORS','TATASTEEL','M&M','TECHM','COALINDIA','EICHERMOT','GRASIM','HDFCLIFE','DRREDDY','BRITANNIA','ADANIENT','SHRIRAMFIN','BAJAJFINSV','DIVISLAB','CIPLA','BAJAJ-AUTO','APOLLOHOSP','TATACONSUM','SBI-LIFE','HEROMOTOCO','BPCL','UPL','INDUSINDBK','TATAPOWER'];
-const NIFTY_500_STOCKS = NIFTY_50_STOCKS.concat(['ADANIPORTS','AMBUJACEM','AUROPHARMA','DMART','DABUR','GODREJCP','HDFCAMC','ICICIGI','IGL','INDIGO','L&FH','MUTHOOTFIN','PIDILITIND','SIEMENS','TVSMOTOR','VOLTAS','ZOMATO','ETERNAL','DLF','IDFCFIRSTB','PIIND','SBICARD','BANDHANBNK','BEL','GAIL','HAL','IOC','NHPC','NMDC','OIL','PGHH','RECLTD','SJVN','TATAELXSI','TRENT','VEDL','YESBANK','ACC','AMARAJABAT','BALKRISIND','BERGEPAINT','COLPAL','EXIDEIND','FEDERALBNK','GLENMARK','GMRINFRA','HAVELLS','ICICIPRULI','IRCTC','LICHSGFIN','MFSL','MCDOWELL-N','MPHASIS','MRF','PGHL','RBLBANK','SAIL','SRF','TATACHEM','TATASTEEL','TORNTPHARM','UBL','UNIONBANK','VGUARD','VMART']);
-
-// Load PCR and Index Movers on page load
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(() => { loadPCR('NIFTY,BANKNIFTY,FINNIFTY,MIDCAP,SENSEX'); }, 2000);
-  setTimeout(loadIndexMovers, 5000);
-});
 
 
 </script>
