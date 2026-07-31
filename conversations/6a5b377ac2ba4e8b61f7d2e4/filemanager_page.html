@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" style="background: #151521">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+
+    <!-- Critical CSS - Load immediately to prevent white flash -->
+    <style>
+        html, body {
+            background: #151521 !important;
+            color: #ffffff !important;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+
+    <title>File Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- TinyMCE Editor (Self-hosted) - defer for non-blocking load -->
+    <script src="/new3/tinymce/tinymce.min.js" defer></script>
+
+    <!-- CodeMirror CSS (fallback to v5) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/default.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/darcula.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.css">
+
+    <link rel="stylesheet" href="assets/css/styles.css?v=1.0.1">
+</head>
+<body data-theme="dark" style="background: #151521; color: #ffffff">
+    <div class="file-manager-container" role="application" aria-label="File Manager Application">
+        <!-- Skip Link for Accessibility -->
+        <a href="#fileList" class="skip-link" aria-label="Skip to file list">Skip to content</a>
+
+        <!-- Live Region for Screen Reader Announcements -->
+        <div id="liveRegion" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+        <div id="alertRegion" class="visually-hidden" aria-live="assertive" aria-atomic="true"></div>
+
+        <!-- Mobile Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()" aria-hidden="true"></div>
+
+        <!-- Sidebar -->
+        <nav class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" aria-hidden="true">
+                    <i class="fas fa-folder"></i> File Manager
+                </div>
+                <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close navigation menu"><i class="fas fa-times" aria-hidden="true"></i></button>
+            </div>
+            <div class="sidebar-nav" role="menu">
+                <div class="nav-section" role="group" aria-labelledby="nav-quick-access">
+                    <div class="nav-section-title" id="nav-quick-access">Quick Access</div>
+                    <button class="nav-item active" role="menuitem" onclick="navigateTo('/'); closeSidebarOnMobile();" aria-label="Navigate to home directory">
+                        <i class="fas fa-home" aria-hidden="true"></i> Home
+                    </button>
+                    <button class="nav-item" role="menuitem" onclick="showUploadModal(); closeSidebarOnMobile();" aria-label="Upload files">
+                        <span aria-hidden="true">⬆️</span> Upload Files
+                    </button>
+                    <button class="nav-item" role="menuitem" onclick="showUploadUnzipModal(); closeSidebarOnMobile();" aria-label="Upload and extract zip file">
+                        <i class="fas fa-upload" aria-hidden="true"></i> Upload & Unzip
+                    </button>
+                    <button class="nav-item" role="menuitem" onclick="showCreateDirModal(); closeSidebarOnMobile();" aria-label="Create new folder">
+                        <i class="fas fa-folder-plus" aria-hidden="true"></i> New Folder
+                    </button>
+                    <button class="nav-item" role="menuitem" onclick="showCreateFileModal(); closeSidebarOnMobile();" aria-label="Create new file">
+                        <i class="fas fa-file-medical" aria-hidden="true"></i> New File
+                    </button>
+                </div>
+
+                <div class="nav-section" role="group" aria-labelledby="nav-actions">
+                    <div class="nav-section-title" id="nav-actions">Actions</div>
+                    <button class="nav-item" role="menuitem" onclick="refreshList(); closeSidebarOnMobile();" aria-label="Refresh file list">
+                        <i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh
+                    </button>
+                    <button class="nav-item" role="menuitem" onclick="selectAll(); closeSidebarOnMobile();" aria-label="Select all files">
+                        <span aria-hidden="true">☑️</span> Select All
+                    </button>
+                </div>
+
+                <div class="nav-section" role="group" aria-labelledby="nav-preferences">
+                    <div class="nav-section-title" id="nav-preferences">Preferences</div>
+                    <button class="nav-item" role="menuitem" onclick="toggleTheme(); closeSidebarOnMobile();" aria-label="Toggle dark/light theme">
+                        <i class="fas fa-moon" aria-hidden="true"></i> Toggle Theme
+                    </button>
+                    <button class="nav-item" role="menuitem" onclick="setView(viewMode === 'grid' ? 'list' : 'grid'); closeSidebarOnMobile();" aria-label="Toggle between grid and list view">
+                        <span aria-hidden="true">⚏</span> Toggle View
+                    </button>
+                    <button class="nav-item" role="menuitem" onclick="resetUserPreferences(); closeSidebarOnMobile();" aria-label="Reset all settings to defaults">
+                        <i class="fas fa-undo" aria-hidden="true"></i> Reset Settings
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content" role="main" aria-label="File browser">
+            <!-- Toolbar -->
+            <div class="toolbar" role="toolbar" aria-label="File actions toolbar">
+                <div class="toolbar-left">
+                    <button class="mobile-menu-toggle" onclick="toggleSidebar()" aria-label="Open navigation menu" aria-expanded="false" aria-controls="sidebar">
+                        <span aria-hidden="true">☰</span>
+                    </button>
+
+                    <!-- Breadcrumb Navigation -->
+                    <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb navigation">
+                        <div class="breadcrumb-item">
+                            <button class="breadcrumb-link" onclick="navigateTo('/')" aria-label="Navigate to home directory">Home</button>
+                        </div>
+                    </nav>
+
+                    <!-- Search Box -->
+                    <div class="search-box" role="search">
+                        <label for="searchInput" class="visually-hidden">Search files</label>
+                        <input type="search" class="search-input" id="searchInput" placeholder="Search files..." onkeyup="searchFiles()" aria-label="Search files in current directory">
+                        <span class="search-icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+                    </div>
+                </div>
+
+                <div class="toolbar-right" role="group" aria-label="File operations">
+                    <!-- Help Button -->
+                    <button class="btn btn-light" onclick="showKeyboardShortcutsHelp()" aria-label="Keyboard shortcuts (?)" title="Keyboard shortcuts (?)">
+                        <i class="fas fa-keyboard" aria-hidden="true"></i>
+                    </button>
+
+                    <!-- View Toggle -->
+                    <div class="view-toggle" role="group" aria-label="View mode">
+                        <button class="view-toggle-btn" onclick="setView('grid')" id="gridViewBtn" aria-label="Grid view" aria-pressed="false">
+                            <span aria-hidden="true">⚏</span>
+                        </button>
+                        <button class="view-toggle-btn active" onclick="setView('list')" id="listViewBtn" aria-label="List view" aria-pressed="true">
+                            <span aria-hidden="true">☰</span>
+                        </button>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <button class="btn btn-primary" onclick="showUploadModal()" aria-label="Upload files (Shift+U)" aria-keyshortcuts="Shift+U">
+                        <span aria-hidden="true">⬆️</span> Upload
+                    </button>
+                    <button class="btn btn-light toolbar-btn-newfile" onclick="showCreateFileModal()" aria-label="Create new file (Shift+N)" aria-keyshortcuts="Shift+N">
+                        <i class="fas fa-file-medical" aria-hidden="true"></i> New File
+                    </button>
+                    <button class="btn btn-light toolbar-btn-newfolder" onclick="showCreateDirModal()" aria-label="Create new folder (Shift+F)" aria-keyshortcuts="Shift+F">
+                        <i class="fas fa-folder-plus" aria-hidden="true"></i> New Folder
+                    </button>
+                    <button class="btn btn-light toolbar-btn-edit" onclick="editSelected()" aria-label="Edit selected file (Shift+E)" aria-keyshortcuts="Shift+E">
+                        <i class="fas fa-edit" aria-hidden="true"></i> Edit
+                    </button>
+                    <button class="btn btn-light toolbar-btn-download" onclick="downloadSelected()" aria-label="Download selected items (Shift+D)" aria-keyshortcuts="Shift+D">
+                        <span aria-hidden="true">⬇️</span> Download
+                    </button>
+                    <button class="btn btn-light toolbar-btn-copy" onclick="copySelected()" aria-label="Copy selected items (Shift+C)" aria-keyshortcuts="Shift+C">
+                        <i class="fas fa-copy" aria-hidden="true"></i> Copy
+                    </button>
+                    <button class="btn btn-light toolbar-btn-move" onclick="moveSelected()" aria-label="Move selected items (Shift+M)" aria-keyshortcuts="Shift+M">
+                        <i class="fas fa-arrows-alt" aria-hidden="true"></i> Move
+                    </button>
+                    <button class="btn btn-danger toolbar-btn-delete" onclick="deleteSelected()" aria-label="Delete selected items (Delete)" aria-keyshortcuts="Delete">
+                        <i class="fas fa-trash" aria-hidden="true"></i> Delete
+                    </button>
+
+                    <!-- Mobile More Actions Button -->
+                    <button class="btn btn-light mobile-more-btn" onclick="toggleMobileActions(); return false;" style="display: none;" aria-label="More actions" aria-expanded="false" aria-controls="mobileActionsDropdown">
+                        <span aria-hidden="true">⋯</span> More
+                    </button>
+                </div>
+                
+                <!-- Mobile Actions Dropdown -->
+                <div id="mobileActionsDropdown" class="mobile-actions-dropdown" style="display: none;" role="menu" aria-label="Additional actions">
+                    <button class="btn btn-light" role="menuitem" onclick="showCreateFileModal(); hideMobileActions();" aria-label="Create new file"><i class="fas fa-file-medical" aria-hidden="true"></i> New File</button>
+                    <button class="btn btn-light" role="menuitem" onclick="showCreateDirModal(); hideMobileActions();" aria-label="Create new folder"><i class="fas fa-folder-plus" aria-hidden="true"></i> New Folder</button>
+                    <button class="btn btn-light" role="menuitem" onclick="editSelected(); hideMobileActions();" aria-label="Edit selected file"><i class="fas fa-edit" aria-hidden="true"></i> Edit</button>
+                    <button class="btn btn-light" role="menuitem" onclick="downloadSelected(); hideMobileActions();" aria-label="Download selected items"><i class="fas fa-download" aria-hidden="true"></i> Download</button>
+                    <button class="btn btn-light" role="menuitem" onclick="copySelected(); hideMobileActions();" aria-label="Copy selected items"><i class="fas fa-copy" aria-hidden="true"></i> Copy</button>
+                    <button class="btn btn-light" role="menuitem" onclick="moveSelected(); hideMobileActions();" aria-label="Move selected items"><i class="fas fa-arrows-alt" aria-hidden="true"></i> Move</button>
+                    <button class="btn btn-danger" role="menuitem" onclick="deleteSelected(); hideMobileActions();" aria-label="Delete selected items"><i class="fas fa-trash" aria-hidden="true"></i> Delete</button>
+                    <hr style="margin: 5px 0; border-color: var(--border-color);">
+                    <button class="btn btn-light" role="menuitem" onclick="showKeyboardShortcutsHelp(); hideMobileActions();" aria-label="Keyboard shortcuts"><i class="fas fa-keyboard" aria-hidden="true"></i> Shortcuts</button>
+                </div>
+            </div>
+
+            <!-- File List Container -->
+            <div class="file-list-container" role="region" aria-label="File browser">
+                <div id="fileList" class="file-list-table" role="grid" aria-label="Files and folders" tabindex="0" aria-describedby="fileListInstructions">
+                    <!-- Files will be loaded here -->
+                </div>
+                <div id="fileListInstructions" class="visually-hidden">
+                    Use arrow keys to navigate, Space to select, Enter to open, Delete to delete selected items. Press Shift+F10 or Context Menu key to open context menu.
+                </div>
+                <div class="loading-overlay" id="loadingOverlay" style="display: none;" role="status" aria-label="Loading files">
+                    <div class="spinner" aria-hidden="true"></div>
+                    <span class="visually-hidden">Loading files, please wait...</span>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <footer class="status-bar" role="contentinfo" aria-label="File browser status">
+                <div class="status-left">
+                    <span id="itemCount" aria-live="polite">0 items</span> <span aria-hidden="true">•</span>
+                    <span id="selectedCount" aria-live="polite">0 selected</span>
+                </div>
+                <div class="status-right">
+                    <span id="currentPath" aria-label="Current directory path">/</span>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="uploadModalTitle" aria-describedby="uploadModalDesc">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header" id="uploadModalTitle">Upload Files</div>
+            <div class="modal-body">
+                <p id="uploadModalDesc" class="visually-hidden">Upload files, folders, or archives to the current directory</p>
+                <!-- Upload Type Selection -->
+                <div class="form-group" role="group" aria-labelledby="uploadTypeLabel">
+                    <span class="form-label" id="uploadTypeLabel">Upload Type:</span>
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;" role="radiogroup" aria-labelledby="uploadTypeLabel">
+                        <button class="btn btn-light" onclick="setUploadType('files')" id="filesTypeBtn" role="radio" aria-checked="true" aria-label="Upload individual files"><i class="fas fa-file" aria-hidden="true"></i> Files</button>
+                        <button class="btn btn-light" onclick="setUploadType('folder')" id="folderTypeBtn" role="radio" aria-checked="false" aria-label="Upload entire folder"><i class="fas fa-folder" aria-hidden="true"></i> Folder</button>
+                        <button class="btn btn-light" onclick="setUploadType('zipExtract')" id="zipExtractTypeBtn" role="radio" aria-checked="false" aria-label="Upload and extract archive"><i class="fas fa-file-archive" aria-hidden="true"></i> Zip & Extract</button>
+                    </div>
+                </div>
+
+                <!-- File Input for regular files -->
+                <div id="filesUploadSection" class="form-group">
+                    <label class="form-label" for="fileInput">Select Files:</label>
+                    <input type="file" id="fileInput" multiple class="form-control" aria-describedby="fileInputHelp">
+                    <small id="fileInputHelp" style="color: var(--text-muted); margin-top: 5px; display: block;">Select multiple files to upload</small>
+                </div>
+
+                <!-- Folder Input -->
+                <div id="folderUploadSection" class="form-group" style="display: none;">
+                    <label class="form-label" for="folderInput">Select Folder:</label>
+                    <input type="file" id="folderInput" webkitdirectory multiple class="form-control" aria-describedby="folderInputHelp">
+                    <small id="folderInputHelp" style="color: var(--text-muted); margin-top: 5px; display: block;">Select a folder to upload (preserves structure) - Upload starts automatically</small>
+                </div>
+
+                <!-- Zip Upload and Extract -->
+                <div id="zipExtractUploadSection" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label" for="zipInput">Select Archive File:</label>
+                        <input type="file" id="zipInput" accept=".zip,.rar,.7z,.tar,.gz" class="form-control" aria-describedby="zipInputHelp">
+                        <small id="zipInputHelp" style="color: var(--text-muted); margin-top: 5px; display: block;">Upload and automatically extract archive</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="extractPath">Extract to folder (optional):</label>
+                        <input type="text" id="extractPath" class="form-control" placeholder="Leave empty to extract to current directory" aria-describedby="extractPathHelp">
+                        <small id="extractPathHelp" class="visually-hidden">Leave empty to extract to current directory</small>
+                    </div>
+
+                </div>
+
+                <!-- Upload Progress -->
+                <div id="uploadProgress" style="display: none;" role="status" aria-live="polite">
+                    <div style="background: var(--bg-secondary); border-radius: var(--radius); padding: 10px; margin: 10px 0;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span id="uploadProgressText">Uploading...</span>
+                            <span id="uploadProgressPercent" aria-live="polite">0%</span>
+                        </div>
+                        <div style="background: var(--border-color); height: 8px; border-radius: 4px; overflow: hidden;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Upload progress">
+                            <div id="uploadProgressBar" style="background: var(--accent-color); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="uploadList" aria-live="polite"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" onclick="closeModal('uploadModal')" aria-label="Cancel upload">Cancel</button>
+                <button class="btn btn-primary" onclick="performUpload()" id="uploadBtn" aria-label="Start upload">Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Directory Modal -->
+    <div id="createDirModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="createDirModalTitle">
+        <div class="modal-content">
+            <div class="modal-header" id="createDirModalTitle">Create New Folder</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="dirName">Folder Name:</label>
+                    <input type="text" id="dirName" class="form-control" placeholder="Enter folder name" onkeydown="if(event.key === 'Enter') createDirectory()" aria-required="true">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" onclick="closeModal('createDirModal')" aria-label="Cancel creating folder">Cancel</button>
+                <button class="btn btn-success" onclick="createDirectory()" aria-label="Create folder">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create File Modal -->
+    <div id="createFileModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="createFileModalTitle">
+        <div class="modal-content">
+            <div class="modal-header" id="createFileModalTitle">Create New File</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="fileName">File Name:</label>
+                    <input type="text" id="fileName" class="form-control" placeholder="Enter file name (e.g., document.txt, style.css)" onkeydown="if(event.key === 'Enter') createFile()" aria-required="true" aria-describedby="fileNameHelp">
+                    <small id="fileNameHelp" class="visually-hidden">Include the file extension, for example: document.txt or style.css</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" onclick="closeModal('createFileModal')" aria-label="Cancel creating file">Cancel</button>
+                <button class="btn btn-success" onclick="createFile()" aria-label="Create file and open editor">Create & Edit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Modal -->
+    <div id="renameModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="renameModalTitle">
+        <div class="modal-content">
+            <div class="modal-header" id="renameModalTitle">Rename</div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="newName">New Name:</label>
+                    <input type="text" id="newName" class="form-control" placeholder="Enter new name" aria-required="true" onkeydown="if(event.key === 'Enter') performRename()">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" onclick="closeModal('renameModal')" aria-label="Cancel renaming">Cancel</button>
+                <button class="btn btn-primary" onclick="performRename()" aria-label="Confirm rename">Rename</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Move Modal -->
+    <div id="moveModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="moveModalTitle">
+        <div class="modal-content">
+            <div class="modal-header" id="moveModalTitle">Move Items</div>
+            <div class="modal-body">
+                <div class="form-group" role="group" aria-labelledby="moveDestLabel">
+                    <span class="form-label" id="moveDestLabel">Choose Destination:</span>
+                    <div class="move-destination-options" role="group">
+                        <button class="btn btn-light" onclick="toggleFolderPicker()" id="folderPickerToggle" aria-pressed="true" aria-label="Browse folders">
+                            <i class="fas fa-folder-open" aria-hidden="true"></i> Browse Folders
+                        </button>
+                        <button class="btn btn-light" onclick="toggleManualPath()" id="manualPathToggle" aria-pressed="false" aria-label="Enter path manually">
+                            <i class="fas fa-keyboard" aria-hidden="true"></i> Manual Path
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Folder Picker Section -->
+                <div class="form-group" id="folderPickerSection">
+                    <label class="form-label" id="moveFolderPickerLabel">Browse and select destination folder:</label>
+                    <nav class="folder-breadcrumb" id="moveBreadcrumb" aria-label="Folder navigation">
+                        <button class="breadcrumb-link" onclick="navigateMoveTo('/')" aria-label="Navigate to root"><i class="fas fa-home" aria-hidden="true"></i> Root</button>
+                    </nav>
+                    <div class="folder-picker" id="folderPicker" role="listbox" aria-labelledby="moveFolderPickerLabel" tabindex="0">
+                        <div class="folder-picker-loading" role="status"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading folders...</div>
+                    </div>
+                    <div class="selected-path" aria-live="polite">
+                        <strong>Selected: </strong><span id="selectedMovePath">/</span>
+                    </div>
+                </div>
+
+                <!-- Manual Path Section -->
+                <div class="form-group" id="manualPathSection" style="display: none;">
+                    <label class="form-label" for="movePath">Destination Path:</label>
+                    <input type="text" id="movePath" class="form-control" placeholder="Enter destination path (e.g., /folder/subfolder)" aria-describedby="movePathHelp">
+                    <small class="form-text" id="movePathHelp">Current directory: <span id="currentMoveDir"></span></small>
+                </div>
+
+                <div class="form-group" id="moveItemsList">
+                    <span class="form-label" id="moveItemsLabel">Items to move:</span>
+                    <div id="moveItems" role="list" aria-labelledby="moveItemsLabel"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" onclick="closeModal('moveModal')" aria-label="Cancel move operation">Cancel</button>
+                <button class="btn btn-primary" onclick="performMove()" aria-label="Confirm move">Move</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Copy Modal -->
+    <div id="copyModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="copyModalTitle">
+        <div class="modal-content">
+            <div class="modal-header" id="copyModalTitle">Copy Items</div>
+            <div class="modal-body">
+                <div class="form-group" role="group" aria-labelledby="copyDestLabel">
+                    <span class="form-label" id="copyDestLabel">Choose Destination:</span>
+                    <div class="move-destination-options" role="group">
+                        <button class="btn btn-light" onclick="toggleCopyFolderPicker()" id="copyFolderPickerToggle" aria-pressed="true" aria-label="Browse folders">
+                            <i class="fas fa-folder-open" aria-hidden="true"></i> Browse Folders
+                        </button>
+                        <button class="btn btn-light" onclick="toggleCopyManualPath()" id="copyManualPathToggle" aria-pressed="false" aria-label="Enter path manually">
+                            <i class="fas fa-keyboard" aria-hidden="true"></i> Manual Path
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Folder Picker Section -->
+                <div class="form-group" id="copyFolderPickerSection">
+                    <label class="form-label" id="copyFolderPickerLabel">Browse and select destination folder:</label>
+                    <nav class="folder-breadcrumb" id="copyBreadcrumb" aria-label="Folder navigation">
+                        <button class="breadcrumb-link" onclick="navigateCopyTo('/')" aria-label="Navigate to root"><i class="fas fa-home" aria-hidden="true"></i> Root</button>
+                    </nav>
+                    <div class="folder-picker" id="copyFolderPicker" role="listbox" aria-labelledby="copyFolderPickerLabel" tabindex="0">
+                        <div class="folder-picker-loading" role="status"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Loading folders...</div>
+                    </div>
+                    <div class="selected-path" aria-live="polite">
+                        <strong>Selected: </strong><span id="selectedCopyPath">/</span>
+                    </div>
+                </div>
+
+                <!-- Manual Path Section -->
+                <div class="form-group" id="copyManualPathSection" style="display: none;">
+                    <label class="form-label" for="copyPath">Destination Path:</label>
+                    <input type="text" id="copyPath" class="form-control" placeholder="Enter destination path (e.g., /folder/subfolder)" aria-describedby="copyPathHelp">
+                    <small class="form-text" id="copyPathHelp">Current directory: <span id="currentCopyDir"></span></small>
+                </div>
+
+                <div class="form-group" id="copyItemsList">
+                    <span class="form-label" id="copyItemsLabel">Items to copy:</span>
+                    <div id="copyItems" role="list" aria-labelledby="copyItemsLabel"></div>
+                </div>
+
+                <!-- New filename input (only shown for single file copy) -->
+                <div class="form-group" id="copyFilenameSection" style="display: none;">
+                    <label class="form-label" for="copyNewFilename">New filename (optional):</label>
+                    <input type="text" id="copyNewFilename" class="form-control" placeholder="Leave empty to keep original filename" aria-describedby="copyFilenameHelp">
+                    <small class="form-text" id="copyFilenameHelp">Default: <span id="copyOriginalFilename"></span></small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-light" onclick="closeModal('copyModal')" aria-label="Cancel copy operation">Cancel</button>
+                <button class="btn btn-primary" onclick="performCopy()" aria-label="Confirm copy">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editor Modal -->
+    <div id="editorModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="editorModalTitle">
+        <div class="modal-content" style="max-width: 90%; width: 90%; height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+                <div id="editorModalTitle">
+                    Edit File: <span id="editFileName"></span>
+                    <span id="fileType" style="color: var(--text-muted); margin-left: 10px;" aria-label="File type"></span>
+                </div>
+                <div style="display: flex; gap: 10px;" role="group" aria-label="Editor options">
+                    <button class="btn btn-light" onclick="toggleWysiwyg()" id="wysiwygBtn" style="display: none;" aria-label="Toggle WYSIWYG editor" aria-pressed="false">
+                        <i class="fas fa-eye" aria-hidden="true"></i> WYSIWYG
+                    </button>
+                    <button class="btn btn-light" onclick="formatCode()" aria-label="Format code">
+                        <i class="fas fa-paint-brush" aria-hidden="true"></i> Format
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body" style="display: flex; flex: 1; padding: 0; overflow: hidden; min-height: 0;">
+                <div id="editorContainer" style="flex: 1; position: relative; overflow: hidden;" role="region" aria-label="Code editor">
+                    <textarea id="codeEditor" style="width: 100%; height: 100%; display: none;" aria-label="Code editor textarea"></textarea>
+                </div>
+                <div id="wysiwygContainer" style="flex: 1; display: none; overflow: auto;" role="region" aria-label="WYSIWYG editor">
+                    <textarea id="wysiwygEditor" aria-label="Rich text editor"></textarea>
+                </div>
+                <div id="previewContainer" style="flex: 1; display: none; padding: 20px; overflow: auto; background: var(--bg-secondary); border-left: 1px solid var(--border-color);" role="region" aria-label="Preview">
+                    <iframe id="previewFrame" style="width: 100%; height: 100%; border: none; background: white;" title="File preview"></iframe>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: space-between; flex-shrink: 0;">
+                <div>
+                    <span id="editorStatus" style="color: var(--text-muted);" role="status" aria-live="polite">Ready</span>
+                </div>
+                <div style="display: flex; gap: 10px;" role="group" aria-label="Editor actions">
+                    <button id="previewBtn" class="btn btn-light" onclick="togglePreview()" style="display: none;" aria-label="Toggle preview" aria-pressed="false"><i class="fas fa-eye" aria-hidden="true"></i> Preview</button>
+                    <button class="btn btn-light" onclick="closeEditorWithCheck()" aria-label="Cancel editing (Escape)">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveFile(false)" aria-label="Save file (Ctrl+S)" aria-keyshortcuts="Control+S"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
+                    <button class="btn btn-success" onclick="saveFile(true)" aria-label="Save file and close editor"><i class="fas fa-save" aria-hidden="true"></i> Save & Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Help Modal -->
+    <div id="shortcutsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="shortcutsModalTitle">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header" id="shortcutsModalTitle">
+                <i class="fas fa-keyboard" aria-hidden="true"></i> Keyboard Shortcuts
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <div class="shortcuts-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                    <div class="shortcuts-section">
+                        <h4 style="margin: 0 0 10px 0; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">
+                            <i class="fas fa-arrows-alt" aria-hidden="true"></i> Navigation
+                        </h4>
+                        <div class="shortcut-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <div class="shortcut-item"><kbd>↑</kbd> <kbd>↓</kbd> Navigate files</div>
+                            <div class="shortcut-item"><kbd>←</kbd> Collapse folder</div>
+                            <div class="shortcut-item"><kbd>→</kbd> Expand folder</div>
+                            <div class="shortcut-item"><kbd>Enter</kbd> Open folder / Edit file</div>
+                            <div class="shortcut-item"><kbd>Backspace</kbd> Parent folder</div>
+                            <div class="shortcut-item"><kbd>Home</kbd> / <kbd>End</kbd> First / Last item</div>
+                        </div>
+                    </div>
+                    <div class="shortcuts-section">
+                        <h4 style="margin: 0 0 10px 0; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">
+                            <i class="fas fa-check-square" aria-hidden="true"></i> Selection
+                        </h4>
+                        <div class="shortcut-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <div class="shortcut-item"><kbd>Space</kbd> Toggle selection</div>
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>A</kbd> Select / Deselect all</div>
+                        </div>
+                    </div>
+                    <div class="shortcuts-section">
+                        <h4 style="margin: 0 0 10px 0; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">
+                            <i class="fas fa-bolt" aria-hidden="true"></i> Actions
+                        </h4>
+                        <div class="shortcut-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>U</kbd> Upload files</div>
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>N</kbd> New file</div>
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>F</kbd> New folder</div>
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>E</kbd> Edit file</div>
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>D</kbd> Download</div>
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>C</kbd> Copy</div>
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>M</kbd> Move</div>
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>R</kbd> Refresh</div>
+                            <div class="shortcut-item"><kbd>Delete</kbd> Delete item</div>
+                            <div class="shortcut-item"><kbd>F2</kbd> Rename</div>
+                        </div>
+                    </div>
+                    <div class="shortcuts-section">
+                        <h4 style="margin: 0 0 10px 0; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">
+                            <i class="fas fa-cog" aria-hidden="true"></i> Other
+                        </h4>
+                        <div class="shortcut-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <div class="shortcut-item"><kbd>/</kbd> Focus search</div>
+                            <div class="shortcut-item"><kbd>?</kbd> Show this help</div>
+                            <div class="shortcut-item"><kbd>Esc</kbd> Close dialog</div>
+                            <div class="shortcut-item"><kbd>Ctrl</kbd> + <kbd>S</kbd> Save (in editor)</div>
+                            <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>F10</kbd> Context menu</div>
+                            <div class="shortcut-item"><kbd>F5</kbd> Refresh</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="hideModal('shortcutsModal')">
+                    <i class="fas fa-check" aria-hidden="true"></i> Got it
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu" style="display: none;" role="menu" aria-label="File actions context menu">
+        <button class="context-menu-item" data-action="newfolder" role="menuitem" tabindex="-1" aria-label="Create new folder">
+            <i class="fas fa-folder-plus" aria-hidden="true"></i> New Folder
+        </button>
+        <button class="context-menu-item" data-action="newfile" role="menuitem" tabindex="-1" aria-label="Create new file">
+            <i class="fas fa-file-medical" aria-hidden="true"></i> New File
+        </button>
+        <button class="context-menu-item" data-action="upload" role="menuitem" tabindex="-1" aria-label="Upload files">
+            <i class="fas fa-upload" aria-hidden="true"></i> Upload
+        </button>
+        <div class="context-menu-divider" role="separator" aria-hidden="true"></div>
+        <button class="context-menu-item" data-action="edit" role="menuitem" tabindex="-1" aria-label="Edit file">
+            <i class="fas fa-file-edit" aria-hidden="true"></i> Edit
+        </button>
+        <button class="context-menu-item" data-action="download" role="menuitem" tabindex="-1" aria-label="Download">
+            <i class="fas fa-download" aria-hidden="true"></i> Download
+        </button>
+        <div class="context-menu-divider" role="separator" aria-hidden="true"></div>
+        <button class="context-menu-item" data-action="rename" role="menuitem" tabindex="-1" aria-label="Rename">
+            <i class="fas fa-edit" aria-hidden="true"></i> Rename
+        </button>
+        <button class="context-menu-item" data-action="copy" role="menuitem" tabindex="-1" aria-label="Copy">
+            <i class="fas fa-copy" aria-hidden="true"></i> Copy
+        </button>
+        <button class="context-menu-item" data-action="move" role="menuitem" tabindex="-1" aria-label="Move">
+            <i class="fas fa-arrows-alt" aria-hidden="true"></i> Move
+        </button>
+        <div class="context-menu-divider" role="separator" aria-hidden="true"></div>
+        <button class="context-menu-item" data-action="delete" role="menuitem" tabindex="-1" aria-label="Delete">
+            <i class="fas fa-trash" aria-hidden="true"></i> Delete
+        </button>
+    </div>
+
+    <script>window.SESSION_HOME = null;</script>
+    <script src="assets/js/filemanager.js?v=1.0.1"></script>
+    
+    <!-- Fallback to CodeMirror 5 for compatibility -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/php/php.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/sql/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+
+    <!-- Hint/Autocomplete support -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/javascript-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/html-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/css-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/sql-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/anyword-hint.min.js"></script>
+
+    <!-- Selection and Match Highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/mark-selection.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/match-highlighter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/matchesonscrollbar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/scroll/annotatescrollbar.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/continuecomment.min.js"></script>
+
+    <script>
+        // CodeMirror 6 fallback indicator
+        window.CodeMirror6 = null;
+
+        // Custom PHP hint function
+        CodeMirror.registerHelper("hint", "php", function(editor, options) {
+            console.log('PHP hint function called');  // Debug only
+
+            const cursor = editor.getCursor();
+            const line = editor.getLine(cursor.line);
+            const start = cursor.ch;
+            let end = cursor.ch;
+
+            // Find the start of the current word (including $)
+            let wordStart = start;
+            while (wordStart > 0 && /[\w$]/.test(line.charAt(wordStart - 1))) {
+                wordStart--;
+            }
+
+            const currentWord = line.slice(wordStart, end);
+            console.log('Current word for PHP hints:', currentWord);
+
+            // Don't require minimum length for $ character
+            if (currentWord.length < 1 && currentWord !== '$') {
+                console.log('Word too short, no hints');
+                return null;
+            }
+
+            const suggestions = [];
+            const content = editor.getValue();
+
+            // Extract PHP variables from the document
+            const variableMatches = content.match(/\$[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+            const uniqueVars = [...new Set(variableMatches)];
+            console.log('Found variables:', uniqueVars);
+
+            // Extract function names
+            const functionMatches = content.match(/function\s+([a-zA-Z_][a-zA-Z0-9_]*)/g) || [];
+            const functions = functionMatches.map(f => f.replace('function ', ''));
+            console.log('Found functions:', functions);
+
+            // Common PHP functions and superglobals
+            const phpItems = [
+                // Superglobals
+                '$_GET', '$_POST', '$_SESSION', '$_COOKIE', '$_SERVER', '$_FILES', '$_ENV', '$_REQUEST', '$GLOBALS',
+                // Common functions
+                'echo', 'print', 'var_dump', 'print_r', 'var_export',
+                'strlen', 'substr', 'strpos', 'strrpos', 'str_replace', 'str_ireplace',
+                'explode', 'implode', 'trim', 'ltrim', 'rtrim',
+                'strtolower', 'strtoupper', 'ucfirst', 'ucwords', 'lcfirst',
+                'is_array', 'is_string', 'is_numeric', 'is_int', 'is_float', 'is_bool', 'is_null', 'is_object',
+                'isset', 'empty', 'unset',
+                'count', 'sizeof', 'array_keys', 'array_values', 'array_merge', 'array_push', 'array_pop', 'array_shift', 'array_unshift',
+                'file_get_contents', 'file_put_contents', 'file_exists', 'is_file', 'is_dir',
+                'mysqli_connect', 'mysqli_query', 'mysqli_fetch_assoc', 'mysqli_close',
+                'date', 'time', 'mktime', 'strtotime', 'microtime',
+                'header', 'session_start', 'session_destroy', 'session_id',
+                'define', 'defined', 'constant',
+                'include', 'require', 'include_once', 'require_once'
+            ];
+
+            // Add variables
+            uniqueVars.forEach(variable => {
+                // Show all variables if just typed $, or filter if typing more
+                if (currentWord === '$' ||
+                    currentWord === '' ||
+                    variable.toLowerCase().indexOf(currentWord.toLowerCase()) === 0) { // Changed to startsWith (===0)
+                    suggestions.push({
+                        text: variable,
+                        displayText: variable + ' (variable)',
+                        className: 'cm-variable-hint'
+                    });
+                }
+            });
+
+            // Add custom functions
+            functions.forEach(func => {
+                // Only show functions if not typing a variable
+                if (!currentWord.startsWith('$') &&
+                    (currentWord === '' || func.toLowerCase().indexOf(currentWord.toLowerCase()) === 0)) {
+                    suggestions.push({
+                        text: func + '()',
+                        displayText: func + '() (function)',
+                        className: 'cm-function-hint'
+                    });
+                }
+            });
+
+            // Add PHP built-ins and superglobals
+            phpItems.forEach(item => {
+                const isVariable = item.startsWith('$');
+                const isSuperglobal = item.startsWith('$_');
+
+                // Show variables if typing $, functions if not
+                const shouldShow = (currentWord === '$' && isVariable) ||
+                                 (currentWord.startsWith('$') && isVariable && item.toLowerCase().indexOf(currentWord.toLowerCase()) === 0) ||
+                                 (!currentWord.startsWith('$') && !isVariable && item.toLowerCase().indexOf(currentWord.toLowerCase()) === 0) ||
+                                 (currentWord === '');
+
+                if (shouldShow) {
+                    const displayType = isSuperglobal ? 'superglobal' : (isVariable ? 'variable' : 'function');
+
+                    suggestions.push({
+                        text: item,
+                        displayText: item + ' (PHP ' + displayType + ')',
+                        className: isVariable ? 'cm-variable-hint' : 'cm-builtin-hint'
+                    });
+                }
+            });
+
+            console.log('PHP suggestions:', suggestions.length);
+
+            if (suggestions.length === 0) {
+                return null;
+            }
+
+            return {
+                list: suggestions.slice(0, 20), // Limit to 20 suggestions
+                from: CodeMirror.Pos(cursor.line, wordStart),
+                to: CodeMirror.Pos(cursor.line, end)
+            };
+        });
+
+        // Enhanced anyword hint for other languages
+        CodeMirror.registerHelper("hint", "anyword-enhanced", function(editor, options) {
+            const cursor = editor.getCursor();
+            const line = editor.getLine(cursor.line);
+            const start = cursor.ch;
+            let end = cursor.ch;
+
+            // Find the start of the current word
+            let wordStart = start;
+            while (wordStart > 0 && /[\w$]/.test(line.charAt(wordStart - 1))) {
+                wordStart--;
+            }
+
+            const currentWord = line.slice(wordStart, end);
+            if (currentWord.length < 2) return null;
+
+            const content = editor.getValue();
+            const words = content.match(/\b\w{2,}\b/g) || [];
+            const uniqueWords = [...new Set(words)];
+
+            const suggestions = uniqueWords
+                .filter(word => word.toLowerCase().includes(currentWord.toLowerCase()) && word !== currentWord)
+                .map(word => ({
+                    text: word,
+                    displayText: word + ' (from document)',
+                    className: 'cm-word-hint'
+                }));
+
+            return {
+                list: suggestions.slice(0, 20), // Limit to 20 suggestions
+                from: CodeMirror.Pos(cursor.line, wordStart),
+                to: CodeMirror.Pos(cursor.line, end)
+            };
+        });
+
+        // JavaScript-specific hints
+        CodeMirror.registerHelper("hint", "javascript-enhanced", function(editor, options) {
+            const cursor = editor.getCursor();
+            const line = editor.getLine(cursor.line);
+            const start = cursor.ch;
+            let end = cursor.ch;
+
+            let wordStart = start;
+            while (wordStart > 0 && /[\w$]/.test(line.charAt(wordStart - 1))) {
+                wordStart--;
+            }
+
+            const currentWord = line.slice(wordStart, end);
+            const suggestions = [];
+
+            // Extract JavaScript variables and functions
+            const content = editor.getValue();
+            const varMatches = content.match(/(?:var|let|const)\s+([a-zA-Z_][a-zA-Z0-9_]*)/g) || [];
+            const variables = varMatches.map(v => v.replace(/(var|let|const)\s+/, ''));
+
+            const funcMatches = content.match(/function\s+([a-zA-Z_][a-zA-Z0-9_]*)/g) || [];
+            const functions = funcMatches.map(f => f.replace('function ', ''));
+
+            // JavaScript built-ins
+            const jsBuiltins = [
+                'console.log', 'console.error', 'console.warn', 'console.info',
+                'document.getElementById', 'document.querySelector', 'document.querySelectorAll',
+                'window.alert', 'window.confirm', 'window.prompt', 'window.location',
+                'Array', 'Object', 'String', 'Number', 'Boolean', 'Date', 'Math', 'JSON',
+                'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'typeof', 'instanceof',
+                'setTimeout', 'setInterval', 'clearTimeout', 'clearInterval'
+            ];
+
+            // Add variables
+            variables.forEach(variable => {
+                if (variable.toLowerCase().includes(currentWord.toLowerCase())) {
+                    suggestions.push({
+                        text: variable,
+                        displayText: variable + ' (variable)',
+                        className: 'cm-variable-hint'
+                    });
+                }
+            });
+
+            // Add functions
+            functions.forEach(func => {
+                if (func.toLowerCase().includes(currentWord.toLowerCase())) {
+                    suggestions.push({
+                        text: func + '()',
+                        displayText: func + '() (function)',
+                        className: 'cm-function-hint'
+                    });
+                }
+            });
+
+            // Add built-ins
+            jsBuiltins.forEach(builtin => {
+                if (builtin.toLowerCase().includes(currentWord.toLowerCase())) {
+                    suggestions.push({
+                        text: builtin,
+                        displayText: builtin + ' (JavaScript built-in)',
+                        className: 'cm-builtin-hint'
+                    });
+                }
+            });
+
+            return {
+                list: suggestions,
+                from: CodeMirror.Pos(cursor.line, wordStart),
+                to: CodeMirror.Pos(cursor.line, end)
+            };
+        });
+    </script>
+
+    <!-- Keep external linting libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jshint/2.13.6/jshint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/csslint/1.0.5/csslint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsonlint/1.6.0/jsonlint.min.js"></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"05a078e291c544d6b58e927596a1bbbc","r":1}' crossorigin="anonymous"></script>
+</body>
+</html>
