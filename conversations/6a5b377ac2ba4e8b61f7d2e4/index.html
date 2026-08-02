@@ -1304,6 +1304,55 @@ body {
 .tick-counter .pulse{width:5px;height:5px;border-radius:50%;background:#0f8;background:var(--green,#0f0)}
 @keyframes tickPulse{0%{transform:scale(1);opacity:1}50%{transform:scale(2.5);opacity:.3}100%{transform:scale(1);opacity:1}}
 
+
+/* ===== PORTFOLIO SECTION ===== */
+.port-section { margin-bottom: 24px; }
+.port-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
+}
+.port-header h2 { font-size: 18px; font-weight: 700; color: var(--text1); }
+.port-refresh-btn {
+  background: var(--cyan); color: #050810; border: none;
+  padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: opacity .2s;
+}
+.port-refresh-btn:hover { opacity: .85; }
+.port-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.port-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; transition: box-shadow .2s, border-color .2s;
+}
+.port-card:hover { box-shadow: 0 0 12px rgba(0,212,255,.15); border-color: var(--cyan); }
+.port-card-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+.port-card-value { font-size: 22px; font-weight: 700; color: var(--text1); }
+.port-card-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
+.port-card .pos { color: #00e676; }
+.port-card .neg { color: #ff5252; }
+.port-table { width: 100%; border-collapse: collapse; }
+.port-table th {
+  text-align: left; font-size: 11px; text-transform: uppercase;
+  color: var(--text2); padding: 8px 10px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg); z-index: 1;
+}
+.port-table td {
+  padding: 10px; font-size: 13px; border-bottom: 1px solid var(--border); color: var(--text1);
+}
+.port-table tr:hover { background: rgba(0,212,255,.04); }
+.port-table .pos { color: #00e676; font-weight: 600; }
+.port-table .neg { color: #ff5252; font-weight: 600; }
+.port-badge {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+}
+.port-badge.long { background: rgba(0,230,118,.15); color: #00e676; }
+.port-badge.short { background: rgba(255,82,82,.15); color: #ff5252; }
+.port-empty { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
+.port-loading { text-align: center; padding: 40px; color: var(--text2); }
+.port-loading::after { content: '...'; animation: dots 1.5s infinite; }
+@keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+.port-tbl-wrap { max-height: 500px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; }
+
 /* ===== MOBILE BOTTOM NAV ===== */
 .mobile-nav {
   display: none;
@@ -1530,7 +1579,7 @@ body {
           <span class="sidebar-icon">⊞</span>
           <span class="sidebar-label">DASHBOARD</span>
         </button>
-        <button class="sidebar-item">
+        <button class="sidebar-item" onclick="scrollToSecPort()">
           <span class="sidebar-icon">💼</span>
           <span class="sidebar-label">PORTFOLIO</span>
         </button>
@@ -2103,6 +2152,38 @@ body {
         </div>
       </div>
 
+
+      <!-- ===== PORTFOLIO (MEGABULL) ===== -->
+      <div id="portSec">
+        <div class="divider"><span class="divider-text">💼 MEGABULL PORTFOLIO</span><span class="divider-line"></span></div>
+        <div class="port-section">
+          <div class="port-header">
+            <h2>Paper Trading Portfolio</h2>
+            <button class="port-refresh-btn" onclick="loadPortfolio()">↻ Refresh</button>
+          </div>
+          <div class="port-cards" id="portCards">
+            <div class="port-card"><div class="port-card-label">Total Capital</div><div class="port-card-value" id="portTotal">—</div><div class="port-card-sub" id="portTotalSub">Loading...</div></div>
+            <div class="port-card"><div class="port-card-label">Available</div><div class="port-card-value" id="portAvail">—</div><div class="port-card-sub" id="portAvailSub">Loading...</div></div>
+            <div class="port-card"><div class="port-card-label">Blocked</div><div class="port-card-value" id="portBlocked">—</div><div class="port-card-sub" id="portBlockedSub">Loading...</div></div>
+            <div class="port-card"><div class="port-card-label">Open Positions</div><div class="port-card-value" id="portPosCount">—</div><div class="port-card-sub" id="portPosSub">Loading...</div></div>
+          </div>
+          <div class="divider"><span class="divider-text">📋 OPEN POSITIONS</span><span class="divider-line"></span></div>
+          <div class="port-tbl-wrap">
+            <table class="port-table">
+              <thead><tr><th>Instrument</th><th>Type</th><th>Qty</th><th>Avg Price</th><th>LTP</th><th>P&L</th><th>Duration</th></tr></thead>
+              <tbody id="portBody"><tr><td colspan="7" class="port-loading">Loading positions</td></tr></tbody>
+            </table>
+          </div>
+          <div class="divider" style="margin-top:20px"><span class="divider-text">📜 TODAY'S ORDERS</span><span class="divider-line"></span></div>
+          <div class="port-tbl-wrap">
+            <table class="port-table">
+              <thead><tr><th>ID</th><th>Instrument</th><th>Type</th><th>Qty</th><th>Price</th><th>Status</th><th>Time</th></tr></thead>
+              <tbody id="ordBody"><tr><td colspan="7" class="port-loading">Loading orders</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
             <div class="foot">Real data from Yahoo Finance. Powered by Supabase Edge Functions. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
     </main>
   </div>
@@ -2138,6 +2219,7 @@ body {
     <button onclick="scrollToSec('chartSec')"><span class="mn-icon">📈</span>CHART</button>
     <button onclick="scrollToSec('newsSec')"><span class="mn-icon">📰</span>NEWS</button>
     <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
+  <button onclick="scrollToSec('portSec')"><span class="mn-icon">💼</span>PORTFOLIO</button>
   <button onclick="scrollToSec('optSec')"><span class="mn-icon">📊</span>OPTIONS</button>
   </div>
 
@@ -3844,9 +3926,118 @@ var aiGreeted=false;
 var aiBusy=false;
 
 // ===== MOBILE NAV SCROLL =====
+
+// ===== MEGABULL PORTFOLIO =====
+var MEGA_API='https://api.megabull.in';
+var MEGA_KEY='5bd189e7-ef64-4571-82d1-d4c7eac7aa8f';
+
+function scrollToSecPort(){
+  var el=document.getElementById('portSec');
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active');});
+  event.currentTarget.classList.add('active');
+  loadPortfolio();
+}
+
+async function megaFetch(path){
+  try{
+    var res=await fetch(MEGA_API+path,{headers:{'api-key':MEGA_KEY,'Content-Type':'application/json'}});
+    return res.json();
+  }catch(e){ return null; }
+}
+
+function fmtMoney(v){
+  if(v===null||v===undefined)return '—';
+  return '₹'+Number(v).toLocaleString('en-IN',{maximumFractionDigits:2,minimumFractionDigits:0});
+}
+
+async function loadPortfolio(){
+  var cards=document.getElementById('portCards');
+  var posBody=document.getElementById('portBody');
+  var ordBody=document.getElementById('ordBody');
+  
+  // Show loading
+  posBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading positions</td></tr>';
+  ordBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading orders</td></tr>';
+  
+  // Fetch positions, profile, and orders in parallel
+  var[posRes,profRes,ordRes]=await Promise.all([
+    megaFetch('/api/position/my'),
+    megaFetch('/api/user/my'),
+    megaFetch('/api/order/my')
+  ]);
+  
+  // Update capital cards
+  if(profRes){
+    var total=profRes.virtualMoney||0;
+    var blocked=profRes.virtualMoneyBlocked||0;
+    var avail=profRes.virtualMoneyLeft||0;
+    document.getElementById('portTotal').textContent=fmtMoney(total);
+    document.getElementById('portTotalSub').textContent='Paper Trading Capital';
+    document.getElementById('portAvail').textContent=fmtMoney(avail);
+    document.getElementById('portAvailSub').textContent='Available for new trades';
+    document.getElementById('portBlocked').textContent=fmtMoney(blocked);
+    document.getElementById('portBlockedSub').textContent='In open positions';
+  }
+  
+  // Update positions
+  var positions=(posRes&&Array.isArray(posRes))?posRes:[];
+  document.getElementById('portPosCount').textContent=positions.length;
+  document.getElementById('portPosSub').textContent=positions.length>0?positions.length+' active position'+(positions.length>1?'s':''):'No open positions';
+  
+  if(positions.length===0){
+    posBody.innerHTML='<tr><td colspan="7" class="port-empty">No open positions</td></tr>';
+  } else {
+    posBody.innerHTML=positions.map(function(p){
+      var pnl=p.pl||0;
+      var pnlClass=pnl>=0?'pos':'neg';
+      var pnlStr=pnl>=0?'+'+fmtMoney(pnl):'-'+fmtMoney(Math.abs(pnl));
+      var typeClass=(p.type||'LONG').toLowerCase();
+      var ltp=p.avgSellPrice>0?p.avgSellPrice:p.avgBuyPrice;
+      return '<tr>'+
+        '<td style="font-weight:600">'+(p.instrumentName||'—')+'</td>'+
+        '<td><span class="port-badge '+typeClass+'">'+(p.type||'LONG')+'</span></td>'+
+        '<td>'+(p.qty||0)+'</td>'+
+        '<td>'+fmtMoney(p.avgBuyPrice||0)+'</td>'+
+        '<td>'+fmtMoney(ltp)+'</td>'+
+        '<td class="'+pnlClass+'">'+pnlStr+'</td>'+
+        '<td>'+(p.duration||'MIS')+'</td>'+
+      '</tr>';
+    }).join('');
+  }
+  
+  // Update orders
+  var orders=[];
+  if(ordRes&&ordRes.executed)orders=ordRes.executed;
+  if(ordRes&&ordRes.open)orders=orders.concat(ordRes.open);
+  
+  if(orders.length===0){
+    ordBody.innerHTML='<tr><td colspan="7" class="port-empty">No orders today</td></tr>';
+  } else {
+    ordBody.innerHTML=orders.slice().reverse().map(function(o){
+      var statusClass=o.status==='COMPLETE'?'pos':'neg';
+      var timeStr=o.createdTimestamp?new Date(o.createdTimestamp).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}):'—';
+      return '<tr>'+
+        '<td>#'+(o.id||'—')+'</td>'+
+        '<td style="font-weight:600">'+(o.instrumentName||'—')+'</td>'+
+        '<td>'+(o.type||'BUY')+'</td>'+
+        '<td>'+(o.qty||0)+'</td>'+
+        '<td>'+fmtMoney(o.price||0)+'</td>'+
+        '<td class="'+statusClass+'">'+(o.status||'—')+'</td>'+
+        '<td>'+timeStr+'</td>'+
+      '</tr>';
+    }).join('');
+  }
+}
+
+// Auto-load portfolio on page load
+setTimeout(loadPortfolio,2000);
+
+
 function scrollToSec(id){
   var el=document.getElementById(id);
   if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  if(id==='portSec')loadPortfolio();
   // Update active nav button
   document.querySelectorAll('.mobile-nav button').forEach(function(b){b.classList.remove('active');});
   event.currentTarget.classList.add('active');
