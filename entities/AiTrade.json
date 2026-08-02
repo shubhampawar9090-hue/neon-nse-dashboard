@@ -1,0 +1,106 @@
+{
+  "properties": {
+    "action": {
+      "enum": [
+        "BUY",
+        "SELL",
+        "HOLD",
+        "EXIT"
+      ],
+      "type": "string"
+    },
+    "buyScore": {
+      "type": "number"
+    },
+    "changePercent": {
+      "type": "number"
+    },
+    "duration": {
+      "enum": [
+        "MIS",
+        "CNC"
+      ],
+      "type": "string"
+    },
+    "entryPrice": {
+      "type": "number"
+    },
+    "executionStatus": {
+      "enum": [
+        "EXECUTED",
+        "REJECTED",
+        "SKIPPED",
+        "ERROR"
+      ],
+      "type": "string"
+    },
+    "instrumentToken": {
+      "type": "string"
+    },
+    "megaOrderId": {
+      "type": "number"
+    },
+    "orderId": {
+      "type": "string"
+    },
+    "positionSize": {
+      "type": "number"
+    },
+    "price": {
+      "type": "number"
+    },
+    "qty": {
+      "type": "number"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "rsi": {
+      "type": "number"
+    },
+    "sellScore": {
+      "type": "number"
+    },
+    "signal": {
+      "enum": [
+        "BUY",
+        "SELL",
+        "NEUTRAL"
+      ],
+      "type": "string"
+    },
+    "sl": {
+      "type": "number"
+    },
+    "stopLoss": {
+      "type": "number"
+    },
+    "strategy": {
+      "type": "string"
+    },
+    "symbol": {
+      "type": "string"
+    },
+    "target": {
+      "type": "number"
+    },
+    "tp1": {
+      "type": "number"
+    },
+    "tp2": {
+      "type": "number"
+    },
+    "tp3": {
+      "type": "number"
+    },
+    "trend": {
+      "type": "string"
+    },
+    "triggerPrice": {
+      "type": "number"
+    }
+  },
+  "type": "object",
+  "required": [],
+  "name": "AiTrade"
+}

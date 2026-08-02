@@ -1,0 +1,68 @@
+{
+  "properties": {
+    "activeStocks": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "autoExecute": {
+      "type": "boolean"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "lastRunAt": {
+      "type": "string"
+    },
+    "maxPositionSize": {
+      "type": "number"
+    },
+    "maxPositions": {
+      "type": "number"
+    },
+    "maxTradesPerRun": {
+      "type": "number"
+    },
+    "minBuyScore": {
+      "type": "number"
+    },
+    "minSellScore": {
+      "type": "number"
+    },
+    "name": {
+      "type": "string"
+    },
+    "riskPerTrade": {
+      "type": "number"
+    },
+    "status": {
+      "enum": [
+        "ACTIVE",
+        "PAUSED",
+        "STOPPED"
+      ],
+      "type": "string"
+    },
+    "totalPnL": {
+      "type": "number"
+    },
+    "tradingMode": {
+      "enum": [
+        "CONSERVATIVE",
+        "MODERATE",
+        "AGGRESSIVE"
+      ],
+      "type": "string"
+    },
+    "watchlist": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "type": "object",
+  "required": [],
+  "name": "AiAgentConfig"
+}
