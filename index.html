@@ -1,4 +1,4 @@
-<!-- build: 1785472744 -->
+<!-- build: 1785739076 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4043,7 +4043,7 @@ async function loadPortfolio(silent){
     document.getElementById('portBlockedSub').textContent='In open positions';
     
     // Update positions (only open positions, qty > 0)
-    var positions=data.positions||[];
+    var positions=(data.positions||[]).filter(function(p){return (p.qty||0)>0;});
     document.getElementById('portPosCount').textContent=positions.length;
     document.getElementById('portPosSub').textContent=positions.length>0?positions.length+' active position'+(positions.length>1?'s':''):'No open positions';
     
