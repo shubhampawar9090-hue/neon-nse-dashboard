@@ -4018,7 +4018,7 @@ async function loadPortfolio(silent){
     var resp=await fetch('https://solas-5140a8e3.base44.app/functions/getMegaPortfolio',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({})
+      body:JSON.stringify(silent?{lite:true}:{})
     });
     if(resp.ok){
       portfolioData=await resp.json();
@@ -4068,7 +4068,8 @@ async function loadPortfolio(silent){
         var pnlStr=pnl>=0?'+'+fmtMoney(pnl):'-'+fmtMoney(Math.abs(pnl));
         var ltpStr=ltp>0?'\u20B9'+Number(ltp).toFixed(2):'\u2014';
         var ltpBadge=ltp>0?(ltp>=avgPrice?'<span style="color:var(--pos,#22c55e)">\u25B2</span>':'<span style="color:var(--neg,#ef4444)">\u25BC</span>'):'';
-        var liveBadge=ltpSource==='WebSocket'?'<span style="font-size:9px;color:#22c55e;margin-left:4px">LIVE</span>':'';
+        var cached=data.cached?'<span style="font-size:9px;color:#3b82f6;margin-left:2px">CACHED</span>':'';
+      var liveBadge=ltpSource==='WebSocket'?'<span style="font-size:9px;color:#22c55e;margin-left:4px">LIVE</span>'+cached:'';
         return '<tr>'+
           '<td style="font-weight:600">'+(p.instrumentName||'\u2014')+liveBadge+'</td>'+
           '<td><span class="port-badge '+typeClass+'">'+(p.type||'LONG')+'</span></td>'+
@@ -4251,7 +4252,7 @@ function startPortfolioPolling() {
     portfolioFetching = true;
     loadPortfolio(true).then(function() { portfolioFetching = false; })
       .catch(function() { portfolioFetching = false; });
-  }, 1000);
+  }, 2000);
 }
 function stopPortfolioPolling() {
   var badge=document.getElementById('portLiveBadge'); if(badge)badge.style.display='none';
