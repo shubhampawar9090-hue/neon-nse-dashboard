@@ -4031,7 +4031,7 @@ async function loadPortfolio(){
 }
 
 // Auto-load portfolio on page load
-setTimeout(function(){ loadPortfolio(); startPortfolioPolling(); },2000);
+setTimeout(function(){ loadPortfolio(); },2000);
 
 // ===== 1-SECOND PORTFOLIO AUTO-REFRESH =====
 var portfolioInterval = null;
@@ -4055,7 +4055,7 @@ function stopPortfolioPolling() {
 function scrollToSec(id){
   var el=document.getElementById(id);
   if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-  if(id==='portSec'){ loadPortfolio(); startPortfolioPolling(); }
+  if(id==='portSec'){ loadPortfolio(); }
   else { stopPortfolioPolling(); }
   // Update active nav button
   document.querySelectorAll('.mobile-nav button').forEach(function(b){b.classList.remove('active');});
