@@ -3939,99 +3939,69 @@ function scrollToSecPort(){
   loadPortfolio();
 }
 
-async function megaFetch(path){
-  try{
-    var res=await fetch(MEGA_API+path,{headers:{'api-key':MEGA_KEY,'Content-Type':'application/json'}});
-    return res.json();
-  }catch(e){ return null; }
+async function megaFetch(path,signal){
+  try{var res=await fetch(MEGA_API+path,{headers:{'api-key':MEGA_KEY,'Content-Type':'application/json'},signal:signal});return res.json();}
+  catch(e){return null;}
 }
-
-function fmtMoney(v){
-  if(v===null||v===undefined)return '—';
-  return '₹'+Number(v).toLocaleString('en-IN',{maximumFractionDigits:2,minimumFractionDigits:0});
+function fmtMoney(v){if(v===null||v===undefined)return'—';return'₹'+Number(v).toLocaleString('en-IN',{maximumFractionDigits:2,minimumFractionDigits:0});}
+// ===== PORTFOLIO LIVE POLLING (1s, overlap-protected, abort-on-leave) =====
+// READ-ONLY: positions/profile/orders. Never creates orders or modifies trade rules.
+// AI Trading Agent (megabullAgent) 15-min execution workflow is untouched.
+var portPolling=false,portPollTimer=null,portPollAbort=null,portPollSeq=0;
+function startPortfolioPolling(){if(portPolling)return;portPolling=true;portPollTick();}
+function stopPortfolioPolling(){portPolling=false;if(portPollTimer){clearTimeout(portPollTimer);portPollTimer=null;}if(portPollAbort){try{portPollAbort.abort();}catch(e){}portPollAbort=null;}}
+function portPollTick(){
+  if(!portPolling)return;
+  var mySeq=++portPollSeq;
+  portPollAbort=new AbortController();
+  Promise.all([megaFetch('/api/position/my',portPollAbort.signal),megaFetch('/api/user/my',portPollAbort.signal),megaFetch('/api/order/my',portPollAbort.signal)])
+  .then(function(r){if(mySeq===portPollSeq&&portPolling)loadPortfolio({pos:r[0],prof:r[1],ord:r[2]});})
+  .catch(function(){})
+  .finally(function(){portPollAbort=null;if(portPolling)portPollTimer=setTimeout(portPollTick,1000);});
 }
-
-async function loadPortfolio(){
-  var cards=document.getElementById('portCards');
-  var posBody=document.getElementById('portBody');
-  var ordBody=document.getElementById('ordBody');
-  
-  // Show loading
-  posBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading positions</td></tr>';
-  ordBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading orders</td></tr>';
-  
-  // Fetch positions, profile, and orders in parallel
-  var[posRes,profRes,ordRes]=await Promise.all([
-    megaFetch('/api/position/my'),
-    megaFetch('/api/user/my'),
-    megaFetch('/api/order/my')
-  ]);
-  
-  // Update capital cards
+function initPortfolioVisibilityPolling(){
+  var el=document.getElementById('portSec');
+  if(!el||!('IntersectionObserver'in window)){startPortfolioPolling();return;}
+  new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)startPortfolioPolling();else stopPortfolioPolling();});},{threshold:0.05}).observe(el);
+}
+async function loadPortfolio(prefetched){
+  var posBody=document.getElementById('portBody'),ordBody=document.getElementById('ordBody');
+  var posRes,profRes,ordRes;
+  if(prefetched){posRes=prefetched.pos;profRes=prefetched.prof;ordRes=prefetched.ord;}
+  else{
+    if(posBody)posBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading positions</td></tr>';
+    if(ordBody)ordBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading orders</td></tr>';
+    var ctrl=new AbortController();
+    var r=await Promise.all([megaFetch('/api/position/my',ctrl.signal),megaFetch('/api/user/my',ctrl.signal),megaFetch('/api/order/my',ctrl.signal)]);
+    posRes=r[0];profRes=r[1];ordRes=r[2];
+  }
   if(profRes){
-    var total=profRes.virtualMoney||0;
-    var blocked=profRes.virtualMoneyBlocked||0;
-    var avail=profRes.virtualMoneyLeft||0;
-    document.getElementById('portTotal').textContent=fmtMoney(total);
+    document.getElementById('portTotal').textContent=fmtMoney(profRes.virtualMoney||0);
     document.getElementById('portTotalSub').textContent='Paper Trading Capital';
-    document.getElementById('portAvail').textContent=fmtMoney(avail);
+    document.getElementById('portAvail').textContent=fmtMoney(profRes.virtualMoneyLeft||0);
     document.getElementById('portAvailSub').textContent='Available for new trades';
-    document.getElementById('portBlocked').textContent=fmtMoney(blocked);
+    document.getElementById('portBlocked').textContent=fmtMoney(profRes.virtualMoneyBlocked||0);
     document.getElementById('portBlockedSub').textContent='In open positions';
   }
-  
-  // Update positions
   var positions=(posRes&&Array.isArray(posRes))?posRes:[];
   document.getElementById('portPosCount').textContent=positions.length;
   document.getElementById('portPosSub').textContent=positions.length>0?positions.length+' active position'+(positions.length>1?'s':''):'No open positions';
-  
-  if(positions.length===0){
-    posBody.innerHTML='<tr><td colspan="7" class="port-empty">No open positions</td></tr>';
-  } else {
-    posBody.innerHTML=positions.map(function(p){
-      var pnl=p.pl||0;
-      var pnlClass=pnl>=0?'pos':'neg';
-      var pnlStr=pnl>=0?'+'+fmtMoney(pnl):'-'+fmtMoney(Math.abs(pnl));
-      var typeClass=(p.type||'LONG').toLowerCase();
-      var ltp=p.avgSellPrice>0?p.avgSellPrice:p.avgBuyPrice;
-      return '<tr>'+
-        '<td style="font-weight:600">'+(p.instrumentName||'—')+'</td>'+
-        '<td><span class="port-badge '+typeClass+'">'+(p.type||'LONG')+'</span></td>'+
-        '<td>'+(p.qty||0)+'</td>'+
-        '<td>'+fmtMoney(p.avgBuyPrice||0)+'</td>'+
-        '<td>'+fmtMoney(ltp)+'</td>'+
-        '<td class="'+pnlClass+'">'+pnlStr+'</td>'+
-        '<td>'+(p.duration||'MIS')+'</td>'+
-      '</tr>';
-    }).join('');
-  }
-  
-  // Update orders
+  if(positions.length===0){posBody.innerHTML='<tr><td colspan="7" class="port-empty">No open positions</td></tr>';}
+  else{posBody.innerHTML=positions.map(function(p){
+    var pnl=p.pl||0,pnlClass=pnl>=0?'pos':'neg',pnlStr=pnl>=0?'+'+fmtMoney(pnl):'-'+fmtMoney(Math.abs(pnl)),typeClass=(p.type||'LONG').toLowerCase(),ltp=p.avgSellPrice>0?p.avgSellPrice:p.avgBuyPrice;
+    return'<tr><td style="font-weight:600">'+(p.instrumentName||'—')+'</td><td><span class="port-badge '+typeClass+'">'+(p.type||'LONG')+'</span></td><td>'+(p.qty||0)+'</td><td>'+fmtMoney(p.avgBuyPrice||0)+'</td><td>'+fmtMoney(ltp)+'</td><td class="'+pnlClass+'">'+pnlStr+'</td><td>'+(p.duration||'MIS')+'</td></tr>';
+  }).join('');}
   var orders=[];
   if(ordRes&&ordRes.executed)orders=ordRes.executed;
   if(ordRes&&ordRes.open)orders=orders.concat(ordRes.open);
-  
-  if(orders.length===0){
-    ordBody.innerHTML='<tr><td colspan="7" class="port-empty">No orders today</td></tr>';
-  } else {
-    ordBody.innerHTML=orders.slice().reverse().map(function(o){
-      var statusClass=o.status==='COMPLETE'?'pos':'neg';
-      var timeStr=o.createdTimestamp?new Date(o.createdTimestamp).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}):'—';
-      return '<tr>'+
-        '<td>#'+(o.id||'—')+'</td>'+
-        '<td style="font-weight:600">'+(o.instrumentName||'—')+'</td>'+
-        '<td>'+(o.type||'BUY')+'</td>'+
-        '<td>'+(o.qty||0)+'</td>'+
-        '<td>'+fmtMoney(o.price||0)+'</td>'+
-        '<td class="'+statusClass+'">'+(o.status||'—')+'</td>'+
-        '<td>'+timeStr+'</td>'+
-      '</tr>';
-    }).join('');
-  }
+  if(orders.length===0){ordBody.innerHTML='<tr><td colspan="7" class="port-empty">No orders today</td></tr>';}
+  else{ordBody.innerHTML=orders.slice().reverse().map(function(o){
+    var statusClass=o.status==='COMPLETE'?'pos':'neg',timeStr=o.createdTimestamp?new Date(o.createdTimestamp).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}):'—';
+    return'<tr><td>#'+(o.id||'—')+'</td><td style="font-weight:600">'+(o.instrumentName||'—')+'</td><td>'+(o.type||'BUY')+'</td><td>'+(o.qty||0)+'</td><td>'+fmtMoney(o.price||0)+'</td><td class="'+statusClass+'">'+(o.status||'—')+'</td><td>'+timeStr+'</td></tr>';
+  }).join('');}
 }
-
-// Auto-load portfolio on page load
-setTimeout(loadPortfolio,2000);
+// Auto-load portfolio on page load + start visibility-based 1s polling
+setTimeout(function(){loadPortfolio();initPortfolioVisibilityPolling();},2000);
 
 
 function scrollToSec(id){
@@ -4271,12 +4241,9 @@ function renderCompare(data){
 }
 
 // ===== END ELARA AI =====
-
-// Start TradingView WebSocket AFTER all variables are initialized
 startTradingViewTicks();
-
-
-
 </script>
+<div id="root"></div>
+<script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

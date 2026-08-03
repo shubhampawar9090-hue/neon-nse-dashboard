@@ -4031,13 +4031,32 @@ async function loadPortfolio(){
 }
 
 // Auto-load portfolio on page load
-setTimeout(loadPortfolio,2000);
+setTimeout(function(){ loadPortfolio(); startPortfolioPolling(); },2000);
+
+// ===== 1-SECOND PORTFOLIO AUTO-REFRESH =====
+var portfolioInterval = null;
+var portfolioFetching = false;
+function startPortfolioPolling() {
+  stopPortfolioPolling();
+  portfolioInterval = setInterval(function() {
+    if (portfolioFetching) return;
+    var portSec = document.getElementById('portSec');
+    if (!portSec || portSec.style.display === 'none') { stopPortfolioPolling(); return; }
+    portfolioFetching = true;
+    loadPortfolio().then(function() { portfolioFetching = false; })
+      .catch(function() { portfolioFetching = false; });
+  }, 1000);
+}
+function stopPortfolioPolling() {
+  if (portfolioInterval) { clearInterval(portfolioInterval); portfolioInterval = null; }
+}
 
 
 function scrollToSec(id){
   var el=document.getElementById(id);
   if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-  if(id==='portSec')loadPortfolio();
+  if(id==='portSec'){ loadPortfolio(); startPortfolioPolling(); }
+  else { stopPortfolioPolling(); }
   // Update active nav button
   document.querySelectorAll('.mobile-nav button').forEach(function(b){b.classList.remove('active');});
   event.currentTarget.classList.add('active');
