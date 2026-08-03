@@ -1,4 +1,4 @@
-<!-- build: 1785739076 -->
+<!-- build: 1785749782 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4035,12 +4035,16 @@ async function loadPortfolio(silent){
     var total=data.capital||0;
     var blocked=data.blockedMargin||0;
     var avail=data.availableMargin||0;
-    document.getElementById('portTotal').textContent=fmtMoney(total);
-    document.getElementById('portTotalSub').textContent='Paper Trading Capital';
-    document.getElementById('portAvail').textContent=fmtMoney(avail);
-    document.getElementById('portAvailSub').textContent='Available for new trades';
-    document.getElementById('portBlocked').textContent=fmtMoney(blocked);
-    document.getElementById('portBlockedSub').textContent='In open positions';
+    // In lite mode, skip capital update (values are 0)
+    if(data.lite){ total=NaN; blocked=NaN; avail=NaN; }
+    if(!data.lite){
+      document.getElementById('portTotal').textContent=fmtMoney(total);
+      document.getElementById('portTotalSub').textContent='Paper Trading Capital';
+      document.getElementById('portAvail').textContent=fmtMoney(avail);
+      document.getElementById('portAvailSub').textContent='Available for new trades';
+      document.getElementById('portBlocked').textContent=fmtMoney(blocked);
+      document.getElementById('portBlockedSub').textContent='In open positions';
+    }
     
     // Update positions (only open positions, qty > 0)
     var positions=(data.positions||[]).filter(function(p){return (p.qty||0)>0;});
@@ -4084,7 +4088,7 @@ async function loadPortfolio(silent){
       // Update total P&L card
       var pnlEl=document.getElementById('portTotalPnL');
       if(pnlEl){
-        pnlEl.textContent=(totalPnL>=0?'+':'-')+fmtMoney(Math.abs(totalPnL)).replace('\u20B9','\u20B9');
+        pnlEl.textContent=(totalPnL>=0?'+':'-')+fmtMoney(Math.abs(totalPnL));
         pnlEl.className='port-card-value '+(totalPnL>=0?'pos':'neg');
         pnlEl.classList.remove('port-flash'); void pnlEl.offsetWidth; pnlEl.classList.add('port-flash');
       }
@@ -4096,7 +4100,8 @@ async function loadPortfolio(silent){
       }
     }
     
-    // Update orders
+    // Update orders (skip in lite mode - orders not fetched)
+    if(!data.lite){
     var orders=data.orders||[];
     var openOrders=data.openOrders||[];
     var allOrders=orders.concat(openOrders);
@@ -4117,6 +4122,7 @@ async function loadPortfolio(silent){
           '<td>'+timeStr+'</td>'+
         '</tr>';
       }).join('');
+    }
     }
     return;
   }
@@ -4142,12 +4148,14 @@ async function loadPortfolio(silent){
     var total=profRes.virtualMoney||0;
     var blocked=profRes.virtualMoneyBlocked||0;
     var avail=profRes.virtualMoneyLeft||0;
-    document.getElementById('portTotal').textContent=fmtMoney(total);
-    document.getElementById('portTotalSub').textContent='Paper Trading Capital';
-    document.getElementById('portAvail').textContent=fmtMoney(avail);
-    document.getElementById('portAvailSub').textContent='Available for new trades';
-    document.getElementById('portBlocked').textContent=fmtMoney(blocked);
-    document.getElementById('portBlockedSub').textContent='In open positions';
+    if(!data.lite){
+      document.getElementById('portTotal').textContent=fmtMoney(total);
+      document.getElementById('portTotalSub').textContent='Paper Trading Capital';
+      document.getElementById('portAvail').textContent=fmtMoney(avail);
+      document.getElementById('portAvailSub').textContent='Available for new trades';
+      document.getElementById('portBlocked').textContent=fmtMoney(blocked);
+      document.getElementById('portBlockedSub').textContent='In open positions';
+    }
   }
   
   // Update positions
