@@ -4044,7 +4044,9 @@ async function loadPortfolio(silent){
   }
   
   // Update positions
-  var positions=(posRes&&Array.isArray(posRes))?posRes:[];
+  var allPositions=(posRes&&Array.isArray(posRes))?posRes:[];
+  // Filter out closed positions (qty=0 or type NEUTRAL)
+  var positions=allPositions.filter(function(p){return (p.qty||0)>0;});
   document.getElementById('portPosCount').textContent=positions.length;
   document.getElementById('portPosSub').textContent=positions.length>0?positions.length+' active position'+(positions.length>1?'s':''):'No open positions';
   
