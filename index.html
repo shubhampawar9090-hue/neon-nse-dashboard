@@ -1326,6 +1326,8 @@ body {
 .port-card:hover { box-shadow: 0 0 12px rgba(0,212,255,.15); border-color: var(--cyan); }
 .port-card-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
 .port-card-value { font-size: 22px; font-weight: 700; color: var(--text1); }
+@keyframes portFlash { 0%{opacity:0.4} 100%{opacity:1} }
+.port-flash { animation: portFlash 0.3s ease-out; }
 .port-card-sub { font-size: 11px; color: var(--text2); margin-top: 4px; }
 .port-card .pos { color: #00e676; }
 .port-card .neg { color: #ff5252; }
@@ -2159,7 +2161,7 @@ body {
         <div class="port-section">
           <div class="port-header">
             <h2>Paper Trading Portfolio</h2>
-            <button class="port-refresh-btn" onclick="loadPortfolio()">↻ Refresh</button>
+            <button class="port-refresh-btn" onclick="loadPortfolio()">↻ Refresh</button> <span id="portLiveBadge" style="font-size:10px;color:#22c55e;font-weight:600;display:none;">● LIVE</span>
           </div>
           <div class="port-cards" id="portCards">
             <div class="port-card"><div class="port-card-label">Total Capital</div><div class="port-card-value" id="portTotal">—</div><div class="port-card-sub" id="portTotalSub">Loading...</div></div>
@@ -3986,7 +3988,7 @@ function scrollToSecPort(){
   if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
   document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active');});
   event.currentTarget.classList.add('active');
-  loadPortfolio();
+  loadPortfolio(); startPortfolioPolling();
 }
 
 async function megaFetch(path){
@@ -4001,14 +4003,14 @@ function fmtMoney(v){
   return '₹'+Number(v).toLocaleString('en-IN',{maximumFractionDigits:2,minimumFractionDigits:0});
 }
 
-async function loadPortfolio(){
+async function loadPortfolio(silent){
   var cards=document.getElementById('portCards');
   var posBody=document.getElementById('portBody');
   var ordBody=document.getElementById('ordBody');
   
   // Show loading
-  posBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading positions</td></tr>';
-  ordBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading orders</td></tr>';
+  if(!silent){posBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading positions</td></tr>';}
+  if(!silent){ordBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading orders</td></tr>';}
   
   // Fetch positions, profile, and orders in parallel
   // Also fetch underlying prices if not cached (needed for P&L calculation)
@@ -4098,6 +4100,7 @@ async function loadPortfolio(){
     if(pnlEl){
       pnlEl.textContent=(totalPnL>=0?'+':'-')+fmtMoney(Math.abs(totalPnL)).replace('₹','₹');
       pnlEl.className='port-card-value '+(totalPnL>=0?'pos':'neg');
+      pnlEl.classList.remove('port-flash'); void pnlEl.offsetWidth; pnlEl.classList.add('port-flash');
     }
     var pnlSubEl=document.getElementById('portTotalPnLSub');
     if(pnlSubEl){
@@ -4138,17 +4141,19 @@ setTimeout(function(){ loadPortfolio(); },2000);
 var portfolioInterval = null;
 var portfolioFetching = false;
 function startPortfolioPolling() {
+  var badge=document.getElementById('portLiveBadge'); if(badge)badge.style.display='inline';
   stopPortfolioPolling();
   portfolioInterval = setInterval(function() {
     if (portfolioFetching) return;
     var portSec = document.getElementById('portSec');
     if (!portSec || portSec.style.display === 'none') { stopPortfolioPolling(); return; }
     portfolioFetching = true;
-    loadPortfolio().then(function() { portfolioFetching = false; })
+    loadPortfolio(true).then(function() { portfolioFetching = false; })
       .catch(function() { portfolioFetching = false; });
   }, 1000);
 }
 function stopPortfolioPolling() {
+  var badge=document.getElementById('portLiveBadge'); if(badge)badge.style.display='none';
   if (portfolioInterval) { clearInterval(portfolioInterval); portfolioInterval = null; }
 }
 
@@ -4156,7 +4161,7 @@ function stopPortfolioPolling() {
 function scrollToSec(id){
   var el=document.getElementById(id);
   if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-  if(id==='portSec'){ loadPortfolio(); }
+  if(id==='portSec'){ loadPortfolio(); startPortfolioPolling(); }
   else { stopPortfolioPolling(); }
   // Update active nav button
   document.querySelectorAll('.mobile-nav button').forEach(function(b){b.classList.remove('active');});
