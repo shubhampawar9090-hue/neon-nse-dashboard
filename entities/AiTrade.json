@@ -1,12 +1,6 @@
 {
   "properties": {
     "action": {
-      "enum": [
-        "BUY",
-        "SELL",
-        "HOLD",
-        "EXIT"
-      ],
       "type": "string"
     },
     "buyScore": {
@@ -16,32 +10,25 @@
       "type": "number"
     },
     "duration": {
-      "enum": [
-        "MIS",
-        "CNC"
-      ],
       "type": "string"
     },
     "entryPrice": {
       "type": "number"
     },
     "executionStatus": {
-      "enum": [
-        "EXECUTED",
-        "REJECTED",
-        "SKIPPED",
-        "ERROR"
-      ],
       "type": "string"
     },
     "instrumentToken": {
       "type": "string"
     },
     "megaOrderId": {
-      "type": "number"
+      "type": "string"
     },
     "orderId": {
       "type": "string"
+    },
+    "peakLtp": {
+      "type": "number"
     },
     "positionSize": {
       "type": "number"
@@ -62,11 +49,6 @@
       "type": "number"
     },
     "signal": {
-      "enum": [
-        "BUY",
-        "SELL",
-        "NEUTRAL"
-      ],
       "type": "string"
     },
     "sl": {
@@ -97,6 +79,9 @@
       "type": "string"
     },
     "triggerPrice": {
+      "type": "number"
+    },
+    "trailingStop": {
       "type": "number"
     }
   },
