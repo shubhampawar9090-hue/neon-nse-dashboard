@@ -2166,6 +2166,7 @@ body {
             <div class="port-card"><div class="port-card-label">Available</div><div class="port-card-value" id="portAvail">—</div><div class="port-card-sub" id="portAvailSub">Loading...</div></div>
             <div class="port-card"><div class="port-card-label">Blocked</div><div class="port-card-value" id="portBlocked">—</div><div class="port-card-sub" id="portBlockedSub">Loading...</div></div>
             <div class="port-card"><div class="port-card-label">Open Positions</div><div class="port-card-value" id="portPosCount">—</div><div class="port-card-sub" id="portPosSub">Loading...</div></div>
+            <div class="port-card"><div class="port-card-label">Total P&L</div><div class="port-card-value" id="portTotalPnL">—</div><div class="port-card-sub" id="portTotalPnLSub">Unrealized</div></div>
           </div>
           <div class="divider"><span class="divider-text">📋 OPEN POSITIONS</span><span class="divider-line"></span></div>
           <div class="port-tbl-wrap">
@@ -3927,6 +3928,55 @@ var aiBusy=false;
 
 // ===== MOBILE NAV SCROLL =====
 
+
+// ===== BLACK-SCHOLES OPTION PRICING (for portfolio P&L) =====
+function normCDF(x){var t=1/(1+0.2316419*Math.abs(x));var d=0.3989423*Math.exp(-x*x/2);var p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return x>0?1-p:p;}
+function blackScholesPrice(S,K,T,sigma,r,type){
+  if(T<=0)return type==='CE'?Math.max(0,S-K):Math.max(0,K-S);
+  var d1=(Math.log(S/K)+(r+0.5*sigma*sigma)*T)/(sigma*Math.sqrt(T));
+  var d2=d1-sigma*Math.sqrt(T);
+  if(type==='CE')return S*normCDF(d1)-K*Math.exp(-r*T)*normCDF(d2);
+  else return K*Math.exp(-r*T)*normCDF(-d2)-S*normCDF(-d1);
+}
+function parseOptionName(name){
+  var m=name.match(/^(\w+)\s+(\d{2})\s+(\w{3})\s+(\d+)\s+(CE|PE)$/i);
+  if(!m)return null;
+  var[,und,day,mon,strike,type]=m;
+  var mm={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+  var mi=mm[mon.toUpperCase()];if(mi===undefined)return null;
+  var yr=new Date().getFullYear();
+  var exp=new Date(yr,mi,parseInt(day));
+  // Set expiry time to 3:30 PM IST
+  exp.setHours(15,30,0,0);
+  var now=new Date();
+  var T=Math.max(1/365,(exp-now)/(365*24*60*60*1000));
+  return{underlying:und.toUpperCase(),strike:parseFloat(strike),type:type.toUpperCase(),T:T};
+}
+function getUnderlyingPrice(underlying){
+  var sym=null;
+  if(underlying==='NIFTY')sym='^NSEI';
+  else if(underlying==='BANKNIFTY')sym='^NSEBANK';
+  else if(underlying==='FINNIFTY')sym='^NSEI'; // fallback
+  else if(underlying==='SENSEX')sym='^BSESN';
+  if(sym&&ipcCache[sym])return ipcCache[sym].price;
+  return 0;
+}
+function getVix(){
+  if(ipcCache['^INDIAVIX'])return ipcCache['^INDIAVIX'].price;
+  return 15; // default VIX
+}
+function calcOptionLtp(instrumentName){
+  var parsed=parseOptionName(instrumentName);
+  if(!parsed)return null;
+  var S=getUnderlyingPrice(parsed.underlying);
+  if(S===0)return null;
+  var VIX=getVix();
+  var sigma=VIX/100;
+  var r=0.07;
+  var ltp=blackScholesPrice(S,parsed.strike,parsed.T,sigma,r,parsed.type);
+  return{price:ltp,underlying:S,strike:parsed.strike,type:parsed.type,T:parsed.T};
+}
+
 // ===== MEGABULL PORTFOLIO =====
 var MEGA_API='https://api.megabull.in';
 var MEGA_KEY='5bd189e7-ef64-4571-82d1-d4c7eac7aa8f';
@@ -3961,11 +4011,22 @@ async function loadPortfolio(){
   ordBody.innerHTML='<tr><td colspan="7" class="port-loading">Loading orders</td></tr>';
   
   // Fetch positions, profile, and orders in parallel
-  var[posRes,profRes,ordRes]=await Promise.all([
+  // Also fetch underlying prices if not cached (needed for P&L calculation)
+  var fetchPromises=[
     megaFetch('/api/position/my'),
     megaFetch('/api/user/my'),
     megaFetch('/api/order/my')
-  ]);
+  ];
+  // Ensure index prices are available for Black-Scholes P&L
+  if(!ipcCache['^NSEI']||!ipcCache['^INDIAVIX']){
+    fetchPromises.push(fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:['^NSEI','^NSEBANK','^BSESN','^INDIAVIX']})}).then(function(r){return r.json();}).then(function(j){
+      if(j.success&&j.data){j.data.forEach(function(d){
+        if(d.error)return;
+        ipcCache[d.symbol]={price:d.price,prev:d.previousClose||d.price,open:d.open||d.price,high:d.dayHigh||d.price,low:d.dayLow||d.price,chg:d.change||0,pct:d.changePercent||0};
+      });}
+    }).catch(function(){}));
+  }
+  var[posRes,profRes,ordRes]=await Promise.all(fetchPromises);
   
   // Update capital cards
   if(profRes){
@@ -3987,23 +4048,63 @@ async function loadPortfolio(){
   
   if(positions.length===0){
     posBody.innerHTML='<tr><td colspan="7" class="port-empty">No open positions</td></tr>';
+    var pnlEl=document.getElementById('portTotalPnL');
+    if(pnlEl){pnlEl.textContent='₹0';pnlEl.className='port-card-value';}
+    var pnlSubEl=document.getElementById('portTotalPnLSub');
+    if(pnlSubEl)pnlSubEl.textContent='No positions';
   } else {
+    var totalPnL=0;
+    var totalPnLPct=0;
     posBody.innerHTML=positions.map(function(p){
-      var pnl=p.pl||0;
+      var typeClass=(p.type||'LONG').toLowerCase();
+      var avgPrice=p.avgBuyPrice||0;
+      var qty=p.qty||0;
+      var sellPrice=p.avgSellPrice||0;
+      // Try to calculate live LTP using Black-Scholes
+      var optInfo=calcOptionLtp(p.instrumentName||'');
+      var ltp=avgPrice; // fallback to avg buy price
+      var pnl=0;
+      var pnlPct=0;
+      if(optInfo&&optInfo.price>0){
+        ltp=optInfo.price;
+        if(typeClass==='long'){
+          pnl=(ltp-avgPrice)*qty;
+        } else {
+          pnl=(sellPrice>0?sellPrice:avgPrice-ltp)*qty; // SHORT: sell high buy low
+          if(sellPrice>0)pnl=(sellPrice-ltp)*qty;
+        }
+        pnlPct=avgPrice>0?((ltp-avgPrice)/avgPrice*100):0;
+      } else {
+        // Fallback: use MegaBull's pl field (usually 0) or show 0
+        pnl=p.pl||0;
+      }
+      totalPnL+=pnl;
       var pnlClass=pnl>=0?'pos':'neg';
       var pnlStr=pnl>=0?'+'+fmtMoney(pnl):'-'+fmtMoney(Math.abs(pnl));
-      var typeClass=(p.type||'LONG').toLowerCase();
-      var ltp=p.avgSellPrice>0?p.avgSellPrice:p.avgBuyPrice;
+      var ltpStr=optInfo&&optInfo.price>0?'₹'+Number(ltp).toFixed(2):'—';
+      var ltpBadge=optInfo&&optInfo.price>0?(ltp>=avgPrice?'<span style="color:var(--pos,#22c55e)">▲</span>':'<span style="color:var(--neg,#ef4444)">▼</span>'):'';
       return '<tr>'+
         '<td style="font-weight:600">'+(p.instrumentName||'—')+'</td>'+
         '<td><span class="port-badge '+typeClass+'">'+(p.type||'LONG')+'</span></td>'+
-        '<td>'+(p.qty||0)+'</td>'+
-        '<td>'+fmtMoney(p.avgBuyPrice||0)+'</td>'+
-        '<td>'+fmtMoney(ltp)+'</td>'+
+        '<td>'+(qty)+'</td>'+
+        '<td>'+fmtMoney(avgPrice)+'</td>'+
+        '<td>'+ltpStr+' '+ltpBadge+'</td>'+
         '<td class="'+pnlClass+'">'+pnlStr+'</td>'+
         '<td>'+(p.duration||'MIS')+'</td>'+
       '</tr>';
     }).join('');
+    // Update total P&L card
+    var pnlEl=document.getElementById('portTotalPnL');
+    if(pnlEl){
+      pnlEl.textContent=(totalPnL>=0?'+':'-')+fmtMoney(Math.abs(totalPnL)).replace('₹','₹');
+      pnlEl.className='port-card-value '+(totalPnL>=0?'pos':'neg');
+    }
+    var pnlSubEl=document.getElementById('portTotalPnLSub');
+    if(pnlSubEl){
+      var invested=positions.reduce(function(s,p){return s+((p.avgBuyPrice||0)*(p.qty||0));},0);
+      var pctStr=invested>0?' ('+(totalPnL>=0?'+':'')+((totalPnL/invested)*100).toFixed(1)+'%)':'';
+      pnlSubEl.textContent='Unrealized'+pctStr;
+    }
   }
   
   // Update orders
@@ -4031,7 +4132,7 @@ async function loadPortfolio(){
 }
 
 // Auto-load portfolio on page load
-setTimeout(function(){ loadPortfolio(); startPortfolioPolling(); },2000);
+setTimeout(function(){ loadPortfolio(); },2000);
 
 // ===== 1-SECOND PORTFOLIO AUTO-REFRESH =====
 var portfolioInterval = null;
@@ -4055,7 +4156,7 @@ function stopPortfolioPolling() {
 function scrollToSec(id){
   var el=document.getElementById(id);
   if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-  if(id==='portSec'){ loadPortfolio(); startPortfolioPolling(); }
+  if(id==='portSec'){ loadPortfolio(); }
   else { stopPortfolioPolling(); }
   // Update active nav button
   document.querySelectorAll('.mobile-nav button').forEach(function(b){b.classList.remove('active');});
