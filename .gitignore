@@ -28,3 +28,6 @@ supabase/
 *.temp/
 screeni-py-clone/
 .agents/.env
+conversations/
+*.json.gz
+supabase_backup/
