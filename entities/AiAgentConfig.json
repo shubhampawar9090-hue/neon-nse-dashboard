@@ -24,6 +24,15 @@
     "maxTradesPerRun": {
       "type": "number"
     },
+    "megaBullJwt": {
+      "type": "string"
+    },
+    "megaBullRefreshToken": {
+      "type": "string"
+    },
+    "megaBullTokenExpiry": {
+      "type": "string"
+    },
     "minBuyScore": {
       "type": "number"
     },
@@ -37,22 +46,12 @@
       "type": "number"
     },
     "status": {
-      "enum": [
-        "ACTIVE",
-        "PAUSED",
-        "STOPPED"
-      ],
       "type": "string"
     },
     "totalPnL": {
       "type": "number"
     },
     "tradingMode": {
-      "enum": [
-        "CONSERVATIVE",
-        "MODERATE",
-        "AGGRESSIVE"
-      ],
       "type": "string"
     },
     "watchlist": {
