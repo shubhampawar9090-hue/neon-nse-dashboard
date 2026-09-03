@@ -7,7 +7,6 @@ incoming_files/
 base44/
 functions/
 supabase-functions/
-blobs/
 node_modules/
 .npm/
 __pycache__/
