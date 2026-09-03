@@ -1601,7 +1601,11 @@ body {
           <span class="sidebar-icon">📰</span>
           <span class="sidebar-label">NEWS</span>
         </button>
-<button class="sidebar-item">
+<button class="sidebar-item" onclick="scrollToSecAgent()">
+          <span class="sidebar-icon">🤖</span>
+          <span class="sidebar-label">AI AGENT</span>
+        </button>
+        <button class="sidebar-item">
           <span class="sidebar-icon">⚙️</span>
           <span class="sidebar-label">SETTINGS</span>
         </button>
@@ -2191,7 +2195,45 @@ body {
     </main>
   </div>
 
-  <!-- BOTTOM NEWS TICKER -->
+        <!-- ===== AI AGENT (MEGABULL DATA FEED) ===== -->
+      <div id="agentSec">
+        <div class="divider"><span class="divider-text">🤖 AI TRADING AGENT</span><span class="divider-line"></span></div>
+        <div class="port-section">
+          <div class="port-header">
+            <h2>AI Agent — Live MegaBull Data Feed</h2>
+            <button class="port-refresh-btn" onclick="loadAgent()">↻ Refresh</button> <span id="agentLiveBadge" style="font-size:10px;color:#22c55e;font-weight:600;display:none;">● LIVE</span>
+          </div>
+          <div class="port-cards" id="agentCards">
+            <div class="port-card"><div class="port-card-label">Total Capital</div><div class="port-card-value" id="agTotal">—</div><div class="port-card-sub" id="agTotalSub">Loading...</div></div>
+            <div class="port-card"><div class="port-card-label">Available</div><div class="port-card-value" id="agAvail">—</div><div class="port-card-sub" id="agAvailSub">For new trades</div></div>
+            <div class="port-card"><div class="port-card-label">Open Positions</div><div class="port-card-value" id="agPos">—</div><div class="port-card-sub" id="agPosSub">Held now</div></div>
+            <div class="port-card"><div class="port-card-label">NIFTY Signal</div><div class="port-card-value" id="agSignal">—</div><div class="port-card-sub" id="agSignalSub">Swing · auto-scan</div></div>
+          </div>
+          <div class="divider" style="margin-top:20px"><span class="divider-text">📊 INDEX SIGNALS — SWING</span><span class="divider-line"></span></div>
+          <div class="port-tbl-wrap">
+            <table class="port-table">
+              <thead><tr><th>Index</th><th>Price</th><th>Signal</th><th>Buy</th><th>Sell</th><th>RSI</th><th>Trend</th><th>SL</th><th>TP2</th></tr></thead>
+              <tbody id="agIdxBody"><tr><td colspan="9" class="port-loading">Loading signals</td></tr></tbody>
+            </table>
+          </div>
+          <div class="divider" style="margin-top:20px"><span class="divider-text">🎯 OPTION RECOMMENDATIONS</span><span class="divider-line"></span></div>
+          <div class="port-tbl-wrap">
+            <table class="port-table">
+              <thead><tr><th>Index</th><th>Recommendation</th><th>Expiry</th><th>ATM Strike</th><th>Premium</th><th>Delta</th><th>Reason</th></tr></thead>
+              <tbody id="agOptBody"><tr><td colspan="7" class="port-loading">Loading options</td></tr></tbody>
+            </table>
+          </div>
+          <div class="divider" style="margin-top:20px"><span class="divider-text">📜 RECENT AI ACTIONS</span><span class="divider-line"></span></div>
+          <div class="port-tbl-wrap">
+            <table class="port-table">
+              <thead><tr><th>Time</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th><th>Status</th><th>Reason</th></tr></thead>
+              <tbody id="agTradesBody"><tr><td colspan="7" class="port-loading">Loading trade log</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- BOTTOM NEWS TICKER -->
   <footer class="news-ticker-bar">
     <div class="nt-label">MARKET ALERTS</div>
     <div class="nt-wrap">
@@ -4246,6 +4288,78 @@ async function loadPortfolio(silent){
 
 // Auto-load portfolio on page load
 setTimeout(function(){ loadPortfolio(); },2000);
+
+// ===== AI AGENT — MEGABULL DATA FEED =====
+var EDGE_AGENT_API=SUPABASE_EDGE_BASE+'/agent-dashboard';
+var agentFetching=false, agentInterval=null;
+function scrollToSecAgent(){
+  var el=document.getElementById('agentSec');
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.remove('active');});
+  event.currentTarget.classList.add('active');
+  loadAgent(); startAgentPolling();
+}
+async function loadAgent(){
+  if(agentFetching)return;
+  agentFetching=true;
+  try{
+    var resp=await fetch(EDGE_AGENT_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({})});
+    if(!resp.ok)return;
+    var d=await resp.json();
+    if(d&&d.success)renderAgent(d);
+  }catch(e){}
+  finally{agentFetching=false;}
+}
+function agEsc(v){return String(v==null?'':v).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];})}
+function agSig(signal){
+  var s=String(signal||'').toUpperCase();
+  if(s.indexOf('BUY')===0||s.indexOf('STRONG_BUY')===0)return '<span style="color:#22c55e;font-weight:600">'+agEsc(signal)+'</span>';
+  if(s.indexOf('SELL')===0||s.indexOf('STRONG_SELL')===0)return '<span style="color:#ef4444;font-weight:600">'+agEsc(signal)+'</span>';
+  return '<span style="color:#f59e0b;font-weight:600">'+agEsc(signal||'NEUTRAL')+'</span>';
+}
+function renderAgent(d){
+  document.getElementById('agTotal').textContent=fmtMoney(d.capital&&d.capital.total);
+  document.getElementById('agTotalSub').textContent='MegaBull virtual account';
+  document.getElementById('agAvail').textContent=fmtMoney(d.capital&&d.capital.available);
+  document.getElementById('agPos').textContent=(d.positions||[]).length;
+  document.getElementById('agPosSub').textContent=(d.positions||[]).length>0?'Managed by agent':'No open positions';
+  var nifty=(d.indices&&d.indices.swing||[]).find(function(x){return x.symbol==='^NSEI'});
+  if(nifty){
+    document.getElementById('agSignal').innerHTML=agSig(nifty.signal);
+    document.getElementById('agSignalSub').textContent='Buy '+nifty.buyScore+' · Sell '+nifty.sellScore+' · RSI '+nifty.rsi;
+  }
+  var idxHtml='';
+  (d.indices&&d.indices.swing||[]).forEach(function(x){
+    idxHtml+='<tr><td>'+agEsc(cs(x.symbol))+'</td><td>'+f0(x.price)+'</td><td>'+agSig(x.signal)+'</td><td>'+agEsc(x.buyScore)+'</td><td>'+agEsc(x.sellScore)+'</td><td>'+agEsc(x.rsi)+'</td><td>'+agEsc(x.trend)+'</td><td>'+f0(x.sl)+'</td><td>'+f0(x.tp2)+'</td></tr>';
+  });
+  document.getElementById('agIdxBody').innerHTML=idxHtml||'<tr><td colspan="9" class="port-empty">No signals</td></tr>';
+  var optHtml='';
+  (d.optionSignals||[]).forEach(function(o){
+    var atm=o.atm;
+    optHtml+='<tr><td>'+agEsc(o.underlying)+'</td><td>'+agSig(o.recommendation)+'</td><td>'+agEsc(o.expiry)+'</td><td>'+(atm?agEsc(atm.strike)+' '+agEsc(atm.type):'—')+'</td><td>'+(atm?f0(atm.premium):'—')+'</td><td>'+(atm&&atm.delta!=null?agEsc(Number(atm.delta).toFixed(2)):'—')+'</td><td style="max-width:340px;white-space:normal">'+agEsc(o.reason)+'</td></tr>';
+  });
+  document.getElementById('agOptBody').innerHTML=optHtml||'<tr><td colspan="7" class="port-empty">No option signals</td></tr>';
+  var trHtml='';
+  (d.recentTrades||[]).forEach(function(t){
+    var dt=t.created_date?new Date(t.created_date):null;
+    trHtml+='<tr><td>'+(dt?dt.toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'—')+'</td><td>'+agEsc(t.symbol)+'</td><td>'+agEsc(t.action)+'</td><td>'+agEsc(t.qty)+'</td><td>'+f0(t.price)+'</td><td>'+agEsc(t.execution_status)+'</td><td style="max-width:300px;white-space:normal">'+agEsc(t.reason)+'</td></tr>';
+  });
+  document.getElementById('agTradesBody').innerHTML=trHtml||'<tr><td colspan="7" class="port-empty">No AI actions yet today</td></tr>';
+  var badge=document.getElementById('agentLiveBadge'); if(badge)badge.style.display='inline';
+}
+function startAgentPolling(){
+  stopAgentPolling();
+  agentInterval=setInterval(function(){
+    var el=document.getElementById('agentSec');
+    if(!el||el.style.display==='none'){stopAgentPolling();return;}
+    loadAgent();
+  },60000);
+}
+function stopAgentPolling(){
+  if(agentInterval){clearInterval(agentInterval);agentInterval=null;}
+  var badge=document.getElementById('agentLiveBadge'); if(badge)badge.style.display='none';
+}
+setTimeout(function(){ loadAgent(); startAgentPolling(); },3000);
 
 // ===== 1-SECOND PORTFOLIO AUTO-REFRESH =====
 var portfolioInterval = null;
