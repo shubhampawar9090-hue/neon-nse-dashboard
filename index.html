@@ -4015,7 +4015,7 @@ async function loadPortfolio(silent){
   // Fetch portfolio data from backend function (with REAL LTP via WebSocket)
   var portfolioData=null;
   try{
-    var resp=await fetch('https://solas-5140a8e3.base44.app/functions/getMegaPortfolio',{
+    var resp=await fetch('https://jqmhcalsabexjjiceoux.supabase.co/functions/v1/mega-portfolio',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(silent?{lite:true}:{})
