@@ -4231,19 +4231,18 @@ function loadChart(sym){
   s.async=true;
   s.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
   s.innerHTML=JSON.stringify({
-    autosize:true,
-    symbol:tvs,
-    interval:'5',
-    timezone:'Asia/Calcutta',
-    theme:'dark',
-    style:'1',
-    locale:'en',
-    backgroundColor:'rgba(6,10,20,1)',
-    gridColor:'rgba(64,94,150,0.15)',
-    enable_publishing:false,
-    allow_symbol_change:true,
-    studies:['STD;EMA','STD;RSI'],
-    support_host:'https://www.tradingview.com'
+    "autosize": true,
+    "symbol": tvs,
+    "interval": "5",
+    "timezone": "Asia/Calcutta",
+    "theme": "dark",
+    "style": "1",
+    "locale": "en",
+    "enable_publishing": false,
+    "allow_symbol_change": true,
+    "hide_side_toolbar": false,
+    "withdateranges": true,
+    "support_host": "https://www.tradingview.com"
   });
   cont.appendChild(s);
 }
