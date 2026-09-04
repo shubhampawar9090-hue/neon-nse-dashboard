@@ -184,12 +184,39 @@ Deno.serve(async (req) => {
         else if ((sig === "SELL" || sig === "STRONG_SELL" || sig === "STRONG SELL") && (nifty.sellScore || 0) >= (cfg.min_sell_score || 65)) side = "PE";
       }
 
+      // ---- news sentiment gate (market_sentiment table, fed by get-market-news cron) ----
+      let newsTag = "";
+      if (side) {
+        try {
+          const sRow = ((await dbList("market_sentiment?select=mood,score,summary&order=as_of.desc&limit=1")) || [])[0] || null;
+          if (sRow) {
+            const mood = String(sRow.mood || "NEUTRAL").toUpperCase();
+            const sc = Number(sRow.score || 0);
+            if (side === "CE" && mood === "BEARISH" && sc <= -0.25) {
+              side = null; result.entries_note = `news sentiment gate: BEARISH mood (score ${sc.toFixed(2)}) blocked CE entry`;
+            } else if (side === "PE" && mood === "BULLISH" && sc >= 0.25) {
+              side = null; result.entries_note = `news sentiment gate: BULLISH mood (score ${sc.toFixed(2)}) blocked PE entry`;
+            } else {
+              newsTag = ` | news ${mood} ${sc.toFixed(2)}`;
+            }
+          }
+        } catch (_) {}
+      }
+
       if (side && slots > 0) {
-        const openSyms = new Set((openTrades || []).map((t: any) => String(t.symbol || "").replace(/\s+/g, "").toUpperCase()));
+        const norm = (s: any) => String(s || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+        const openSyms = new Set((openTrades || []).map((t: any) => norm(t.symbol)));
+        // re-entry cooldown: don't re-buy a strike that exited within the last 60 min (prevents whipsaw re-entry)
+        let cooldownSyms = new Set<string>();
+        try {
+          const recentClosed = await dbList(`ai_trades?execution_status=eq.CLOSED&updated_date=gte.${new Date(Date.now() - 60 * 60e3).toISOString()}&select=symbol`);
+          cooldownSyms = new Set((recentClosed || []).map((t: any) => norm(t.symbol)));
+        } catch (_) {}
+        const blocked = new Set([...openSyms, ...cooldownSyms]);
         const allCandidates = optionSignals.filter((o: any) => o.type === side && o.tradingSymbol && o.instrumentToken);
         allCandidates.sort((a: any, b: any) => ((a.underlying === "NIFTY") ? 0 : 1) - ((b.underlying === "NIFTY") ? 0 : 1)); // NIFTY weekly first
-        const candidates = allCandidates.filter((o: any) => !openSyms.has(String(o.tradingSymbol).toUpperCase()));
-        if (allCandidates.length > 0 && candidates.length === 0) result.entries_note = "ATM signal already in an open position — no duplicate entry";
+        const candidates = allCandidates.filter((o: any) => !blocked.has(norm(o.tradingSymbol)) && !blocked.has(norm(o.symbol)));
+        if (allCandidates.length > 0 && candidates.length === 0) result.entries_note = "signal strike already in an open position or exited <60 min ago — no re-entry";
         const chosen = candidates[0]; // ATM-strike signal for the nearest weekly expiry, not already held
         if (chosen && chosen.strike && chosen.tradingSymbol) {
           // position size: maxPositionSize / premium, rounded down to lot 65
@@ -259,7 +286,7 @@ Deno.serve(async (req) => {
                 duration: "MIS", strategy: "NIFTY_WEEKLY",
                 buy_score: nifty.buyScore ?? null, sell_score: nifty.sellScore ?? null,
                 order_id: order?.id ?? null, execution_status: "OPEN", broker,
-                reason: `${broker === "VIRTUAL" ? "VIRTUAL FILL (paper broker) — " : ""}Auto entry: NIFTY ${side} score ${side === "CE" ? nifty.buyScore : nifty.sellScore} (v8.3 port)`,
+                reason: `${broker === "VIRTUAL" ? "VIRTUAL FILL (paper broker) — " : ""}Auto entry: NIFTY ${side} score ${side === "CE" ? nifty.buyScore : nifty.sellScore} (v8.3 port)${newsTag}`,
               }),
             });
             const tradeRow = (await ins.json() || [])[0];
