@@ -1616,6 +1616,11 @@ body {
   .idx-pcard, .panel, .sig-card { transition: none; }
 }
 
+/* --- tab navigation --- */
+.tab-hide { display: none !important; }
+@keyframes tabIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.main-content > *:not(.tab-hide):not(style) { animation: tabIn .25s ease; }
+
 /* --- mobile: keep blur cheap --- */
 @media (max-width: 768px) {
   .idx-pcard, .panel, .port-card, .sig-card, .mode-row { backdrop-filter: none; -webkit-backdrop-filter: none; }
@@ -1708,29 +1713,25 @@ body {
     <!-- LEFT SIDEBAR -->
     <nav class="sidebar">
       <div class="sidebar-menu">
-        <button class="sidebar-item active">
+        <button class="sidebar-item active" data-tab="dash" onclick="showTab('dash')">
           <span class="sidebar-icon">⊞</span>
           <span class="sidebar-label">DASHBOARD</span>
         </button>
-        <button class="sidebar-item" onclick="scrollToSec('vportSec')">
-          <span class="sidebar-icon">🤖</span>
-          <span class="sidebar-label">AI TRADES</span>
+        <button class="sidebar-item" data-tab="sig" onclick="showTab('sig')">
+          <span class="sidebar-icon">⚡</span>
+          <span class="sidebar-label">SIGNALS</span>
         </button>
-        <button class="sidebar-item">
-          <span class="sidebar-icon">📈</span>
-          <span class="sidebar-label">CHARTS</span>
-        </button>
-        <button class="sidebar-item">
+        <button class="sidebar-item" data-tab="scr" onclick="showTab('scr')">
           <span class="sidebar-icon">🔍</span>
           <span class="sidebar-label">SCREENER</span>
         </button>
-        <button class="sidebar-item">
-          <span class="sidebar-icon">📅</span>
-          <span class="sidebar-label">CALENDAR</span>
+        <button class="sidebar-item" data-tab="chart" onclick="showTab('chart')">
+          <span class="sidebar-icon">📈</span>
+          <span class="sidebar-label">CHARTS</span>
         </button>
-<button class="sidebar-item">
-          <span class="sidebar-icon">⚙️</span>
-          <span class="sidebar-label">SETTINGS</span>
+        <button class="sidebar-item" data-tab="ai" onclick="showTab('ai')">
+          <span class="sidebar-icon">🤖</span>
+          <span class="sidebar-label">AI TRADES</span>
         </button>
       </div>
     </nav>
@@ -2298,12 +2299,11 @@ body {
 
   <!-- ===== MOBILE BOTTOM NAV ===== -->
   <div class="mobile-nav">
-    <button onclick="scrollToSec('idxStrip')" class="active"><span class="mn-icon">▤</span>HOME</button>
-    <button onclick="scrollToSec('moversSec')"><span class="mn-icon">↕</span>MOVERS</button>
-    <button onclick="scrollToSec('chartSec')"><span class="mn-icon">📈</span>CHART</button>
-      <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
-  <button onclick="scrollToSec('vportSec')"><span class="mn-icon">🤖</span>AI TRADES</button>
-  <button onclick="scrollToSec('optSec')"><span class="mn-icon">📊</span>OPTIONS</button>
+    <button onclick="showTab('dash')" data-tab="dash" class="active"><span class="mn-icon">▤</span>HOME</button>
+    <button onclick="showTab('sig')" data-tab="sig"><span class="mn-icon">⚡</span>SIGNALS</button>
+    <button onclick="showTab('scr')" data-tab="scr"><span class="mn-icon">🔍</span>SCREENER</button>
+    <button onclick="showTab('chart')" data-tab="chart"><span class="mn-icon">📈</span>CHART</button>
+    <button onclick="showTab('ai')" data-tab="ai"><span class="mn-icon">🤖</span>AI</button>
   </div>
 
 <script>
@@ -4163,13 +4163,38 @@ function calcOptionLtp(instrumentName){
   return{price:ltp,underlying:S,strike:parsed.strike,type:parsed.type,T:parsed.T};
 }
 
-function scrollToSec(id){
-  var el=document.getElementById(id);
-  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
-  // Update active nav button
-  document.querySelectorAll('.mobile-nav button').forEach(function(b){b.classList.remove('active');});
-  event.currentTarget.classList.add('active');
+// ===== TAB NAVIGATION (sections live in the sidebar; one tab visible at a time) =====
+var TAB_MAP={idxStrip:'dash',moversSec:'dash',signalSec:'sig',optSec:'scr',scrSec:'scr',chartSec:'chart',vportSec:'ai'};
+function tabAssign(){
+  var mc=document.querySelector('.main-content');if(!mc)return;
+  var cur='dash';
+  Array.prototype.forEach.call(mc.children,function(el){
+    if(el.tagName==='STYLE')return;
+    if(el.id==='chartSec')cur='chart';
+    else if(el.id==='vportSec')cur='ai';
+    else if(el.id==='signalSec')cur='sig';
+    var dt=(el.querySelector?el.querySelector('.divider-text'):null);
+    if(dt){var t=(dt.textContent||'').trim();
+      if(t==='SCREENERS'||t==='GAINERS & LOSERS')cur='scr';
+      else if(t==='LIVE PRICE CHART')cur='chart';}
+    el.setAttribute('data-tab',cur);
+  });
 }
+function showTab(name,noScroll){
+  tabAssign();
+  Array.prototype.forEach.call(document.querySelectorAll('.main-content > *'),function(el){
+    if(el.tagName==='STYLE')return;
+    if(el.getAttribute('data-tab')===name)el.classList.remove('tab-hide');
+    else el.classList.add('tab-hide');
+  });
+  document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-tab')===name);});
+  document.querySelectorAll('.mobile-nav button').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-tab')===name);});
+  try{localStorage.setItem('activeTab',name);}catch(e){}
+  if(name==='chart'&&window.priceChart&&window.priceChart.resize){try{window.priceChart.resize();}catch(e){}}
+  if(!noScroll){try{document.querySelector('.main-content').scrollTop=0;}catch(e){}window.scrollTo({top:0,behavior:'smooth'});}
+}
+function scrollToSec(id){showTab(TAB_MAP[id]||'dash');}
+showTab((function(){try{return localStorage.getItem('activeTab')||'dash';}catch(e){return 'dash';}})(),true);
 
 // ===== MARKET SENTIMENT METER =====
 var sentiChart=null;
