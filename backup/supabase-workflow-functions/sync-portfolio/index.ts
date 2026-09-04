@@ -134,14 +134,14 @@ Deno.serve(async (req) => {
       } else {
         await fetch(`${SB}/rest/v1/ai_trades`, {
           method: "POST", headers: { ...sb(), Prefer: "return=minimal" },
-          body: JSON.stringify({ ...tradeData, created_date: new Date().toISOString() }),
+          body: JSON.stringify({ ...tradeData, broker: "MEGABULL", created_date: new Date().toISOString() }),
         });
       }
       syncedPositions++;
     }
 
     // Close ai_trades rows for positions no longer live in MegaBull
-    const allOpen = await dbList("ai_trades?execution_status=eq.OPEN&select=id,symbol");
+    const allOpen = await dbList("ai_trades?execution_status=eq.OPEN&broker=neq.VIRTUAL&select=id,symbol"); // VIRTUAL trades live in our ledger, not MegaBull
     const liveSymbols = new Set(positions.map((p: any) => p.instrumentName || p.symbol).filter(Boolean));
     let closedStale = 0;
     for (const trade of allOpen || []) {
