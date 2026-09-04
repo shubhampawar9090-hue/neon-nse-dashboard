@@ -1585,6 +1585,10 @@ body {
           <span class="sidebar-icon">💼</span>
           <span class="sidebar-label">PORTFOLIO</span>
         </button>
+        <button class="sidebar-item" onclick="scrollToSec('vportSec')">
+          <span class="sidebar-icon">🤖</span>
+          <span class="sidebar-label">AI TRADES</span>
+        </button>
         <button class="sidebar-item">
           <span class="sidebar-icon">📈</span>
           <span class="sidebar-label">CHARTS</span>
@@ -2187,6 +2191,39 @@ body {
         </div>
       </div>
 
+      <!-- ===== AI VIRTUAL PORTFOLIO (virtual broker) ===== -->
+      <div id="vportSec" style="padding-top:6px">
+        <div class="divider"><span class="divider-text">🤖 AI VIRTUAL PORTFOLIO</span><span class="divider-line"></span></div>
+        <div class="port-section">
+          <div class="port-header">
+            <h2>AI Agent — Virtual Option Broker</h2>
+            <button class="port-refresh-btn" onclick="vportLoad()">↻ Refresh</button>
+            <span id="vpLiveBadge" style="font-size:10px;font-weight:600;color:var(--text2)">● LTP PENDING</span>
+          </div>
+          <div class="port-cards" id="vpCards">
+            <div class="port-card"><div class="port-card-label">Virtual Cash</div><div class="port-card-value" id="vpCash">—</div><div class="port-card-sub">ledger balance</div></div>
+            <div class="port-card"><div class="port-card-label">Deployed</div><div class="port-card-value" id="vpDeployed">—</div><div class="port-card-sub">open positions</div></div>
+            <div class="port-card"><div class="port-card-label">Unrealized P&L</div><div class="port-card-value" id="vpUnreal">—</div><div class="port-card-sub">live WS LTP</div></div>
+            <div class="port-card"><div class="port-card-label">Realized P&L</div><div class="port-card-value" id="vpRealized">—</div><div class="port-card-sub">closed trades</div></div>
+            <div class="port-card"><div class="port-card-label">Equity</div><div class="port-card-value" id="vpEquity">—</div><div class="port-card-sub" id="vpEquitySub">cash + positions</div></div>
+          </div>
+          <div class="divider"><span class="divider-text">📋 AI OPEN POSITIONS</span><span class="divider-line"></span></div>
+          <div class="port-tbl-wrap">
+            <table class="port-table">
+              <thead><tr><th>Instrument</th><th>Qty</th><th>Entry</th><th>LTP</th><th>Peak</th><th>SL</th><th>Trail</th><th>TP1/2/3</th><th>P&L</th></tr></thead>
+              <tbody id="vpBody"><tr><td colspan="9" class="port-loading">Loading AI positions</td></tr></tbody>
+            </table>
+          </div>
+          <div class="divider" style="margin-top:20px"><span class="divider-text">📜 AI TRADE HISTORY</span><span class="divider-line"></span></div>
+          <div class="port-tbl-wrap">
+            <table class="port-table">
+              <thead><tr><th>Instrument</th><th>Qty</th><th>Entry</th><th>Exit</th><th>Exit Reason</th><th>P&L</th><th>Closed</th></tr></thead>
+              <tbody id="vpHistBody"><tr><td colspan="7" class="port-loading">Loading history</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
             <div class="foot">Real data from Yahoo Finance. Powered by Supabase Edge Functions. NSE hours: 9:15–15:30 IST Mon–Fri. Chart patterns algorithmically detected. Sentiment derived from technical signals. Educational only — not financial advice.</div>
     </main>
   </div>
@@ -2684,7 +2721,7 @@ async function megaWsInit(){
   megaWs=new WebSocket('wss://socket.megabull.in?id='+encodeURIComponent(j.token));
   megaWs.onopen=function(){
     megaWsAlive=true;window.megaWsAlive=true;megaWsRetry=0;megaWsBadge(true);
-    try{megaWs.send(JSON.stringify({type:'SUBSCRIBE',data:Object.keys(MEGA_WS_TOKENS).map(function(s){return MEGA_WS_TOKENS[s];})}));}catch(e){}
+    try{megaWs.send(JSON.stringify({type:'SUBSCRIBE',data:megaWsTokenList()}));}catch(e){}
   };
   megaWs.onmessage=function(ev){
     var m;try{m=JSON.parse(ev.data);}catch(e){return;}
@@ -2702,6 +2739,7 @@ async function megaWsInit(){
     });
     renderIndexPriceCards();
     renderHeaderIndices();
+    vpWsTick(m);
   };
   megaWs.onclose=function(){
     megaWsAlive=false;window.megaWsAlive=false;megaWsBadge(false);
@@ -2725,6 +2763,121 @@ function megaWsBadge(on){
 // defer boot until all top-level consts (SUPABASE_KEY) are initialized
 setTimeout(function(){megaWsInit();},2500);
 setInterval(function(){if(megaWsAlive&&mktOpen()&&megaWs&&megaWs.readyState!==1){try{megaWs.close();}catch(e){}}},60000);
+
+// ==== AI VIRTUAL PORTFOLIO (virtual broker ledger + live WS LTP) ====
+var VP_TOKENS={};               // instrumentToken -> {id, entry, qty}
+var vpCache={cash:0,start:0,realized:0,open:[],hist:[],ltp:{}};
+
+function megaWsTokenList(){
+  var toks=Object.keys(MEGA_WS_TOKENS).map(function(s){return MEGA_WS_TOKENS[s];});
+  return toks.concat(Object.keys(VP_TOKENS));
+}
+function vpWsSubscribe(){
+  try{if(megaWs&&megaWs.readyState===1){megaWs.send(JSON.stringify({type:'SUBSCRIBE',data:megaWsTokenList()}));}}catch(e){}
+}
+function vpPretty(sym){
+  var s=(sym||'').toUpperCase();
+  var m=s.match(/^(NIFTY|BANKNIFTY|SENSEX)\d{2}(\d|[OND])(\d{2})(\d{5,6})(CE|PE)$/);
+  if(m){var MN={'1':'JAN','2':'FEB','3':'MAR','4':'APR','5':'MAY','6':'JUN','7':'JUL','8':'AUG','9':'SEP','O':'OCT','N':'NOV','D':'DEC'};
+    return m[1]+' '+m[3]+(MN[m[2]]||'')+' '+m[4]+' '+m[5];}
+  return s;
+}
+function fmtN(n){return (Math.abs(Number(n))||0).toLocaleString('en-IN',{maximumFractionDigits:2});}
+function vpPnlCell(p,pct){
+  var cls=p>=0?'pos':'neg';
+  return '<span class="'+cls+'">'+(p>=0?'+':'-')+'\u20B9'+fmtN(p)+(pct!=null?' ('+pct+')':'')+'</span>';
+}
+function vpTotals(){
+  var u=0,d=0;
+  vpCache.open.forEach(function(t){
+    var l=Number(vpCache.ltp[t.instrument_token]||t.price||t.entry_price);
+    u+=(l-Number(t.entry_price))*Number(t.qty);
+    d+=Number(t.entry_price)*Number(t.qty);
+  });
+  return {u:u,d:d};
+}
+function vpUpdateHead(){
+  var x=vpTotals();
+  var g=function(id){return document.getElementById(id);};
+  var ue=g('vpUnreal');
+  if(ue){ue.innerHTML=(x.u>=0?'+':'-')+'\u20B9'+fmtN(x.u);ue.style.color=x.u>=0?'var(--green,#22c55e)':'var(--red,#ef4444)';}
+  var de=g('vpDeployed');if(de){de.textContent='\u20B9'+fmtN(x.d);}
+  var eq=vpCache.cash+x.d+x.u;
+  var ee=g('vpEquity');if(ee){ee.textContent='\u20B9'+fmtN(eq);}
+  var es=g('vpEquitySub');if(es){var dd=eq-vpCache.start;es.textContent=(dd>=0?'+':'-')+'\u20B9'+fmtN(dd)+' vs start';}
+}
+async function vportLoad(){
+  try{
+    var H={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
+    var p=[
+      fetch(SUPABASE_URL+'/rest/v1/virtual_account?select=*&limit=1',{headers:H}),
+      fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.OPEN&qty=gt.0&select=id,symbol,qty,entry_price,price,peak_ltp,trailing_stop,sl,tp1,tp2,tp3,instrument_token,created_date&order=created_date.desc&limit=20',{headers:H}),
+      fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.CLOSED&select=id,symbol,qty,entry_price,price,pnl,reason,updated_date&order=updated_date.desc&limit=15',{headers:H})
+    ];
+    var rs=await Promise.all(p);
+    var va=(await rs[0].json())[0]||{};
+    vpCache.open=(await rs[1].json())||[];
+    vpCache.hist=(await rs[2].json())||[];
+    vpCache.cash=Number(va.cash||0);vpCache.start=Number(va.starting_capital||0);vpCache.realized=Number(va.realized_pnl||0);
+    VP_TOKENS={};
+    vpCache.open.forEach(function(t){
+      if(t.instrument_token)VP_TOKENS[t.instrument_token]={id:t.id,entry:Number(t.entry_price),qty:Number(t.qty)};
+    });
+    vportRender();
+    vpWsSubscribe();
+  }catch(e){console.error('vportLoad',e);}
+}
+function vportRender(){
+  var g=function(id){return document.getElementById(id);};
+  g('vpCash').textContent='\u20B9'+fmtN(vpCache.cash);
+  var re=g('vpRealized');
+  re.innerHTML=(vpCache.realized>=0?'+':'-')+'\u20B9'+fmtN(vpCache.realized);
+  re.style.color=vpCache.realized>=0?'var(--green,#22c55e)':'var(--red,#ef4444)';
+  g('vpBody').innerHTML=vpCache.open.length?vpCache.open.map(function(t){
+    var l=Number(vpCache.ltp[t.instrument_token]||t.price||t.entry_price);
+    var pnl=(l-Number(t.entry_price))*Number(t.qty);
+    var pct=(((l/Number(t.entry_price))-1)*100).toFixed(1)+'%';
+    return '<tr data-vptok="'+t.instrument_token+'">'+
+      '<td><b>'+vpPretty(t.symbol)+'</b></td><td>'+t.qty+'</td>'+
+      '<td>'+fmtN(t.entry_price)+'</td><td class="vpltp">'+fmtN(l)+'</td>'+
+      '<td>'+fmtN(t.peak_ltp||t.entry_price)+'</td>'+
+      '<td class="neg">'+(t.sl!=null?fmtN(t.sl):'-')+'</td>'+
+      '<td>'+(t.trailing_stop!=null?fmtN(t.trailing_stop):'-')+'</td>'+
+      '<td style="font-size:10px">'+(t.tp1!=null?fmtN(t.tp1):'-')+' / '+(t.tp2!=null?fmtN(t.tp2):'-')+' / '+(t.tp3!=null?fmtN(t.tp3):'-')+'</td>'+
+      '<td>'+vpPnlCell(pnl,pct)+'</td></tr>';
+  }).join(''):'<tr><td colspan="9" class="empty-row">No open AI positions</td></tr>';
+  g('vpHistBody').innerHTML=vpCache.hist.length?vpCache.hist.map(function(t){
+    var p=Number(t.pnl||0);
+    var when=t.updated_date?new Date(t.updated_date).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'-';
+    var reason=((t.reason||'').replace(/VIRTUAL FILL \(paper broker\) \u2014 /i,'').split(':')[0]||'').slice(0,40);
+    return '<tr><td><b>'+vpPretty(t.symbol)+'</b></td><td>'+t.qty+'</td><td>'+fmtN(t.entry_price)+'</td><td>'+fmtN(t.price)+'</td>'+
+      '<td style="font-size:10px">'+reason+'</td><td>'+vpPnlCell(p)+'</td><td style="font-size:10px">'+when+'</td></tr>';
+  }).join(''):'<tr><td colspan="7" class="empty-row">No closed AI trades yet</td></tr>';
+  vpUpdateHead();
+  var b=g('vpLiveBadge');
+  if(b){b.textContent=megaWsAlive?'\u25CF LIVE LTP':'\u25CF LTP PENDING';b.style.color=megaWsAlive?'var(--green,#22c55e)':'var(--text2)';}
+}
+function vpWsTick(m){
+  if(!m||typeof m!=='object')return;
+  Object.keys(VP_TOKENS).forEach(function(tok){
+    var ltp=m[tok];
+    if(ltp==null)return;
+    vpCache.ltp[tok]=ltp;
+    var t=null;
+    for(var i=0;i<vpCache.open.length;i++){if(String(vpCache.open[i].instrument_token)===String(tok)){t=vpCache.open[i];break;}}
+    if(!t)return;
+    var pnl=(Number(ltp)-Number(t.entry_price))*Number(t.qty);
+    var pct=(((Number(ltp)/Number(t.entry_price))-1)*100).toFixed(1)+'%';
+    var row=document.querySelector('tr[data-vptok="'+tok+'"]');
+    if(row){
+      var lc=row.querySelector('.vpltp');if(lc)lc.textContent=fmtN(ltp);
+      var pc=row.lastElementChild;if(pc)pc.innerHTML=vpPnlCell(pnl,pct);
+    }
+  });
+  vpUpdateHead();
+}
+setTimeout(function(){vportLoad();},3000);
+setInterval(function(){vportLoad();},30000);
 
 // TOP MOVERS
 
