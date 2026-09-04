@@ -1413,12 +1413,6 @@ body {
   .mobile-nav {
     display: flex;
   }
-  .news-ticker-bar {
-    display: none;
-  }
-  body {
-    padding-bottom: 60px;
-  }
   .main-content {
     padding: 12px;
   }
@@ -1601,14 +1595,6 @@ body {
 }
 .btn-refresh:active, .port-refresh-btn:active { transform: translateY(0) scale(.97); }
 
-/* --- bottom ticker: glass + glow edge --- */
-.news-ticker-bar {
-  background: rgba(5,9,18,.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(0,212,255,.22);
-  box-shadow: 0 -8px 28px rgba(0,0,0,.55);
-}
 
 /* --- tables: quieter header, crisp hover --- */
 .tbl thead th { letter-spacing: .6px; }
@@ -1633,7 +1619,7 @@ body {
 /* --- mobile: keep blur cheap --- */
 @media (max-width: 768px) {
   .idx-pcard, .panel, .port-card, .sig-card, .mode-row { backdrop-filter: none; -webkit-backdrop-filter: none; }
-  .top-header, .news-ticker-bar { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .top-header { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 </style>
 </head>
@@ -2309,28 +2295,6 @@ body {
   </div>
 
   <!-- BOTTOM NEWS TICKER -->
-  <footer class="news-ticker-bar">
-    <div class="nt-label">MARKET ALERTS</div>
-    <div class="nt-wrap">
-      <div class="nt-content">
-        <span>⚡ NIFTY 50 holds key support levels near 24,000</span>
-        <span>•</span>
-        <span>🔥 Volume surge detected in Tata Motors and Reliance Industries</span>
-        <span>•</span>
-        <span>📈 Live NSE Dashboard — Real-time Market Data & Signals</span>
-        <span>•</span>
-        <span>📊 EMA Crossover breakout on multiple Midcap and Largecap stocks</span>
-        <span>•</span>
-        <span>💡 Remember to review Stop Loss thresholds before Market Open</span>
-      </div>
-    </div>
-    <div class="nt-strip">
-      <span class="nt-strip-title">TOP GAINERS/LOSERS</span>
-      <marquee scrollamount="3" class="nt-marquee">
-        <span class="pos">RELIANCE +2.45%</span> | <span class="neg">TCS -1.15%</span> | <span class="pos">HDFCBANK +1.85%</span> | <span class="pos">INFY +0.65%</span> | <span class="neg">ICICIBANK -0.45%</span> | <span class="pos">SBIN +3.12%</span> | <span class="pos">TMPV +1.19%</span> | <span class="neg">BHARTIARTL -1.50%</span> | <span class="pos">ITC +1.10%</span> | <span class="pos">LT +2.15%</span>
-      </marquee>
-    </div>
-  </footer>
 
   <!-- ===== MOBILE BOTTOM NAV ===== -->
   <div class="mobile-nav">
