@@ -2538,7 +2538,7 @@ var ipcSymbols={'^NSEI':{name:'NIFTY 50',prefix:'ipcNifty'},'^NSEBANK':{name:'BA
 var ipcCache={};
 
 async function fetchIndexPriceCards(){
-  var symbols=Object.keys(ipcSymbols);
+  var symbols=(window.megaWsAlive)?['^INDIAVIX']:Object.keys(ipcSymbols);
   try{
     var res=await fetch(EDGE_PRICE_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:symbols})});
     if(!res.ok)throw new Error('Edge API '+res.status);
@@ -2663,6 +2663,68 @@ function schedHeaderIndices(){
   var iv=mktOpen()?15000:60000;
   setTimeout(schedHeaderIndices,iv);
 }
+
+// ==== MEGABULL WEBSOCKET LIVE FEED (NIFTY / BANKNIFTY / SENSEX) ====
+// Ticks arrive as {instrumentToken: ltp} maps from wss://socket.megabull.in
+var MEGA_WS_TOKENS={'^NSEI':'256265','^NSEBANK':'260105','^BSESN':'265'};
+var megaWsAlive=false,megaWs=null,megaWsRetry=0,megaWsTimer=null;
+
+async function megaWsInit(){
+  if(megaWsTimer){clearTimeout(megaWsTimer);megaWsTimer=null;}
+  if(!mktOpen()){megaWsRetry=0;megaWsTimer=setTimeout(megaWsInit,30000);return;}
+  var j;
+  try{
+    var res=await fetch(SUPABASE_EDGE_BASE+'/get-mega-jwt',{headers:{'Authorization':'Bearer '+SUPABASE_KEY}});
+    j=await res.json();
+    if(!j.success||!j.token)throw new Error('no token');
+  }catch(e){
+    megaWsTimer=setTimeout(megaWsInit,Math.min(5000*Math.pow(2,megaWsRetry++),60000));return;
+  }
+  try{megaWs.close();}catch(e){}
+  megaWs=new WebSocket('wss://socket.megabull.in?id='+encodeURIComponent(j.token));
+  megaWs.onopen=function(){
+    megaWsAlive=true;window.megaWsAlive=true;megaWsRetry=0;megaWsBadge(true);
+    try{megaWs.send(JSON.stringify({type:'SUBSCRIBE',data:Object.keys(MEGA_WS_TOKENS).map(function(s){return MEGA_WS_TOKENS[s];})}));}catch(e){}
+  };
+  megaWs.onmessage=function(ev){
+    var m;try{m=JSON.parse(ev.data);}catch(e){return;}
+    if(!m||typeof m!=='object')return;
+    Object.keys(MEGA_WS_TOKENS).forEach(function(sym){
+      var ltp=m[MEGA_WS_TOKENS[sym]];
+      if(ltp==null)return;
+      var d=ipcCache[sym];
+      if(!d){d={prev:ltp,open:ltp,high:ltp,low:ltp};}
+      d.price=ltp;d.chg=ltp-d.prev;d.pct=d.prev?((ltp-d.prev)/d.prev*100):0;
+      if(ltp>d.high)d.high=ltp;
+      if(ltp<d.low)d.low=ltp;
+      ipcCache[sym]=d;
+      headerIdxCache[sym]={price:ltp,change:d.chg,changePercent:d.pct};
+    });
+    renderIndexPriceCards();
+    renderHeaderIndices();
+  };
+  megaWs.onclose=function(){
+    megaWsAlive=false;window.megaWsAlive=false;megaWsBadge(false);
+    megaWsTimer=setTimeout(megaWsInit,Math.min(5000*Math.pow(2,megaWsRetry++),60000));
+  };
+  megaWs.onerror=function(){try{megaWs.close();}catch(e){}};
+}
+
+function megaWsBadge(on){
+  var el=document.getElementById('megaWsBadge');
+  if(!el){
+    var t=document.getElementById('tickText');
+    if(!t)return;
+    el=document.createElement('span');el.id='megaWsBadge';
+    t.parentNode.appendChild(el);
+  }
+  el.textContent=on?'MEGA WS LIVE':'MEGA WS OFF';
+  el.style.cssText='margin-left:8px;font-size:10px;font-family:inherit;letter-spacing:1px;color:'+(on?'var(--green)':'var(--text2)');
+}
+
+// defer boot until all top-level consts (SUPABASE_KEY) are initialized
+setTimeout(function(){megaWsInit();},2500);
+setInterval(function(){if(megaWsAlive&&mktOpen()&&megaWs&&megaWs.readyState!==1){try{megaWs.close();}catch(e){}}},60000);
 
 // TOP MOVERS
 
