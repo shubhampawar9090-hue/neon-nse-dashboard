@@ -248,12 +248,12 @@ async function runMonitor(req: Request): Promise<Response> {
         
         if (shouldExit) {
           let order: any;
-          if ((trade as any).broker === 'VIRTUAL') {
+          {
+            // MEGABULL TRADING ENGINE AVOIDED (user instruction, 4 Sep 2026):
+            // all exits fill virtually at LTP -0.25% slippage; no /api/order/buysell calls.
             const exitFill = Math.max(Math.round((ltp * 0.9975 - 0.05) * 100) / 100, 0.05); // 0.25% slippage
             pnl = Math.round((exitFill - trade.entryPrice) * trade.qty * 100) / 100;
             order = { id: null, status: 'COMPLETE', price: exitFill, virtual: true, note: 'virtual broker exit' };
-          } else {
-            order = await placeSellOrder(trade);
           }
           iterationResults.push({
             iteration: i+1, timestamp: ts, instrumentToken: trade.instrumentToken,
@@ -420,7 +420,7 @@ Deno.serve(async (req) => {
       const t = byToken[String(r.instrumentToken)];
       if (!t) continue;
       if (r.status === "EXIT") {
-        if (t.broker === 'VIRTUAL') {
+        {
           // credit the virtual ledger: cash += qty * exit fill, realized_pnl += pnl
           const exitFill = Number(r.order?.price) || r.ltp;
           const vaRows = await dbList("virtual_account?select=*&limit=1");

@@ -185,9 +185,12 @@ Deno.serve(async (req) => {
       }
 
       if (side && slots > 0) {
-        const candidates = optionSignals.filter((o: any) => o.type === side && o.tradingSymbol && o.instrumentToken);
-        candidates.sort((a: any, b: any) => ((a.underlying === "NIFTY") ? 0 : 1) - ((b.underlying === "NIFTY") ? 0 : 1)); // NIFTY weekly first
-        const chosen = candidates[0]; // ATM-strike signal for the nearest weekly expiry
+        const openSyms = new Set((openTrades || []).map((t: any) => String(t.symbol || "").replace(/\s+/g, "").toUpperCase()));
+        const allCandidates = optionSignals.filter((o: any) => o.type === side && o.tradingSymbol && o.instrumentToken);
+        allCandidates.sort((a: any, b: any) => ((a.underlying === "NIFTY") ? 0 : 1) - ((b.underlying === "NIFTY") ? 0 : 1)); // NIFTY weekly first
+        const candidates = allCandidates.filter((o: any) => !openSyms.has(String(o.tradingSymbol).toUpperCase()));
+        if (allCandidates.length > 0 && candidates.length === 0) result.entries_note = "ATM signal already in an open position — no duplicate entry";
+        const chosen = candidates[0]; // ATM-strike signal for the nearest weekly expiry, not already held
         if (chosen && chosen.strike && chosen.tradingSymbol) {
           // position size: maxPositionSize / premium, rounded down to lot 65
           const premium = Number(chosen.theoreticalPremium ?? chosen.premium ?? chosen.entryPrice ?? 0);
@@ -197,16 +200,14 @@ Deno.serve(async (req) => {
             qty = Math.max(lot, Math.floor(qty / lot) * lot);
             const entryPrice = Math.max(premium, 0.05);
 
-            const order: any = await megaFetch("/api/order/buysell", "POST", {
-              tradingSymbol: chosen.tradingSymbol,
-              instrumentToken: String(chosen.instrumentToken || ""),
-              qty, type: "BUY", duration: "MIS", orderType: "MKT", price: 0,
-            });
+            // MEGABULL TRADING ENGINE AVOIDED (user instruction, 4 Sep 2026):
+            // never call /api/order/buysell — every entry fills on our virtual ledger.
+            // MegaBull remains the DATA source only (option chain, WS LTP, TA).
+            const order: any = { skipped: true, status: "VIRTUAL", note: "MegaBull order API not called (virtual broker mode)" };
 
             // ===== VIRTUAL BROKER FALLBACK (free plan blocks F&O) =====
-            const orderStr = JSON.stringify(order || {});
-            const blocked = orderStr.includes("PAYMENT_REQUIRED") || /free plan/i.test(orderStr) || /upgrade required/i.test(orderStr);
-            const megaFilled = !blocked && Number(order?.price) > 0;
+            const blocked = true; // virtual broker mode: MegaBull order engine avoided
+            const megaFilled = false;
             let broker = "MEGABULL";
             let fill = megaFilled ? Number(order.price) : 0;
             if (!megaFilled) {
