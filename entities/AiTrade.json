@@ -1,0 +1,91 @@
+{
+  "properties": {
+    "action": {
+      "type": "string"
+    },
+    "buyScore": {
+      "type": "number"
+    },
+    "changePercent": {
+      "type": "number"
+    },
+    "duration": {
+      "type": "string"
+    },
+    "entryPrice": {
+      "type": "number"
+    },
+    "executionStatus": {
+      "type": "string"
+    },
+    "instrumentToken": {
+      "type": "string"
+    },
+    "megaOrderId": {
+      "type": "string"
+    },
+    "orderId": {
+      "type": "string"
+    },
+    "peakLtp": {
+      "type": "number"
+    },
+    "positionSize": {
+      "type": "number"
+    },
+    "price": {
+      "type": "number"
+    },
+    "qty": {
+      "type": "number"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "rsi": {
+      "type": "number"
+    },
+    "sellScore": {
+      "type": "number"
+    },
+    "signal": {
+      "type": "string"
+    },
+    "sl": {
+      "type": "number"
+    },
+    "stopLoss": {
+      "type": "number"
+    },
+    "strategy": {
+      "type": "string"
+    },
+    "symbol": {
+      "type": "string"
+    },
+    "target": {
+      "type": "number"
+    },
+    "tp1": {
+      "type": "number"
+    },
+    "tp2": {
+      "type": "number"
+    },
+    "tp3": {
+      "type": "number"
+    },
+    "trend": {
+      "type": "string"
+    },
+    "triggerPrice": {
+      "type": "number"
+    },
+    "trailingStop": {
+      "type": "number"
+    }
+  },
+  "type": "object",
+  "required": [],
+  "name": "AiTrade"
+}

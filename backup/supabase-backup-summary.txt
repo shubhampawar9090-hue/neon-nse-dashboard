@@ -1,0 +1,22 @@
+=== Supabase Backup Summary ===
+Date: 2026-07-30 23:50 IST
+Project: mmxkisgdoepojotignkg (neon-nse-dashboard)
+Region: ap-south-1 (Mumbai)
+
+Tables backed up:
+- nse_symbols: 2,384 rows (621 KB)
+- stock_daily_prices: 14,304 rows (4.9 MB)
+- stock_ticks: 0 rows (truncated earlier today)
+- profiles: 7 rows
+- watchlists: 0 rows
+- saved_signals: 0 rows
+- trade_journal: 0 rows
+- user_alerts: 0 rows
+
+Also backed up:
+- Database schema (all columns/types)
+- Cron jobs (3 active)
+- 8 Edge Functions (all source code)
+
+Total backup size: 711 KB (compressed)
+Google Drive folder: Neon-Dashboard-Backups (ID: 1n1LicKAMerHF72JxNUr8TCOp_AATLSjw)
