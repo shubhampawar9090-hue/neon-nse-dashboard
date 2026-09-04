@@ -1597,10 +1597,6 @@ body {
           <span class="sidebar-icon">📅</span>
           <span class="sidebar-label">CALENDAR</span>
         </button>
-        <button class="sidebar-item">
-          <span class="sidebar-icon">📰</span>
-          <span class="sidebar-label">NEWS</span>
-        </button>
 <button class="sidebar-item">
           <span class="sidebar-icon">⚙️</span>
           <span class="sidebar-label">SETTINGS</span>
@@ -2131,30 +2127,6 @@ body {
       </div>
 
 
-      <!-- ===== MARKET NEWS ===== -->
-      <div id="newsSec"></div>
-      <div class="divider"><span class="divider-text">📰 MARKET NEWS & ANALYSIS</span><span class="divider-line"></span></div>
-      <div class="news-panel">
-        <div class="news-hdr">
-          <div class="news-mood-bar" id="newsMoodBar">
-            <span class="news-mood-label">Market Mood:</span>
-            <span class="news-mood-value" id="newsMoodValue">Loading...</span>
-            <span class="news-mood-stats" id="newsMoodStats"></span>
-          </div>
-          <div class="news-filters" id="newsFilters">
-            <button class="news-filter-btn active" onclick="filterNews('all',this)">All</button>
-            <button class="news-filter-btn" onclick="filterNews('Bullish',this)">🟢 Bullish</button>
-            <button class="news-filter-btn" onclick="filterNews('Bearish',this)">🔴 Bearish</button>
-            <button class="news-filter-btn" onclick="filterNews('High',this)">⚡ High Impact</button>
-          </div>
-          <button class="news-refresh-btn" onclick="loadMarketNews()">↻ Refresh</button>
-        </div>
-        <div class="news-grid" id="newsGrid">
-          <div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text2)">Loading market news from Moneycontrol, Yahoo Finance & CNBC...</div>
-        </div>
-      </div>
-
-
       <!-- ===== AI VIRTUAL PORTFOLIO (virtual broker) ===== -->
       <div id="vportSec" style="padding-top:6px">
         <div class="divider"><span class="divider-text">🤖 AI VIRTUAL PORTFOLIO</span><span class="divider-line"></span></div>
@@ -2221,8 +2193,7 @@ body {
     <button onclick="scrollToSec('idxStrip')" class="active"><span class="mn-icon">▤</span>HOME</button>
     <button onclick="scrollToSec('moversSec')"><span class="mn-icon">↕</span>MOVERS</button>
     <button onclick="scrollToSec('chartSec')"><span class="mn-icon">📈</span>CHART</button>
-    <button onclick="scrollToSec('newsSec')"><span class="mn-icon">📰</span>NEWS</button>
-    <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
+      <button onclick="scrollToSec('signalSec')"><span class="mn-icon">⚡</span>SIGNALS</button>
   <button onclick="scrollToSec('vportSec')"><span class="mn-icon">🤖</span>AI TRADES</button>
   <button onclick="scrollToSec('optSec')"><span class="mn-icon">📊</span>OPTIONS</button>
   </div>
@@ -2233,7 +2204,6 @@ const SUPABASE_EDGE_BASE='https://jqmhcalsabexjjiceoux.supabase.co/functions/v1'
 const EDGE_PRICE_API=SUPABASE_EDGE_BASE+'/get-nse-data';
 const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
 const EDGE_MOVERS_API=SUPABASE_EDGE_BASE+'/get-nse-movers';
-const EDGE_NEWS_API=SUPABASE_EDGE_BASE+'/get-market-news';
 
 // === Technical Analysis Functions (computed client-side) ===
 function calcEMA(values,period){
@@ -3678,80 +3648,7 @@ function showFetchError(msg){
 
 setMode('5m');
 loadAllNsePrices();
-loadMarketNews();
 function sched(){var iv=mktOpen()?({'5m':15000,'15m':20000,'1h':30000,'swing':60000}[currentMode]||15000):300000;setTimeout(function(){loadAll().then(function(){sched();});},iv);}
-
-// ===== MARKET NEWS =====
-var allNewsData=[];
-var currentNewsFilter='all';
-function loadMarketNews(){
-  var grid=document.getElementById('newsGrid');
-  if(grid) grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text2)">Fetching latest market news...</div>';
-  fetch(EDGE_NEWS_API,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({})})
-  .then(function(r){return r.json();})
-  .then(function(d){
-    if(d&&d.success&&d.data){
-      allNewsData=d.data;
-      // Update mood bar
-      var moodEl=document.getElementById('newsMoodValue');
-      var statsEl=document.getElementById('newsMoodStats');
-      if(d.mood){
-        var mood=d.mood.overall;
-        moodEl.textContent=mood;
-        moodEl.className='news-mood-value '+mood.toLowerCase();
-        statsEl.innerHTML='<span style="color:var(--green)">🟢 '+d.mood.bullish+'</span> | <span style="color:var(--red)">🔴 '+d.mood.bearish+'</span> | <span style="color:var(--yellow)">🟡 '+d.mood.neutral+'</span> ('+d.mood.total+' articles)';
-      }
-      renderNews(allNewsData);
-    } else {
-      if(grid) grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text2)">No news available. Try refreshing.</div>';
-    }
-  })
-  .catch(function(e){
-    console.error('News fetch error:',e);
-    if(grid) grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--text2)">Failed to fetch news. Click refresh to retry.</div>';
-  });
-}
-function filterNews(filter,btn){
-  currentNewsFilter=filter;
-  document.querySelectorAll('.news-filter-btn').forEach(function(b){b.classList.remove('active');});
-  if(btn) btn.classList.add('active');
-  renderNews(allNewsData);
-}
-function renderNews(data){
-  var grid=document.getElementById('newsGrid');
-  if(!grid) return;
-  var filtered=data;
-  if(currentNewsFilter==='Bullish') filtered=data.filter(function(n){return n.sentiment==='Bullish';});
-  else if(currentNewsFilter==='Bearish') filtered=data.filter(function(n){return n.sentiment==='Bearish';});
-  else if(currentNewsFilter==='High') filtered=data.filter(function(n){return n.impact==='High';});
-  if(!filtered.length){
-    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text2)">No news for this filter</div>';
-    return;
-  }
-  grid.innerHTML=filtered.map(function(n){
-    var srcClass=n.source.toLowerCase().includes('money')?'moneycontrol':(n.source.toLowerCase().includes('cnbc')?'cnbc':(n.source.toLowerCase().includes('yahoo')?'yahoo':''));
-    var timeStr='';
-    try{var dt=new Date(n.publishedAt);timeStr=dt.toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}catch(e){}
-    return '<a class="news-card '+n.sentiment.toLowerCase()+(n.impact==='High'?' high-impact':'')+'" href="'+n.link+'" target="_blank" rel="noopener">'+
-      '<div class="news-card-header">'+
-        '<span class="news-source '+srcClass+'">'+n.source+'</span>'+
-        '<span class="news-cat">'+n.category+'</span>'+
-        '<span class="news-sentiment '+n.sentiment+'">'+n.sentiment+'</span>'+
-        (n.impact==='High'?'<span class="news-impact '+n.impact+'">⚡ '+n.impact+'</span>':'')+
-      '</div>'+
-      '<div class="news-title">'+n.title+'</div>'+
-      (n.summary?'<div class="news-summary">'+n.summary+'</div>':'')+
-      '<div class="news-time">'+timeStr+'</div>'+
-    '</a>';
-  }).join('');
-}
-
-// Tick-by-tick auto refresh: 5s when market live, 30s when closed
-var allSymInterval=setInterval(function(){
-  loadAllNsePrices();
-},5000);
-sched();
-schedHeaderIndices();
 
 // ===== TRADINGVIEW REST POLLING — REAL-TIME TICK DATA =====
 // Uses TradingView scanner API (CORS-enabled) for real-time price updates
