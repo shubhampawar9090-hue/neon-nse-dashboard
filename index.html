@@ -1491,6 +1491,151 @@ body {
 @keyframes ltFlashDown{0%{background:rgba(255,45,85,.25)}100%{background:transparent}}
 .lt-badge{font-size:8px;font-weight:800;color:var(--green);background:var(--green-dim);padding:1px 5px;border-radius:3px;animation:blink 1.5s infinite}
 </style>
+<style>
+/* ================= PRO GLOW THEME v2 — glass surfaces + ambient neon ================= */
+
+/* --- refined palette --- */
+:root {
+  --bg: #060a14;
+  --bg2: #0b1220;
+  --card: #0d1526;
+  --card2: #131d33;
+  --border: #1b2842;
+  --border2: #24345c;
+}
+
+/* --- ambient background: fixed radial glows so the page has depth --- */
+body {
+  background:
+    radial-gradient(1100px 520px at 85% -10%, rgba(0,212,255,.08), transparent 60%),
+    radial-gradient(950px 620px at -12% 28%, rgba(0,255,136,.05), transparent 55%),
+    radial-gradient(760px 520px at 50% 115%, rgba(99,102,241,.07), transparent 62%),
+    linear-gradient(180deg, #060a14 0%, #050810 100%);
+  background-attachment: fixed;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- glass surface mixin applied to all major containers --- */
+.idx-pcard, .panel, .port-card, .sig-card, .mode-row {
+  background: linear-gradient(180deg, rgba(19,27,46,.92) 0%, rgba(10,16,30,.94) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(64,94,150,.30);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 10px 30px rgba(0,0,0,.45),
+    0 0 26px rgba(0,212,255,.045);
+}
+
+/* --- index cards: per-index accent glow --- */
+.idx-pcard { transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
+.idx-pcard:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0,212,255,.45);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 14px 34px rgba(0,0,0,.5), 0 0 30px rgba(0,212,255,.16);
+}
+.idx-pcard.banknifty { border-color: rgba(0,212,255,.28); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.45), 0 0 26px rgba(0,212,255,.07); }
+.idx-pcard.sensex { border-color: rgba(255,170,0,.28); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.45), 0 0 26px rgba(255,170,0,.07); }
+.idx-pcard.vix { border-color: rgba(138,43,226,.35); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 10px 30px rgba(0,0,0,.45), 0 0 26px rgba(138,43,226,.09); }
+
+/* glowing index values */
+.port-card-value, .idx-pcard .p-val { text-shadow: 0 0 14px rgba(0,212,255,.30); }
+.idx-pcard.sensex .p-val { text-shadow: 0 0 14px rgba(255,170,0,.30); }
+.idx-pcard.vix .p-val { text-shadow: 0 0 14px rgba(138,43,226,.35); }
+
+/* --- signal cards: side-coded resting glow + stronger hover --- */
+.sig-card.buy { border-color: rgba(0,255,136,.22); box-shadow: inset 3px 0 0 rgba(0,255,136,.55), 0 8px 22px rgba(0,0,0,.4), 0 0 22px rgba(0,255,136,.05); }
+.sig-card.sell { border-color: rgba(255,45,85,.22); box-shadow: inset 3px 0 0 rgba(255,45,85,.55), 0 8px 22px rgba(0,0,0,.4), 0 0 22px rgba(255,45,85,.05); }
+.sig-card.hold { border-color: rgba(255,170,0,.22); box-shadow: inset 3px 0 0 rgba(255,170,0,.5), 0 8px 22px rgba(0,0,0,.4), 0 0 22px rgba(255,170,0,.05); }
+.sig-card.buy:hover { box-shadow: inset 3px 0 0 rgba(0,255,136,.7), 0 12px 30px rgba(0,0,0,.5), 0 0 30px rgba(0,255,136,.22); }
+.sig-card.sell:hover { box-shadow: inset 3px 0 0 rgba(255,45,85,.7), 0 12px 30px rgba(0,0,0,.5), 0 0 30px rgba(255,45,85,.22); }
+.sig-card.hold:hover { box-shadow: inset 3px 0 0 rgba(255,170,0,.7), 0 12px 30px rgba(0,0,0,.5), 0 0 30px rgba(255,170,0,.22); }
+
+/* --- panels (gainers/losers/screener): top edge light + hover glow --- */
+.panel { position: relative; transition: box-shadow .25s ease, border-color .25s ease; }
+.panel:hover { border-color: rgba(64,94,150,.5); box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 12px 32px rgba(0,0,0,.5), 0 0 30px rgba(0,212,255,.10); }
+
+/* --- header: glass blur + glowing hairline --- */
+.top-header {
+  background: rgba(5,9,18,.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: none;
+  box-shadow: 0 1px 0 rgba(0,212,255,.28), 0 6px 26px rgba(0,0,0,.55);
+}
+#idxStrip .idx-card { background: rgba(11,18,32,.85); border-color: rgba(64,94,150,.3); backdrop-filter: blur(6px); }
+
+/* --- sidebar: active item gets glow bar + soft aura --- */
+.sidebar-item.active {
+  background: linear-gradient(90deg, rgba(0,212,255,.14), transparent 80%);
+  border-left: none;
+  box-shadow: inset 3px 0 0 var(--cyan), 0 0 20px rgba(0,212,255,.10);
+}
+.sidebar-item:hover { background: linear-gradient(90deg, rgba(0,212,255,.08), transparent); }
+
+/* --- mode buttons: active glow --- */
+.mode-btn.active, .mode-btn.active.intraday, .mode-btn.active.swing {
+  box-shadow: 0 0 16px rgba(0,212,255,.30), inset 0 0 10px rgba(0,212,255,.12);
+}
+.mode-btn.active.swing { box-shadow: 0 0 16px rgba(255,170,0,.30), inset 0 0 10px rgba(255,170,0,.12); }
+
+/* --- dividers: glowing section titles --- */
+.divider-text { text-shadow: 0 0 16px rgba(0,212,255,.40); }
+.divider:hover .divider-text { text-shadow: 0 0 22px rgba(0,212,255,.65); }
+
+/* --- P&L / change text: soft semantic glow --- */
+.pos { text-shadow: 0 0 10px rgba(0,255,136,.28); }
+.neg { text-shadow: 0 0 10px rgba(255,45,85,.28); }
+
+/* --- live tick badges: breathing pulse --- */
+@keyframes proGlowPulse {
+  0%, 100% { opacity: .8; text-shadow: 0 0 6px currentColor; }
+  50%      { opacity: 1;  text-shadow: 0 0 14px currentColor; }
+}
+.tick-badge { animation: proGlowPulse 2.2s ease-in-out infinite; }
+
+/* --- buttons --- */
+.btn-refresh, .port-refresh-btn { transition: all .18s ease; }
+.btn-refresh:hover, .port-refresh-btn:hover {
+  box-shadow: 0 0 18px rgba(0,212,255,.25);
+}
+.btn-refresh:active, .port-refresh-btn:active { transform: translateY(0) scale(.97); }
+
+/* --- bottom ticker: glass + glow edge --- */
+.news-ticker-bar {
+  background: rgba(5,9,18,.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(0,212,255,.22);
+  box-shadow: 0 -8px 28px rgba(0,0,0,.55);
+}
+
+/* --- tables: quieter header, crisp hover --- */
+.tbl thead th { letter-spacing: .6px; }
+.tbl tr:hover td { background-color: rgba(0,212,255,.05); box-shadow: inset 2px 0 0 rgba(0,212,255,.35); }
+
+/* --- scrollbars: slim, theme-matched --- */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: rgba(11,18,32,.4); }
+::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #22345c, #16233f); border-radius: 5px; border: 2px solid rgba(6,10,20,.8); }
+::-webkit-scrollbar-thumb:hover { background: #2c4574; box-shadow: 0 0 10px rgba(0,212,255,.25); }
+* { scrollbar-width: thin; scrollbar-color: #22345c rgba(11,18,32,.4); }
+
+/* --- text selection --- */
+::selection { background: rgba(0,212,255,.28); color: #fff; }
+
+/* --- reduce motion preference --- */
+@media (prefers-reduced-motion: reduce) {
+  .tick-badge { animation: none; }
+  .idx-pcard, .panel, .sig-card { transition: none; }
+}
+
+/* --- mobile: keep blur cheap --- */
+@media (max-width: 768px) {
+  .idx-pcard, .panel, .port-card, .sig-card, .mode-row { backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .top-header, .news-ticker-bar { backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+</style>
 </head>
 <body>
 <!-- TOP HEADER -->
