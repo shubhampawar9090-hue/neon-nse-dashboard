@@ -71,9 +71,16 @@ async function deployHandler(req: Request): Promise<Response> {
       return json({ error: `STOR failed: ${storResp}` }, 500);
     }
     
-    // Write file content
-    const encoder = new TextEncoder();
-    await dataConn.write(encoder.encode(content));
+    // Write file content — LOOP: Deno.Conn.write may accept only part of the
+    // buffer (OS socket send buffer fills around ~50KB). Without a loop the
+    // tail was silently dropped and InfinityFree served a truncated page.
+    const bytes = new TextEncoder().encode(content);
+    let off = 0;
+    while (off < bytes.length) {
+      const n = await dataConn.write(bytes.subarray(off));
+      if (n == null || n <= 0) throw new Error(`FTP data write stalled at byte ${off} of ${bytes.length}`);
+      off += n;
+    }
     dataConn.close();
     
     // Read transfer complete response
@@ -88,7 +95,8 @@ async function deployHandler(req: Request): Promise<Response> {
       success: true, 
       message: 'File uploaded successfully',
       path,
-      size: content.length,
+      size: bytes.length,
+      bytesWritten: off,
       response: completeResp
     });
     
