@@ -2204,28 +2204,29 @@ body {
         <div class="chart-panel-hdr">
           <span class="chart-panel-title">📉 Price Action</span> <span id="liveBadge" style="font-size:10px;color:#00ff00;background:rgba(0,255,0,.1);padding:2px 6px;border-radius:2px;margin-left:6px;animation:blink 1.5s infinite;">● LIVE</span>
           <select class="chart-select" id="chartSelect" onchange="loadChart(this.value)">
-            <option value="NSE:NIFTY">NIFTY 50</option>
-            <option value="NSE:BANKNIFTY">BANKNIFTY</option>
-            <option value="BSE:SENSEX">SENSEX</option>
-            <option value="NSE:RELIANCE">RELIANCE</option>
-            <option value="NSE:TCS">TCS</option>
-            <option value="NSE:HDFCBANK">HDFCBANK</option>
-            <option value="NSE:INFY">INFY</option>
-            <option value="NSE:ICICIBANK">ICICIBANK</option>
-            <option value="NSE:SBIN">SBIN</option>
-            <option value="NSE:TATAMOTORS">TATA MOTORS</option>
-            <option value="NSE:BHARTIARTL">BHARTIARTL</option>
-            <option value="NSE:ITC">ITC</option>
-            <option value="NSE:LT">LT</option>
-            <option value="NSE:KOTAKBANK">KOTAKBANK</option>
+            <option value="^NSEI">NIFTY 50</option>
+            <option value="RELIANCE.NS">RELIANCE</option>
+            <option value="TCS.NS">TCS</option>
+            <option value="HDFCBANK.NS">HDFCBANK</option>
+            <option value="INFY.NS">INFY</option>
+            <option value="ICICIBANK.NS">ICICIBANK</option>
+            <option value="SBIN.NS">SBIN</option>
+            <option value="TMPV.NS">TMPV (Tata Motors PV)</option>
+            <option value="BHARTIARTL.NS">BHARTIARTL</option>
+            <option value="ITC.NS">ITC</option>
+            <option value="LT.NS">LT</option>
+            <option value="KOTAKBANK.NS">KOTAKBANK</option>
           </select>
         </div>
-        <div class="chart-container" style="height:540px;background:transparent">
-          <div class="tradingview-widget-container" id="tvChartWrap" style="height:100%;width:100%">
-            <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
-          </div>
+        <div class="chart-container"><canvas id="priceChart"></canvas><div id="chartSource" style="position:absolute;top:6px;right:10px;font-size:9px;color:#666;font-family:Courier New;pointer-events:none;z-index:10"></div></div>
+        <div class="chart-info" id="chartInfo">
+          <div class="chart-info-item"><span class="ci-label">O:</span><span class="ci-val" id="ciOpen">—</span></div>
+          <div class="chart-info-item"><span class="ci-label">H:</span><span class="ci-val" id="ciHigh">—</span></div>
+          <div class="chart-info-item"><span class="ci-label">L:</span><span class="ci-val" id="ciLow">—</span></div>
+          <div class="chart-info-item"><span class="ci-label">C:</span><span class="ci-val" id="ciClose">—</span></div>
+          <div class="chart-info-item"><span class="ci-label">Vol:</span><span class="ci-val" id="ciVol">—</span></div>
+          <div class="chart-info-item"><span class="ci-label">Chg:</span><span class="ci-val" id="ciChg">—</span></div>
         </div>
-        <div style="font-size:9px;color:#00d1ff;font-family:Consolas,monospace;text-align:right;padding:4px 8px 0">⚡ LIVE DATA: TRADINGVIEW</div>
       </div>
 
       <!-- ===== SECTOR HEATMAP ===== -->
@@ -2916,6 +2917,8 @@ function vpWsTick(m){
     }
   });
   vpUpdateHead();
+  var b=document.getElementById('vpLiveBadge');
+  if(b&&megaWsAlive){b.textContent='\u25CF LIVE LTP';b.style.color='var(--green,#22c55e)';}
 }
 setTimeout(function(){vportLoad();},3000);
 setInterval(function(){vportLoad();},30000);
@@ -3738,7 +3741,7 @@ async function loadAll(){
     setTimeout(function(){ if (tvActive) tvPollScanner(); }, 500);
   }
   renderHeatmap(priceResults||[],taResults||[]);
-  if(!tvChartSym)loadChart('NSE:NIFTY');
+  if(!priceChart)loadChart('^NSEI');
   updStatus();
 }
 
@@ -4217,35 +4220,96 @@ function toTVSymbol(sym){
   s=s.replace(/\.NS$/i,'');
   return 'NSE:'+s;
 }
-function loadChart(sym){
-  var tvs=toTVSymbol(sym);
-  var cont=document.getElementById('tvChartWrap');
-  if(!cont)return;
+async function loadChart(sym){
+  chartSym=sym;
+  // Stop any existing tick refresh
   if(chartInterval){clearInterval(chartInterval);chartInterval=null;}
-  try{document.getElementById('chartSelect').value=tvs;}catch(e){}
-  if(tvChartSym===tvs)return;
-  tvChartSym=tvs;
-  cont.innerHTML='<div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>';
-  var s=document.createElement('script');
-  s.type='text/javascript';
-  s.async=true;
-  s.src='https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-  s.innerHTML=JSON.stringify({
-    "autosize": true,
-    "symbol": tvs,
-    "interval": "5",
-    "timezone": "Asia/Calcutta",
-    "theme": "dark",
-    "style": "1",
-    "locale": "en",
-    "enable_publishing": false,
-    "allow_symbol_change": true,
-    "hide_side_toolbar": false,
-    "withdateranges": true,
-    "support_host": "https://www.tradingview.com"
-  });
-  cont.appendChild(s);
+  try{
+    document.getElementById('chartSelect').value=sym;
+  }catch(e){}
+  
+  // Show loading state
+  var cvs=document.getElementById('priceChart');
+  if(!cvs)return;
+  
+  try{
+    var url=EDGE_PRICE_API;
+    var res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_KEY},body:JSON.stringify({symbols:[sym],chart:true,interval:'1m',range:'1d'})});
+    var json=await res.json();
+    if(!json.success||!json.data||!json.data.chart){console.log('Chart: no data for',sym);return;}
+    
+    var meta=json.data.chart.meta;
+    var candles=json.data.chart.candles||[];
+    var timestamps=candles.map(function(c){return c.t;});
+    var closes=candles.map(function(c){return c.c;}).filter(function(v){return v!=null;});
+    var highs=candles.map(function(c){return c.h;}).filter(function(v){return v!=null;});
+    var lows=candles.map(function(c){return c.l;}).filter(function(v){return v!=null;});
+    var volumes=candles.map(function(c){return c.v;}).filter(function(v){return v!=null;});
+    
+    if(closes.length===0){console.log('Chart: empty closes for',sym);return;}
+    
+    // Show data source indicator
+    var srcEl=document.getElementById('chartSource');
+    if(srcEl){srcEl.textContent=json.source==='tradingview'?'⚡ TradingView':'Yahoo Finance';srcEl.style.color=json.source==='tradingview'?'#00d1ff':'#666';}
+    
+    chartData={meta:meta,closes:closes,highs:highs,lows:lows,volumes:volumes,timestamps:timestamps,sym:sym,source:json.source||'yahoo'};
+    lastTickPrice=meta.regularMarketPrice;
+    
+    // Build labels
+    var validTs=timestamps.filter(function(t,i){return closes[i]!=null;});
+    var labels=validTs.map(function(t){var d=new Date(t*1000);return d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false});});
+    
+    var priceColor=meta.regularMarketPrice>=meta.chartPreviousClose?'#00ff00':'#ff0000';
+
+    if(priceChart)priceChart.destroy();
+    var ctx=cvs.getContext('2d');
+    var gradient=ctx.createLinearGradient(0,0,0,260);
+    gradient.addColorStop(0,priceColor+'40');
+    gradient.addColorStop(1,priceColor+'00');
+
+    priceChart=new Chart(ctx,{
+      type:'line',
+      data:{labels:labels,datasets:[
+        {label:cs(sym),data:closes,borderColor:priceColor,backgroundColor:gradient,borderWidth:2,fill:true,tension:0.3,pointRadius:0,pointHoverRadius:4},
+        {label:'High',data:highs,borderColor:'rgba(255,136,0,.25)',borderWidth:1,fill:false,tension:0.3,pointRadius:0},
+        {label:'Low',data:lows,borderColor:'rgba(0,170,255,.25)',borderWidth:1,fill:false,tension:0.3,pointRadius:0}
+      ]},
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        animation:{duration:300},
+        plugins:{legend:{display:false},tooltip:{
+          backgroundColor:'rgba(0,0,0,.95)',borderColor:'rgba(255,136,0,.3)',borderWidth:1,
+          titleColor:'#ff8800',bodyColor:'#e8e8e8',
+          callbacks:{label:function(ctx){return ctx.dataset.label+': \u20B9'+Number(ctx.parsed.y).toFixed(2)}}
+        }},
+        scales:{
+          x:{grid:{color:'#111'},ticks:{color:'#666',font:{size:9,family:'Courier New'},maxTicksLimit:8}},
+          y:{grid:{color:'#111'},ticks:{color:'#666',font:{size:9,family:'Courier New'},callback:function(v){return '\u20B9'+v.toFixed(0)}}}
+        },
+        interaction:{intersect:false,mode:'index'}
+      }
+    });
+    
+    updateChartInfoBar(meta);
+    
+    // Start tick-by-tick live updates every 3 seconds during market hours
+    if(mktOpen()){
+      chartInterval=setInterval(function(){tickUpdateChart();},5000);
+    }
+  }catch(e){
+    console.log('Chart load error:',e);
+    // Show error message on chart
+    if(cvs){
+      var ctx=cvs.getContext('2d');
+      ctx.clearRect(0,0,cvs.width,cvs.height);
+      ctx.fillStyle='#ff8800';
+      ctx.font='14px Courier New';
+      ctx.textAlign='center';
+      ctx.fillText('Chart data unavailable',cvs.width/2,cvs.height/2);
+    }
+  }
 }
+
 // Tick-by-tick update: fetch latest price and append to chart
 async function tickUpdateChart(){
   if(!priceChart||!chartData)return;
@@ -4332,7 +4396,7 @@ function renderHeatmap(priceData,taData){
     var topStock=sectorStocks.sort(function(a,b){return Math.abs(b.changePercent)-Math.abs(a.changePercent);})[0];
     var cls=avgChg>=2?'hm-strong-up':(avgChg>0?'hm-up':(avgChg>-2?'hm-down':'hm-strong-down'));
     if(Math.abs(avgChg)<0.3)cls='hm-flat';
-    h+='<div class="heatmap-cell '+cls+'" onclick="loadChart(\''+topStock.symbol+'\')">';
+    h+='<div class="heatmap-cell '+cls+'" onclick="loadChart(\''+topStock.symbol+'\');document.getElementById(\'chartSelect\').value=\''+topStock.symbol+'\'">';
     h+='<div class="hm-name">'+sector+'</div>';
     h+='<div class="hm-price">'+f0(topStock.price)+'</div>';
     h+='<div class="hm-chg">'+(avgChg>=0?'+':'')+avgChg.toFixed(2)+'%</div>';
