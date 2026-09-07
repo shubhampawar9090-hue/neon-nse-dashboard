@@ -2809,6 +2809,7 @@ setInterval(function(){if(megaWsAlive&&mktOpen()&&megaWs&&megaWs.readyState!==1)
 // ==== AI VIRTUAL PORTFOLIO (virtual broker ledger + live WS LTP) ====
 var VP_TOKENS={};               // instrumentToken -> {id, entry, qty}
 var vpCache={cash:0,start:0,realized:0,open:[],hist:[],ltp:{}};
+var vpWsLast={};
 
 function megaWsTokenList(){
   var toks=Object.keys(MEGA_WS_TOKENS).map(function(s){return MEGA_WS_TOKENS[s];});
@@ -2904,7 +2905,7 @@ function vpWsTick(m){
   Object.keys(VP_TOKENS).forEach(function(tok){
     var ltp=m[tok];
     if(ltp==null)return;
-    vpCache.ltp[tok]=ltp;
+    vpCache.ltp[tok]=ltp;vpWsLast[tok]=Date.now();
     var t=null;
     for(var i=0;i<vpCache.open.length;i++){if(String(vpCache.open[i].instrument_token)===String(tok)){t=vpCache.open[i];break;}}
     if(!t)return;
@@ -2922,6 +2923,34 @@ function vpWsTick(m){
 }
 setTimeout(function(){vportLoad();},3000);
 setInterval(function(){vportLoad();},30000);
+function vpApplyLtp(tok,ltp){
+  vpCache.ltp[tok]=ltp;
+  var t=null;
+  for(var i=0;i<vpCache.open.length;i++){if(String(vpCache.open[i].instrument_token)===String(tok)){t=vpCache.open[i];break;}}
+  if(!t)return;
+  var pnl=(Number(ltp)-Number(t.entry_price))*Number(t.qty);
+  var pct=(((Number(ltp)/Number(t.entry_price))-1)*100).toFixed(1)+'%';
+  var row=document.querySelector('tr[data-vptok="'+tok+'"]');
+  if(row){
+    var lc=row.querySelector('.vpltp');if(lc)lc.textContent=fmtN(ltp);
+    var pc=row.lastElementChild;if(pc)pc.innerHTML=vpPnlCell(pnl,pct);
+  }
+}
+async function vpFastPoll(){
+  if(!vpCache.open.length)return;
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.OPEN&qty=gt.0&select=id,instrument_token,price',{headers:H});
+    if(!r.ok)return;
+    var rows=await r.json()||[];
+    rows.forEach(function(t){
+      var tok=String(t.instrument_token);var ltp=Number(t.price);
+      if(!ltp)return;
+      if(megaWsAlive&&vpWsLast[tok]&&Date.now()-vpWsLast[tok]<3000)return;
+      vpApplyLtp(tok,ltp);
+    });
+  }catch(e){}
+}
+setInterval(function(){vpFastPoll();},1500);
 
 // TOP MOVERS
 
