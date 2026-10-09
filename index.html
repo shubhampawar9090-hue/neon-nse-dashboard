@@ -2767,9 +2767,14 @@ function tvPushSend(msg){
 }
 function tvPushBadge(on){
   var el=document.getElementById('tvPushBadge');
-  if(!el){var t=document.getElementById('tickText');if(!t)return;el=document.createElement('span');el.id='tvPushBadge';t.parentNode.appendChild(el);}
-  el.textContent=on?'TV PUSH ·0ms':'';
-  el.style.cssText='margin-left:8px;font-size:10px;font-weight:800;letter-spacing:1px;color:'+(on?'var(--cyan)':'transparent');
+  if(!el){
+    if(!on)return;
+    var t=document.getElementById('tickText');
+    if(!t)return;
+    el=document.createElement('span');el.id='tvPushBadge';t.parentNode.appendChild(el);
+  }
+  el.style.display=on?'inline':'none';
+  if(on){el.textContent='TV PUSH ·0ms';el.style.cssText='margin-left:8px;font-size:10px;font-weight:800;letter-spacing:1px;color:var(--cyan)';}
 }
 function tvPushFrame(p){
   if(p.indexOf('~h~')===0){tvPushSend(p);return;} // heartbeat echo
