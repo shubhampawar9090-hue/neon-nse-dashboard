@@ -4001,7 +4001,7 @@ function tvUpdateRow(sym, price, chg, pct) {
     var priceCell = row.querySelector('.price-cell, td:nth-child(3)');
     if (priceCell) {
       var oldPrice = parseFloat(priceCell.getAttribute('data-price') || priceCell.textContent.replace(/[^0-9.]/g, ''));
-      priceCell.textContent = formatNum(price);
+      priceCell.textContent = f0(price);
       priceCell.setAttribute('data-price', price);
       
       // Flash green/red
