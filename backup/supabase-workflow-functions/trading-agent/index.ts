@@ -203,16 +203,38 @@ Deno.serve(async (req) => {
         } catch (_) {}
       }
 
-      // ---- intraday momentum guard (9 Oct 2026): don't fight the day's direction ----
-      if (side) {
+      // ---- intraday momentum (9 Oct 2026): NIFTY day change, fetched once ----
+      let niftyPct = 0;
+      try {
+        const mres = await fetch(`${SB}/functions/v1/get-nse-data`, { method: "POST", headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`, "Content-Type": "application/json" }, body: JSON.stringify({ symbols: ["^NSEI"] }) });
+        const mj = await mres.json();
+        const idx: any = ((mj.data || []).find((p: any) => p.symbol === "^NSEI")) || {};
+        const price = Number(idx.price || 0); const prev = Number(idx.previousClose || idx.prev_close || 0);
+        niftyPct = Number(idx.changePercent ?? idx.change ?? (prev ? (price / prev - 1) * 100 : 0));
+      } catch (_) {}
+
+      // momentum guard: don't fight the day's direction
+      if (side === "PE" && niftyPct > 0.6) { side = null; result.entries_note = `momentum guard: NIFTY +${niftyPct.toFixed(2)}% today — PE entry blocked (don't fight the rally)`; }
+      else if (side === "CE" && niftyPct < -0.6) { side = null; result.entries_note = `momentum guard: NIFTY ${niftyPct.toFixed(2)}% today — CE entry blocked (don't fight the fall)`; }
+
+      // ---- rally-day override (9 Oct 2026): the SWING TA stays one-sided through
+      // multi-week trends (why 0 CE trades in 34 days despite BUY-score-85 rally days).
+      // On a strong trend day, the responsive short-TF TA can arm the day-direction
+      // side — e.g. +0.6% rally day with responsive TA BUY >= 70 arms a CE entry.
+      if (!side && Math.abs(niftyPct) > 0.6) {
         try {
-          const mres = await fetch(`${SB}/functions/v1/get-nse-data`, { method: "POST", headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`, "Content-Type": "application/json" }, body: JSON.stringify({ symbols: ["^NSEI"] }) });
-          const mj = await mres.json();
-          const idx: any = ((mj.data || []).find((p: any) => p.symbol === "^NSEI")) || {};
-          const price = Number(idx.price || 0); const prev = Number(idx.previousClose || idx.prev_close || 0);
-          const pct = Number(idx.changePercent ?? idx.change ?? (prev ? (price / prev - 1) * 100 : 0));
-          if (side === "PE" && pct > 0.6) { side = null; result.entries_note = `momentum guard: NIFTY +${pct.toFixed(2)}% today — PE entry blocked (don't fight the rally)`; }
-          else if (side === "CE" && pct < -0.6) { side = null; result.entries_note = `momentum guard: NIFTY ${pct.toFixed(2)}% today — CE entry blocked (don't fight the fall)`; }
+          const rres = await fetch(`${SB}/functions/v1/get-technical-analysis`, { method: "POST", headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`, "Content-Type": "application/json" }, body: JSON.stringify({ symbols: ["^NSEI"] }) });
+          const rj = await rres.json();
+          const nr: any = ((rj.data || []).find((p: any) => p.symbol === "^NSEI")) || {};
+          const sig = String(nr.signal || "").toUpperCase();
+          const sRow: any = ((await dbList("market_sentiment?order=as_of.desc&limit=1")) || [])[0] || {};
+          if (niftyPct > 0.6 && (sig === "BUY" || sig === "STRONG_BUY" || sig === "STRONG BUY") && (nr.buyScore || 0) >= 70) {
+            if (String(sRow.mood || "").toUpperCase() === "BEARISH" && Number(sRow.score) <= -0.25) { result.entries_note = "rally override: responsive TA BUY but BEARISH news blocked CE"; }
+            else { side = "CE"; result.entries_note = `rally override: NIFTY +${niftyPct.toFixed(2)}% + responsive TA BUY ${nr.buyScore} — CE armed`; }
+          } else if (niftyPct < -0.6 && (sig === "SELL" || sig === "STRONG_SELL" || sig === "STRONG SELL") && (nr.sellScore || 0) >= 70) {
+            if (String(sRow.mood || "").toUpperCase() === "BULLISH" && Number(sRow.score) >= 0.25) { result.entries_note = "rally override: responsive TA SELL but BULLISH news blocked PE"; }
+            else { side = "PE"; result.entries_note = `rally override: NIFTY ${niftyPct.toFixed(2)}% + responsive TA SELL ${nr.sellScore} — PE armed`; }
+          }
         } catch (_) {}
       }
       // ---- dead-hour guard (9 Oct 2026): no new entries 10:00-10:59 IST ----

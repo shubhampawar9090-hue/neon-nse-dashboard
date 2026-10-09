@@ -295,6 +295,27 @@ function parseOptionSignals(taData: any, priceData: any[], chain: any[], vixValu
         ? `Bullish (buyScore: ${ta.buyScore}) on ${ta.symbol}. Trend: ${ta.trend}. Buy CE ATM ${atmOpt.strike}. Delta: ${atmWithGreeks?.greeks?.delta || 'N/A'}, Theta: ${atmWithGreeks?.greeks?.theta || 'N/A'}.`
         : `Bearish (sellScore: ${ta.sellScore}) on ${ta.symbol}. Trend: ${ta.trend}. Buy PE ATM ${atmOpt.strike}. Delta: ${atmWithGreeks?.greeks?.delta || 'N/A'}, Theta: ${atmWithGreeks?.greeks?.theta || 'N/A'}.`
     });
+
+    // Counter-side ATM candidate (9 Oct 2026): always emit the opposite side's ATM
+    // option too, so rally-day / override entries always have CE (or PE) contracts
+    // available instead of an empty candidate pool (root cause of 0 CE trades in 34 days).
+    const counterType = optType === 'CE' ? 'PE' : 'CE';
+    const counterAtm = findATMOption(expiryOpts, indexLevel, counterType, stepSize);
+    if (counterAtm) {
+      const counterWithGreeks = addGreeksToOption(
+        { symbol: counterAtm.symbol, token: counterAtm.token, strike: counterAtm.strike, type: counterType },
+        indexLevel, expiry, vixValue
+      );
+      results.push({
+        index: ta.symbol, underlying, indexLevel, signal: ta.signal,
+        buyScore: ta.buyScore, sellScore: ta.sellScore, rsi: ta.rsi, trend: ta.trend,
+        recommendation: `COUNTER ${counterType}`, optionType: counterType, expiry,
+        tradingSymbol: counterWithGreeks?.symbol || counterAtm.symbol, instrumentToken: counterWithGreeks?.token || counterAtm.token,
+        strike: counterAtm.strike, type: counterType, premium: counterWithGreeks?.greeks?.theoreticalPremium ?? null,
+        atm: counterWithGreeks, counterSignal: true,
+        reason: `Counter-side ATM ${counterType} ${counterAtm.strike} availability candidate (dominant signal was ${optType})`
+      });
+    }
   }
   return results;
 }
