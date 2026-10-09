@@ -1,11 +1,14 @@
-// ws-tick-stream — per-second live LTP capture for open option positions.
-// Connects to MegaBull WebSocket, samples LTP every second for SAMPLE_SECONDS,
-// batch-saves ticks to stock_ticks and refreshes ai_trades live price / peak /
-// trailing stop. Cron fires it every minute during market hours; the function
-// self-guards outside 09:15-15:30 IST Mon-Fri.
+// ws-tick-stream v2 — per-second live LTP capture + PER-SECOND EXIT MONITOR.
+// Connects to MegaBull WebSocket, samples LTP every second for SAMPLE_SECONDS.
+// Each second: saves tick snapshots, refreshes ai_trades price/peak/trailing,
+// and evaluates the full exit rule set (trailing 15%, initial SL, TP2/TP3,
+// hard -30%). On an exit signal it fires position-monitor which executes the
+// virtual fill, ledger credit and notification. Cron fires every minute
+// during market hours; self-guards outside 09:15-15:30 IST Mon-Fri.
 const SB = Deno.env.get('SUPABASE_URL') || 'https://jqmhcalsabexjjiceoux.supabase.co';
 const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const MEGA_WS = 'wss://socket.megabull.in';
+const CRON_KEY = 'BM1w_fZMvitL8MJDe6YqM7l8yKMpRHAhpdN_2PR3cOc';
 const SAMPLE_SECONDS = 50;
 
 function json(data: any, status = 200) {
@@ -41,14 +44,13 @@ Deno.serve(async (req) => {
   try {
     if (!marketOpen()) return json({ success: true, skipped: 'market closed', samples: 0 });
 
-    const tr = await fetch(`${SB}/rest/v1/ai_trades?execution_status=eq.OPEN&qty=gt.0&select=id,symbol,instrument_token,peak_ltp,entry_price`, { headers: sbh() });
+    const tr = await fetch(`${SB}/rest/v1/ai_trades?execution_status=eq.OPEN&qty=gt.0&select=id,symbol,instrument_token,peak_ltp,entry_price,qty,sl,tp1,tp2,tp3,trailing_stop`, { headers: sbh() });
     const trades: any[] = await tr.json();
     if (!trades || trades.length === 0) return json({ success: true, skipped: 'no open positions', samples: 0 });
 
     const jwt = await loadJwt();
     if (!jwt) return json({ success: false, error: 'no JWT available' }, 500);
 
-    // Connect WS and collect streaming LTPs into a per-token ring of {ts, ltp}
     const tokens = trades.map(t => String(t.instrument_token));
     const samples: Record<string, { ts: number; ltp: number }[]> = {};
     for (const t of tokens) samples[t] = [];
@@ -76,19 +78,61 @@ Deno.serve(async (req) => {
       } catch {}
     };
 
-    // Sample once per second
+    // Per-second sampling + per-second exit monitoring
+    let active: any[] = [...trades];
+    const exitSignals: any[] = [];
+    const downBreach: Record<string, number> = {}; // consecutive downside-breach seconds per token
     const started = Date.now();
     for (let i = 0; i < SAMPLE_SECONDS; i++) {
       await sleep(1000);
       const ts = Date.now();
       for (const t of tokens) {
         const p = latest[t];
-        if (p) samples[t].push({ ts, ltp: Math.round(p * 100) / 100 });
+        if (p && active.some(x => String(x.instrument_token) === t)) {
+          samples[t].push({ ts, ltp: Math.round(p * 100) / 100 });
+        }
+      }
+      // ---- EXIT RULES: evaluated EVERY SECOND ----
+      for (const trade of [...active]) {
+        const t = String(trade.instrument_token);
+        const ltp = latest[t];
+        if (!ltp) continue;
+        const entry = Number(trade.entry_price);
+        const peak = Math.max(Number(trade.peak_ltp) || entry, ...samples[t].map(x => x.ltp), ltp);
+        const trailing = Math.round(peak * 0.85 * 100) / 100;
+        const initialSL = Number(trade.sl) || entry * 0.70;
+        let exit = false, reason = '';
+        // TP exits fire immediately on touch (sell into the spike)
+        if (trade.tp3 && ltp >= Number(trade.tp3)) { exit = true; reason = `TP3: ${ltp} >= ${trade.tp3}`; }
+        else if (trade.tp2 && ltp >= Number(trade.tp2)) { exit = true; reason = `TP2: ${ltp} >= ${trade.tp2}`; }
+        else {
+          // Anti-whipsaw (9 Oct): downside exits (trailing/SL/hard-stop) require
+          // 3 CONSECUTIVE breaching seconds — single-tick premium noise no longer
+          // kicks out a position. Resets to zero on any healthy tick.
+          const down = (ltp <= trailing && trailing > initialSL) || (ltp <= initialSL) || (ltp <= entry * 0.70);
+          downBreach[t] = down ? (downBreach[t] || 0) + 1 : 0;
+          if (down && downBreach[t] >= 3) {
+            if (ltp <= trailing && trailing > initialSL) reason = `Trailing stop: LTP ${ltp} <= trailing ${trailing}`;
+            else if (ltp <= initialSL) reason = `Initial SL: LTP ${ltp} <= SL ${initialSL}`;
+            else reason = `Hard stop -30%: ${ltp}`;
+            exit = true;
+          }
+        }
+        if (exit) {
+          exitSignals.push({ symbol: trade.symbol, ltp, reason, second: i + 1 });
+          active = active.filter(x => x !== trade);
+          // position-monitor executes the virtual exit fill + ledger credit + alert
+          fetch(`${SB}/functions/v1/position-monitor`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-cron-key': CRON_KEY },
+            body: JSON.stringify({ iterations: 1, delayMs: 0 }),
+          }).catch(() => {});
+        }
       }
     }
     try { ws.close(); } catch {}
 
-    // Batch-save ticks to stock_ticks
+    // Batch-save ticks to stock_ticks (only for still-open tokens)
     const rows: any[] = [];
     for (const t of tokens) {
       const trade = trades.find(x => String(x.instrument_token) === t);
@@ -102,12 +146,12 @@ Deno.serve(async (req) => {
       if (ins.ok) saved = rows.length;
     }
 
-    // Refresh live price / peak / trailing per position (last sample wins)
+    // Refresh live price / peak / trailing per still-open position
     const updates: any[] = [];
-    for (const t of tokens) {
+    for (const trade of active) {
+      const t = String(trade.instrument_token);
       const s = samples[t];
       if (!s.length) continue;
-      const trade = trades.find(x => String(x.instrument_token) === t);
       const last = s[s.length - 1].ltp;
       const peak = Math.max(Number(trade.peak_ltp) || Number(trade.entry_price), ...s.map(x => x.ltp));
       updates.push(fetch(`${SB}/rest/v1/ai_trades?id=eq.${trade.id}`, {
@@ -120,7 +164,7 @@ Deno.serve(async (req) => {
     return json({
       success: true, tokens, symbols: trades.map(t => t.symbol),
       samples: Object.values(samples).reduce((a: number, b: any) => a + b.length, 0),
-      saved, durationS: Math.round((Date.now() - started) / 1000),
+      saved, exitSignals, durationS: Math.round((Date.now() - started) / 1000),
     });
   } catch (e) {
     return json({ success: false, error: String(e) }, 500);

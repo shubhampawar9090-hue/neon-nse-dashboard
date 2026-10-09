@@ -110,24 +110,26 @@ function parseOption(trade: any): { strike: number, type: string, dte: number } 
   return { strike, type, dte };
 }
 
-async function getMarketData(): Promise<{ nifty: number, vix: number }> {
+async function getMarketData(): Promise<{ nifty: number, banknifty: number, sensex: number, vix: number }> {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/get-nse-data`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symbols: ['^NSEI', '^INDIAVIX'] })
+      body: JSON.stringify({ symbols: ['^NSEI', '^NSEBANK', '^BSESN', '^INDIAVIX'] })
     });
     const data = await res.json();
-    const nifty = (data.data || []).find((p: any) => p.symbol === '^NSEI');
-    const vix = (data.data || []).find((p: any) => p.symbol === '^INDIAVIX');
-    return { nifty: nifty?.price || 24500, vix: vix?.price || 12 };
-  } catch { return { nifty: 24500, vix: 12 }; }
+    const find = (s: string) => (data.data || []).find((p: any) => p.symbol === s)?.price;
+    return { nifty: find('^NSEI') || 24500, banknifty: find('^NSEBANK') || 55500, sensex: find('^BSESN') || 81500, vix: find('^INDIAVIX') || 12 };
+  } catch { return { nifty: 24500, banknifty: 55500, sensex: 81500, vix: 12 }; }
 }
 
-function estimateLTP(trade: any, nifty: number, vix: number): number {
+function estimateLTP(trade: any, market: any): number {
   const { strike, type, dte } = parseOption(trade);
-  if (!strike) return trade.entryPrice;
-  return bsPrice(nifty, strike, dte / 365, 0.07, vix / 100, type);
+  if (!strike) return Number(trade.entryPrice) || 0;
+  const sym = (trade.tradingSymbol || trade.symbol || '').toUpperCase();
+  const spot = sym.startsWith('BANKNIFTY') ? market.banknifty : (sym.startsWith('SENSEX') ? market.sensex : market.nifty);
+  if (!spot) return Number(trade.price ?? trade.entryPrice) || 0;
+  return bsPrice(spot, strike, dte / 365, 0.07, market.vix / 100, type);
 }
 
 // === WebSocket LTP (primary source) ===
@@ -141,7 +143,7 @@ async function fetchLtpViaWebSocket(jwtToken: string, instrumentTokens: string[]
     const finish = () => {
       if (!resolved) { resolved = true; clearTimeout(timeout); try { ws.close(); } catch (e) {} resolve(ltpMap); }
     };
-    const timeout = setTimeout(finish, 3000);
+    const timeout = setTimeout(finish, 6000);
     
     ws.onopen = () => { ws.send(JSON.stringify({ type: 'SUBSCRIBE', data: instrumentTokens })); };
     ws.onmessage = (event: any) => {
@@ -220,10 +222,22 @@ async function runMonitor(req: Request): Promise<Response> {
         const token = String(trade.instrumentToken);
         let ltp: number;
         
+        let ltpSourceThis = ltpSource;
         if (wsLtp[token] !== undefined && wsLtp[token] > 0) {
           ltp = Math.round(wsLtp[token] * 100) / 100;
         } else {
-          ltp = Math.round(estimateLTP(trade, market.nifty, market.vix) * 100) / 100;
+          ltp = Math.round(estimateLTP(trade, market) * 100) / 100;
+          ltpSourceThis = 'BlackScholes';
+        }
+        // SANITY GUARD (9 Oct 2026 corrupt-exit fix): an option premium cannot
+        // move ~4x+ beyond entry in one cycle. Reject implausible LTPs (the old
+        // bug: WS outage -> BS fallback priced BANKNIFTY strikes with NIFTY spot
+        // -> fake ~32k premiums -> phantom TP3 exits). Fall back to last known
+        // price, which makes exit evaluation a safe no-op for this cycle.
+        const entryP = Number(trade.entryPrice) || 0;
+        if (entryP > 0 && (ltp < entryP * 0.25 || ltp > entryP * 3.5)) {
+          ltp = Math.round((Number(trade.price ?? trade.entryPrice) || entryP) * 100) / 100;
+          ltpSourceThis = ltpSourceThis + ':REJECTED_IMPLAUSIBLE';
         }
         
         const currentPeak = Math.max(trade.peakLtp || trade.entryPrice, ltp);
@@ -257,7 +271,7 @@ async function runMonitor(req: Request): Promise<Response> {
           }
           iterationResults.push({
             iteration: i+1, timestamp: ts, instrumentToken: trade.instrumentToken,
-            symbol: trade.symbol, ltp, ltpSource, peakLtp: currentPeak, trailingStop: currentTrailing,
+            symbol: trade.symbol, ltp, ltpSource: ltpSourceThis, peakLtp: currentPeak, trailingStop: currentTrailing,
             nifty: market.nifty, vix: market.vix, status: 'EXIT', exitReason, pnl,
             order: { id: order.id, status: order.status, price: order.price, error: order.error || null }
           });
@@ -265,7 +279,7 @@ async function runMonitor(req: Request): Promise<Response> {
         } else {
           iterationResults.push({
             iteration: i+1, timestamp: ts, instrumentToken: trade.instrumentToken,
-            symbol: trade.symbol, ltp, ltpSource, peakLtp: currentPeak, trailingStop: currentTrailing,
+            symbol: trade.symbol, ltp, ltpSource: ltpSourceThis, peakLtp: currentPeak, trailingStop: currentTrailing,
             nifty: market.nifty, vix: market.vix, status: 'HOLD', pnl,
             entryPrice: trade.entryPrice, sl: initialSL,
             tp1: trade.tp1, tp2: trade.tp2, tp3: trade.tp3

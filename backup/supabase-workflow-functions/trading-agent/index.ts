@@ -206,17 +206,28 @@ Deno.serve(async (req) => {
       if (side && slots > 0) {
         const norm = (s: any) => String(s || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
         const openSyms = new Set((openTrades || []).map((t: any) => norm(t.symbol)));
-        // re-entry cooldown: don't re-buy a strike that exited within the last 60 min (prevents whipsaw re-entry)
+        // re-entry cooldown: don't re-buy a strike that exited within the last 120 min
+        // (raised from 60 on 9 Oct: 77% of all exits were trailing-stop whipsaw at avg -566 each)
         let cooldownSyms = new Set<string>();
         try {
-          const recentClosed = await dbList(`ai_trades?execution_status=eq.CLOSED&updated_date=gte.${new Date(Date.now() - 60 * 60e3).toISOString()}&select=symbol`);
+          const recentClosed = await dbList(`ai_trades?execution_status=eq.CLOSED&updated_date=gte.${new Date(Date.now() - 120 * 60e3).toISOString()}&select=symbol`);
           cooldownSyms = new Set((recentClosed || []).map((t: any) => norm(t.symbol)));
         } catch (_) {}
+        // daily entry cap: max 4 entries per index per day (9 Oct churn fix — was 9-23 entries/day)
+        const idxOf = (s: string) => { const u = String(s || "").toUpperCase(); return u.startsWith("BANKNIFTY") ? "BANKNIFTY" : u.startsWith("SENSEX") ? "SENSEX" : "NIFTY"; };
+        const dayCounts: Record<string, number> = { NIFTY: 0, BANKNIFTY: 0, SENSEX: 0 };
+        try {
+          const istMid = new Date(Date.now() + 5.5 * 3600e3); istMid.setUTCHours(0, 0, 0, 0);
+          const since = new Date(istMid.getTime() - 5.5 * 3600e3).toISOString();
+          const todays = await dbList(`ai_trades?created_date=gte.${since}&qty=gt.0&select=symbol`);
+          for (const t of todays || []) dayCounts[idxOf(String(t.symbol))] = (dayCounts[idxOf(String(t.symbol))] || 0) + 1;
+        } catch (_) {}
+        const cappedIdx = (o: any) => dayCounts[idxOf(String(o.tradingSymbol || ""))] >= 4;
         const blocked = new Set([...openSyms, ...cooldownSyms]);
         const allCandidates = optionSignals.filter((o: any) => o.type === side && o.tradingSymbol && o.instrumentToken);
         allCandidates.sort((a: any, b: any) => ((a.underlying === "NIFTY") ? 0 : 1) - ((b.underlying === "NIFTY") ? 0 : 1)); // NIFTY weekly first
-        const candidates = allCandidates.filter((o: any) => !blocked.has(norm(o.tradingSymbol)) && !blocked.has(norm(o.symbol)));
-        if (allCandidates.length > 0 && candidates.length === 0) result.entries_note = "signal strike already in an open position or exited <60 min ago — no re-entry";
+        const candidates = allCandidates.filter((o: any) => !blocked.has(norm(o.tradingSymbol)) && !blocked.has(norm(o.symbol)) && !cappedIdx(o));
+        if (allCandidates.length > 0 && candidates.length === 0) result.entries_note = "signal strike already held, exited <120 min ago, or index hit its 4-entries/day cap — no re-entry";
         const chosen = candidates[0]; // ATM-strike signal for the nearest weekly expiry, not already held
         if (chosen && chosen.strike && chosen.tradingSymbol) {
           // position size: maxPositionSize / premium, rounded down to lot 65
