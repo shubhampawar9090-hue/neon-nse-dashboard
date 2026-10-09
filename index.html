@@ -3000,14 +3000,15 @@ setInterval(function(){vpFastPoll();},1500);
 // every 1s for open option positions into stock_ticks; this loop surfaces that
 // feed live on the dashboard, polling once per second.
 function optTickLoop(){
+  var gEl=document.getElementById('optTickBody');if(!gEl)return;
   var syms=(vpCache.open||[]).map(function(t){return t.symbol;}).filter(Boolean);
-  if(!syms.length){g('optTickBody').innerHTML='<tr><td colspan="4" class="empty-row">No open options to stream</td></tr>';return;}
-  fetch(SUPABASE_URL+'/rest/v1/stock_ticks?symbol=in.('+encodeURIComponent(syms.join(','))+')&order=tick_time.desc&limit=25&select=symbol,price,tick_time',{headers:H})
+  if(!syms.length){gEl.innerHTML='<tr><td colspan="4" class="empty-row">No open options to stream</td></tr>';return;}
+  fetch(SUPABASE_URL+'/rest/v1/stock_ticks?symbol=in.('+encodeURIComponent(syms.join(','))+')&order=tick_time.desc&limit=25&select=symbol,price,tick_time',{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}})
     .then(function(r){return r.json();})
     .then(function(rows){
       if(!rows||rows.error||!rows.length)return;
       var lastP={};
-      g('optTickBody').innerHTML=rows.map(function(r){
+      gEl.innerHTML=rows.map(function(r){
         var t=new Date(String(r.tick_time).replace(' ','T'));
         var ist=new Date(t.getTime()+5.5*3600e3);
         var hh=('0'+ist.getUTCHours()).slice(-2)+':'+('0'+ist.getUTCMinutes()).slice(-2)+':'+('0'+ist.getUTCSeconds()).slice(-2);
