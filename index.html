@@ -2275,6 +2275,13 @@ body {
             <div class="port-card"><div class="port-card-label">Realized P&L</div><div class="port-card-value" id="vpRealized">—</div><div class="port-card-sub">closed trades</div></div>
             <div class="port-card"><div class="port-card-label">Equity</div><div class="port-card-value" id="vpEquity">—</div><div class="port-card-sub" id="vpEquitySub">cash + positions</div></div>
           </div>
+          <div class="port-cards" id="vpTotals">
+            <div class="port-card"><div class="port-card-label">Total Trades</div><div class="port-card-value" id="vpTotTrades">—</div><div class="port-card-sub">since 4 Sep reset</div></div>
+            <div class="port-card"><div class="port-card-label">Wins / Losses</div><div class="port-card-value" id="vpTotWL">—</div><div class="port-card-sub">closed trades</div></div>
+            <div class="port-card"><div class="port-card-label">Win Rate</div><div class="port-card-value" id="vpWinRate">—</div><div class="port-card-sub">wins ÷ total</div></div>
+            <div class="port-card"><div class="port-card-label">Avg / Trade</div><div class="port-card-value" id="vpAvgPnl">—</div><div class="port-card-sub">per closed trade</div></div>
+            <div class="port-card"><div class="port-card-label">Today's P&L</div><div class="port-card-value" id="vpTodayPnl">—</div><div class="port-card-sub">closed today (IST)</div></div>
+          </div>
           <div class="divider"><span class="divider-text">📋 AI OPEN POSITIONS</span><span class="divider-line"></span></div>
           <div class="port-tbl-wrap">
             <table class="port-table">
@@ -2855,9 +2862,11 @@ async function vportLoad(){
     var p=[
       fetch(SUPABASE_URL+'/rest/v1/virtual_account?select=*&limit=1',{headers:H}),
       fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.OPEN&qty=gt.0&select=id,symbol,qty,entry_price,price,peak_ltp,trailing_stop,sl,tp1,tp2,tp3,instrument_token,created_date&order=created_date.desc&limit=20',{headers:H}),
-      fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.CLOSED&select=id,symbol,qty,entry_price,price,pnl,reason,updated_date&order=updated_date.desc&limit=15',{headers:H})
+      fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.CLOSED&select=id,symbol,qty,entry_price,price,pnl,reason,updated_date&order=updated_date.desc&limit=15',{headers:H}),
+      fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.CLOSED&created_date=gte.2026-09-05T00:00:00Z&select=pnl,created_date&limit=1000',{headers:H})
     ];
     var rs=await Promise.all(p);
+    vpStatsRender(await rs[3].json()||[]);
     var va=(await rs[0].json())[0]||{};
     vpCache.open=(await rs[1].json())||[];
     vpCache.hist=(await rs[2].json())||[];
@@ -2869,6 +2878,28 @@ async function vportLoad(){
     vportRender();
     vpWsSubscribe();
   }catch(e){console.error('vportLoad',e);}
+}
+function vpStatsRender(rows){
+  var g=function(id){return document.getElementById(id);};
+  var n=0,wins=0,losses=0,sum=0,today=0;
+  var istToday=new Date(Date.now()+5.5*3600e3);istToday.setUTCHours(0,0,0,0);
+  var todayMs=istToday.getTime()-5.5*3600e3;
+  rows.forEach(function(r){
+    var p=Number(r.pnl);if(r.pnl==null||isNaN(p))return;
+    n++;sum+=p;if(p>0)wins++;else if(p<0)losses++;
+    if(new Date(r.created_date).getTime()>=todayMs)today+=p;
+  });
+  if(g('vpTotTrades')){
+    g('vpTotTrades').textContent=n;
+    g('vpTotWL').innerHTML='<span class="pos">'+wins+'</span> / <span class="neg">'+losses+'</span>';
+    g('vpWinRate').textContent=n?((wins/n)*100).toFixed(1)+'%':'—';
+    var avg=n?sum/n:0;var ae=g('vpAvgPnl');
+    ae.textContent=(avg>=0?'+':'-')+'\u20B9'+fmtN(Math.abs(avg));
+    ae.style.color=avg>=0?'var(--green,#22c55e)':'var(--red,#ef4444)';
+    var te=g('vpTodayPnl');
+    te.textContent=(today>=0?'+':'-')+'\u20B9'+fmtN(Math.abs(today));
+    te.style.color=today>=0?'var(--green,#22c55e)':'var(--red,#ef4444)';
+  }
 }
 function vportRender(){
   var g=function(id){return document.getElementById(id);};
