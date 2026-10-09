@@ -203,6 +203,25 @@ Deno.serve(async (req) => {
         } catch (_) {}
       }
 
+      // ---- intraday momentum guard (9 Oct 2026): don't fight the day's direction ----
+      if (side) {
+        try {
+          const mres = await fetch(`${SB}/functions/v1/get-nse-data`, { method: "POST", headers: { "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY") || ""}`, "Content-Type": "application/json" }, body: JSON.stringify({ symbols: ["^NSEI"] }) });
+          const mj = await mres.json();
+          const idx: any = ((mj.data || []).find((p: any) => p.symbol === "^NSEI")) || {};
+          const price = Number(idx.price || 0); const prev = Number(idx.previousClose || idx.prev_close || 0);
+          const pct = Number(idx.changePercent ?? idx.change ?? (prev ? (price / prev - 1) * 100 : 0));
+          if (side === "PE" && pct > 0.6) { side = null; result.entries_note = `momentum guard: NIFTY +${pct.toFixed(2)}% today — PE entry blocked (don't fight the rally)`; }
+          else if (side === "CE" && pct < -0.6) { side = null; result.entries_note = `momentum guard: NIFTY ${pct.toFixed(2)}% today — CE entry blocked (don't fight the fall)`; }
+        } catch (_) {}
+      }
+      // ---- dead-hour guard (9 Oct 2026): no new entries 10:00-10:59 IST ----
+      // (backtest since 5 Sep: 24 entries in that hour, net -₹5,337, only ~19-29% win rate — worst window of the day)
+      if (side) {
+        const dI = new Date(Date.now() + 5.5 * 3600e3);
+        const hmI = dI.getUTCHours() * 60 + dI.getUTCMinutes();
+        if (hmI >= 600 && hmI < 660) { side = null; result.entries_note = "dead-hour guard: no new entries 10:00-10:59 IST (historically the worst window)"; }
+      }
       if (side && slots > 0) {
         const norm = (s: any) => String(s || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
         const openSyms = new Set((openTrades || []).map((t: any) => norm(t.symbol)));
