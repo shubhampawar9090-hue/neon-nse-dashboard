@@ -3901,8 +3901,14 @@ function tvGetTickers() {
 }
 
 // Poll TradingView scanner API for real-time data
+var tvInFlight = false;
+var tvFailCount = 0;
+var tvLastPollAt = 0;
+
 function tvPollScanner() {
-  if (!tvActive) return;
+  if (!tvActive || document.hidden) return;
+  if (tvInFlight) return;
+  tvInFlight = true;
   
   var info = tvGetTickers();
   if (info.tickers.length === 0) return;
@@ -3977,10 +3983,14 @@ function tvPollScanner() {
     
     // Render header ticker
     renderHeaderStockTicker();
+    
+    tvFailCount = 0;
   })
   .catch(function(e) {
-    console.error('TV: Scanner poll failed', e);
-  });
+    tvFailCount++;
+    console.error('TV: Scanner poll failed (x' + tvFailCount + ')', e);
+  })
+  .then(function(){ tvInFlight = false; });
 }
 
 // Update a single stock row in the movers tables
@@ -4137,9 +4147,15 @@ function startTradingViewTicks() {
   tvActive = true;
   // Initial poll immediately
   tvPollScanner();
-  // Set up polling interval (every 2 seconds)
+  // Per-second live polling (1s cadence; adaptive backoff to 15s if the
+  // scanner endpoint errors/rate-limits, auto-resets to 1s on success)
   if (!tvPollInterval) {
-    tvPollInterval = setInterval(tvPollScanner, 15000);
+    tvPollInterval = setInterval(function(){
+      var backoff = tvFailCount >= 1 ? Math.min(1000 * Math.pow(2, tvFailCount), 15000) : 1000;
+      if (Date.now() - tvLastPollAt < backoff - 50) return;
+      tvLastPollAt = Date.now();
+      tvPollScanner();
+    }, 250);
   }
   tvUpdateButton();
   console.log('TV: Starting real-time polling from TradingView scanner API...');
