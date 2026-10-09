@@ -2713,7 +2713,7 @@ function renderIndexPriceCards(){
     var d=ipcCache[sym];
     var pfx=ipcSymbols[sym].prefix;
     if(!d){
-      document.getElementById(pfx+'Price').textContent='—['+(window._vixDbg||'none')+']';
+      document.getElementById(pfx+'Price').textContent='—';
       return;
     }
     var isPos=d.chg>=0;
@@ -3920,7 +3920,6 @@ function tvPollScanner() {
   
   // Server-side proxy (stock-ltp-live edge function): browsers get blocked by
   // scanner.tradingview.com (CORS/403), so per-second polls route through Supabase.
-  window._vixDbg='S:'+info.tickers.length+':'+(info.tickers.indexOf('NSE:INDIAVIX')>=0?'v':'-');
   var body = JSON.stringify({ symbols: info.tickers });
   
   fetch(SUPABASE_URL + '/functions/v1/stock-ltp-live', {
@@ -3930,8 +3929,7 @@ function tvPollScanner() {
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    if (!data || !data.data) { window._vixDbg='F:none'; return; }
-    window._vixDbg='F:'+data.data.length+':'+(JSON.stringify(data.data).indexOf('INDIAVIX')>=0?'v':'-');
+    if (!data || !data.data) return;
     
     data.data.forEach(function(item) {
       var ticker = item.ticker || item.s; // e.g. "NSE:RELIANCE" or "BSE:SENSEX"
@@ -3950,7 +3948,6 @@ function tvPollScanner() {
       // Check if it's an index (TradingView ticker -> Yahoo Finance symbol)
       if (tvIndexMap[ticker]) {
         var yhSym = tvIndexMap[ticker]; // e.g. '^NSEI'
-        if(yhSym==='^INDIAVIX')window._vixDbg='I:'+close;
         ipcCache[yhSym] = {
           price: close, prev: close - changeAbs, open: open,
           high: high, low: low, chg: changeAbs, pct: changePct
