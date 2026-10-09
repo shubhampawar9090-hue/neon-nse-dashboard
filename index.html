@@ -2758,8 +2758,85 @@ function schedHeaderIndices(){
 }
 
 // ==== MEGABULL WEBSOCKET LIVE FEED (NIFTY / BANKNIFTY / SENSEX) ====
+// ===== TradingView PUSH WebSocket: sub-second index ticks (push, not poll) =====
+var tvPushWs=null,tvPushAlive=false,tvPushRetry=0,tvPushTimer=null,tvPushLastTs=0;
+var TV_PUSH_IDX=['NSE:NIFTY','NSE:BANKNIFTY','BSE:SENSEX','NSE:INDIAVIX'];
+function tvPushSend(msg){
+  if(!tvPushWs||tvPushWs.readyState!==1)return;
+  try{tvPushWs.send('~m~'+msg.length+'~m~'+msg);}catch(e){}
+}
+function tvPushBadge(on){
+  var el=document.getElementById('tvPushBadge');
+  if(!el){var t=document.getElementById('tickText');if(!t)return;el=document.createElement('span');el.id='tvPushBadge';t.parentNode.appendChild(el);}
+  el.textContent=on?'TV PUSH ·0ms':'';
+  el.style.cssText='margin-left:8px;font-size:10px;font-weight:800;letter-spacing:1px;color:'+(on?'var(--cyan)':'transparent');
+}
+function tvPushFrame(p){
+  if(p.indexOf('~h~')===0){tvPushSend(p);return;} // heartbeat echo
+  if(p.charAt(0)!=='{')return;
+  var j;try{j=JSON.parse(p);}catch(e){return;}
+  var msgs=j&&j.m==='qsd'?[j]:(Array.isArray(j)?j.filter(function(x){return x&&x.m==='qsd';}):[]);
+  msgs.forEach(function(q){
+    var d=q.p&&q.p[0];if(!d||d.s!=='ok'||!d.n)return;
+    var yh=tvIndexMap[d.n];if(!yh)return;
+    var v=d.v||{};var lp=v.lp;if(lp==null)return;
+    var old=ipcCache[yh]||{};
+    var prev=v.prev_close_price!=null?v.prev_close_price:(old.prev!=null?old.prev:lp);
+    ipcCache[yh]={price:lp,prev:prev,
+      open:v.open!=null?v.open:(old.open!=null?old.open:lp),
+      high:v.high!=null?Math.max(v.high,old.high||v.high):Math.max(lp,old.high||lp),
+      low:v.low!=null?Math.min(v.low,old.low||v.low):Math.min(lp,old.low||lp),
+      chg:v.ch!=null?v.ch:(lp-prev),pct:v.chp!=null?v.chp:(prev?((lp-prev)/prev*100):0)};
+    headerIdxCache[yh]={price:lp,change:v.ch!=null?v.ch:(lp-prev),changePercent:v.chp!=null?v.chp:0};
+    var wasAlive=tvPushAlive;
+    tvPushAlive=true;window.tvPushAlive=true;tvPushLastTs=Date.now();
+    if(!wasAlive)tvPushBadge(true);
+    renderIndexPriceCards();
+    renderHeaderIndices();
+  });
+}
+function tvPushConnect(){
+  if(tvPushTimer){clearTimeout(tvPushTimer);tvPushTimer=null;}
+  if(!window.WebSocket||!mktOpen()){tvPushTimer=setTimeout(tvPushConnect,30000);return;}
+  try{tvPushWs.close();}catch(e){}
+  try{tvPushWs=new WebSocket('wss://data.tradingview.com/socket.io/?from=title%3A%22%22&transport=websocket');}
+  catch(e){tvPushRetry++;tvPushTimer=setTimeout(tvPushConnect,Math.min(5000*Math.pow(2,tvPushRetry),60000));return;}
+  tvPushWs.onopen=function(){
+    tvPushRetry=0;
+    var qs=Math.random().toString(36).substring(2,14);
+    var cs=Math.random().toString(36).substring(2,14);
+    tvPushSend('set_auth_token unauthorized_user_token');
+    tvPushSend('chart_create_session '+cs+' ""');
+    tvPushSend('quote_create_session '+qs);
+    tvPushSend('quote_set_fields '+qs+' lp,ch,chp,open,high,low,prev_close_price');
+    tvPushSend('quote_add_symbols '+qs+' '+TV_PUSH_IDX.join(' '));
+  };
+  tvPushWs.onmessage=function(ev){
+    var s=String(ev.data||'');
+    var re=/~m~(\d+)~m~/g,m;
+    while((m=re.exec(s))){
+      var len=+m[1];
+      var p=s.substr(re.lastIndex,len);
+      re.lastIndex+=len;
+      tvPushFrame(p);
+    }
+  };
+  tvPushWs.onclose=function(){
+    tvPushAlive=false;window.tvPushAlive=false;tvPushBadge(false);
+    tvPushRetry++;tvPushTimer=setTimeout(tvPushConnect,Math.min(5000*Math.pow(2,tvPushRetry),60000));
+  };
+  tvPushWs.onerror=function(){try{tvPushWs.close();}catch(e){}};
+}
+// staleness watchdog: if pushes stop without a close event, reconnect
+setInterval(function(){
+  if(tvPushAlive&&tvPushLastTs&&Date.now()-tvPushLastTs>15000){
+    tvPushAlive=false;window.tvPushAlive=false;
+    try{tvPushWs.close();}catch(e){}
+  }
+},10000);
+
 // Ticks arrive as {instrumentToken: ltp} maps from wss://socket.megabull.in
-var MEGA_WS_TOKENS={'^NSEI':'256265','^NSEBANK':'260105','^BSESN':'265'};
+var MEGA_WS_TOKENS={'^NSEI':'256265','^NSEBANK':'260105','^BSESN':'265','^INDIAVIX':'264969'};
 var megaWsAlive=false,megaWs=null,megaWsRetry=0,megaWsTimer=null;
 
 async function megaWsInit(){
@@ -2783,6 +2860,7 @@ async function megaWsInit(){
     var m;try{m=JSON.parse(ev.data);}catch(e){return;}
     if(!m||typeof m!=='object')return;
     Object.keys(MEGA_WS_TOKENS).forEach(function(sym){
+      if(window.tvPushAlive)return; // sub-second TV push owns the cards when live
       var ltp=m[MEGA_WS_TOKENS[sym]];
       if(ltp==null)return;
       var d=ipcCache[sym];
@@ -2818,6 +2896,7 @@ function megaWsBadge(on){
 
 // defer boot until all top-level consts (SUPABASE_KEY) are initialized
 setTimeout(function(){megaWsInit();},2500);
+setTimeout(function(){tvPushConnect();},3500);
 setInterval(function(){if(megaWsAlive&&mktOpen()&&megaWs&&megaWs.readyState!==1){try{megaWs.close();}catch(e){}}},60000);
 
 // ==== AI VIRTUAL PORTFOLIO (virtual broker ledger + live WS LTP) ====
@@ -3947,6 +4026,7 @@ function tvPollScanner() {
       
       // Check if it's an index (TradingView ticker -> Yahoo Finance symbol)
       if (tvIndexMap[ticker]) {
+        if (window.tvPushAlive) return; // sub-second TV push owns indices when live
         var yhSym = tvIndexMap[ticker]; // e.g. '^NSEI'
         ipcCache[yhSym] = {
           price: close, prev: close - changeAbs, open: open,
