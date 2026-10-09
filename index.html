@@ -2841,8 +2841,8 @@ setInterval(function(){
 },10000);
 
 // Ticks arrive as {instrumentToken: ltp} maps from wss://socket.megabull.in
-var MEGA_WS_TOKENS={'^NSEI':'256265','^NSEBANK':'260105','^BSESN':'265','^INDIAVIX':'264969'};
-var megaWsAlive=false,megaWs=null,megaWsRetry=0,megaWsTimer=null;
+var MEGA_WS_TOKENS={'^NSEI':'256265','^NSEBANK':'260105','^INDIAVIX':'264969'}; // SENSEX token 265 is FROZEN in MegaBull feed — TV owns SENSEX
+var megaWsAlive=false,megaWs=null,megaWsRetry=0,megaWsTimer=null;var mbIdxFresh={};
 
 async function megaWsInit(){
   if(megaWsTimer){clearTimeout(megaWsTimer);megaWsTimer=null;}
@@ -2868,6 +2868,7 @@ async function megaWsInit(){
       if(window.tvPushAlive)return; // sub-second TV push owns the cards when live
       var ltp=m[MEGA_WS_TOKENS[sym]];
       if(ltp==null)return;
+      mbIdxFresh[sym]=Date.now();
       var d=ipcCache[sym];
       if(!d){d={prev:ltp,open:ltp,high:ltp,low:ltp};}
       d.price=ltp;d.chg=ltp-d.prev;d.pct=d.prev?((ltp-d.prev)/d.prev*100):0;
@@ -4033,6 +4034,9 @@ function tvPollScanner() {
       if (tvIndexMap[ticker]) {
         if (window.tvPushAlive) return; // sub-second TV push owns indices when live
         var yhSym = tvIndexMap[ticker]; // e.g. '^NSEI'
+        // MegaBull WS is fresher for NIFTY/BANKNIFTY/VIX (TV scanner lags ~50pts on BANKNIFTY);
+        // TV owns SENSEX (MegaBull token 265 frozen) and takes over any index MegaBull hasn't ticked in 10s
+        if (yhSym !== '^BSESN' && window.megaWsAlive && Date.now() - (mbIdxFresh[yhSym] || 0) < 10000) return;
         ipcCache[yhSym] = {
           price: close, prev: close - changeAbs, open: open,
           high: high, low: low, chg: changeAbs, pct: changePct
