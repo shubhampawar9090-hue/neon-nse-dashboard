@@ -2285,15 +2285,15 @@ body {
           <div class="divider"><span class="divider-text">📋 AI OPEN POSITIONS</span><span class="divider-line"></span></div>
           <div class="port-tbl-wrap">
             <table class="port-table">
-              <thead><tr><th>Instrument</th><th>Qty</th><th>Entry</th><th>LTP</th><th>Peak</th><th>SL</th><th>Trail</th><th>TP1/2/3</th><th>P&L</th></tr></thead>
-              <tbody id="vpBody"><tr><td colspan="9" class="port-loading">Loading AI positions</td></tr></tbody>
+              <thead><tr><th>#</th><th>Instrument</th><th>Qty</th><th>Entry</th><th>LTP</th><th>Peak</th><th>SL</th><th>Trail</th><th>TP1/2/3</th><th>P&L</th></tr></thead>
+              <tbody id="vpBody"><tr><td colspan="10" class="port-loading">Loading AI positions</td></tr></tbody>
             </table>
           </div>
           <div class="divider" style="margin-top:20px"><span class="divider-text">📜 AI TRADE HISTORY</span><span class="divider-line"></span></div>
           <div class="port-tbl-wrap">
             <table class="port-table">
-              <thead><tr><th>Instrument</th><th>Qty</th><th>Entry</th><th>Exit</th><th>Exit Reason</th><th>P&L</th><th>Closed</th></tr></thead>
-              <tbody id="vpHistBody"><tr><td colspan="7" class="port-loading">Loading history</td></tr></tbody>
+              <thead><tr><th>#</th><th>Instrument</th><th>Qty</th><th>Entry</th><th>Exit</th><th>Exit Reason</th><th>P&L</th><th>Closed</th></tr></thead>
+              <tbody id="vpHistBody"><tr><td colspan="8" class="port-loading">Loading history</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -2817,6 +2817,7 @@ setInterval(function(){if(megaWsAlive&&mktOpen()&&megaWs&&megaWs.readyState!==1)
 var VP_TOKENS={};               // instrumentToken -> {id, entry, qty}
 var vpCache={cash:0,start:0,realized:0,open:[],hist:[],ltp:{}};
 var vpWsLast={};
+var vpNums={};
 
 function megaWsTokenList(){
   var toks=Object.keys(MEGA_WS_TOKENS).map(function(s){return MEGA_WS_TOKENS[s];});
@@ -2863,9 +2864,11 @@ async function vportLoad(){
       fetch(SUPABASE_URL+'/rest/v1/virtual_account?select=*&limit=1',{headers:H}),
       fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.OPEN&qty=gt.0&select=id,symbol,qty,entry_price,price,peak_ltp,trailing_stop,sl,tp1,tp2,tp3,instrument_token,created_date&order=created_date.desc&limit=20',{headers:H}),
       fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.CLOSED&select=id,symbol,qty,entry_price,price,pnl,reason,updated_date&order=updated_date.desc&limit=15',{headers:H}),
-      fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.CLOSED&created_date=gte.2026-09-05T00:00:00Z&select=pnl,created_date&limit=1000',{headers:H})
+      fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&execution_status=eq.CLOSED&created_date=gte.2026-09-05T00:00:00Z&select=pnl,created_date&limit=1000',{headers:H}),
+      fetch(SUPABASE_URL+'/rest/v1/ai_trades?broker=eq.VIRTUAL&created_date=gte.2026-09-05T00:00:00Z&select=id&order=created_date.asc&limit=1000',{headers:H})
     ];
     var rs=await Promise.all(p);
+    vpNums={};(await rs[4].json()||[]).forEach(function(r,i){vpNums[r.id]=i+1;});
     vpStatsRender(await rs[3].json()||[]);
     var va=(await rs[0].json())[0]||{};
     vpCache.open=(await rs[1].json())||[];
@@ -2912,6 +2915,7 @@ function vportRender(){
     var pnl=(l-Number(t.entry_price))*Number(t.qty);
     var pct=(((l/Number(t.entry_price))-1)*100).toFixed(1)+'%';
     return '<tr data-vptok="'+t.instrument_token+'">'+
+      '<td class="muted">'+(vpNums[t.id]!=null?vpNums[t.id]:'-')+'</td>'+
       '<td><b>'+vpPretty(t.symbol)+'</b></td><td>'+t.qty+'</td>'+
       '<td>'+fmtN(t.entry_price)+'</td><td class="vpltp">'+fmtN(l)+'</td>'+
       '<td>'+fmtN(t.peak_ltp||t.entry_price)+'</td>'+
@@ -2919,14 +2923,14 @@ function vportRender(){
       '<td>'+(t.trailing_stop!=null?fmtN(t.trailing_stop):'-')+'</td>'+
       '<td style="font-size:10px">'+(t.tp1!=null?fmtN(t.tp1):'-')+' / '+(t.tp2!=null?fmtN(t.tp2):'-')+' / '+(t.tp3!=null?fmtN(t.tp3):'-')+'</td>'+
       '<td>'+vpPnlCell(pnl,pct)+'</td></tr>';
-  }).join(''):'<tr><td colspan="9" class="empty-row">No open AI positions</td></tr>';
+  }).join(''):'<tr><td colspan="10" class="empty-row">No open AI positions</td></tr>';
   g('vpHistBody').innerHTML=vpCache.hist.length?vpCache.hist.map(function(t){
     var p=Number(t.pnl||0);
     var when=t.updated_date?new Date(t.updated_date).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'-';
     var reason=((t.reason||'').replace(/VIRTUAL FILL \(paper broker\) \u2014 /i,'').split(':')[0]||'').slice(0,40);
-    return '<tr><td><b>'+vpPretty(t.symbol)+'</b></td><td>'+t.qty+'</td><td>'+fmtN(t.entry_price)+'</td><td>'+fmtN(t.price)+'</td>'+
+    return '<tr><td class="muted">'+(vpNums[t.id]!=null?vpNums[t.id]:'-')+'</td><td><b>'+vpPretty(t.symbol)+'</b></td><td>'+t.qty+'</td><td>'+fmtN(t.entry_price)+'</td><td>'+fmtN(t.price)+'</td>'+
       '<td style="font-size:10px">'+reason+'</td><td>'+vpPnlCell(p)+'</td><td style="font-size:10px">'+when+'</td></tr>';
-  }).join(''):'<tr><td colspan="7" class="empty-row">No closed AI trades yet</td></tr>';
+  }).join(''):'<tr><td colspan="8" class="empty-row">No closed AI trades yet</td></tr>';
   vpUpdateHead();
   var b=g('vpLiveBadge');
   if(b){b.textContent=megaWsAlive?'\u25CF LIVE LTP':'\u25CF LTP PENDING';b.style.color=megaWsAlive?'var(--green,#22c55e)':'var(--text2)';}

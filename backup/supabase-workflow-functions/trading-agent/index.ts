@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
         } catch (_) {}
         const cappedIdx = (o: any) => dayCounts[idxOf(String(o.tradingSymbol || ""))] >= 4;
         const blocked = new Set([...openSyms, ...cooldownSyms]);
-        const allCandidates = optionSignals.filter((o: any) => o.type === side && o.tradingSymbol && o.instrumentToken);
+        const allCandidates = optionSignals.filter((o: any) => o.type === side && o.tradingSymbol && o.instrumentToken && !String(o.tradingSymbol).toUpperCase().startsWith("BANKNIFTY")); // BANKNIFTY entries blocked (user instruction, 9 Oct 2026)
         allCandidates.sort((a: any, b: any) => ((a.underlying === "NIFTY") ? 0 : 1) - ((b.underlying === "NIFTY") ? 0 : 1)); // NIFTY weekly first
         const candidates = allCandidates.filter((o: any) => !blocked.has(norm(o.tradingSymbol)) && !blocked.has(norm(o.symbol)) && !cappedIdx(o));
         if (allCandidates.length > 0 && candidates.length === 0) result.entries_note = "signal strike already held, exited <120 min ago, or index hit its 4-entries/day cap — no re-entry";
