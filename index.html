@@ -2713,7 +2713,7 @@ function renderIndexPriceCards(){
     var d=ipcCache[sym];
     var pfx=ipcSymbols[sym].prefix;
     if(!d){
-      document.getElementById(pfx+'Price').textContent='—';
+      document.getElementById(pfx+'Price').textContent='—['+(window._vixDbg||'none')+']';
       return;
     }
     var isPos=d.chg>=0;
@@ -3920,6 +3920,7 @@ function tvPollScanner() {
   
   // Server-side proxy (stock-ltp-live edge function): browsers get blocked by
   // scanner.tradingview.com (CORS/403), so per-second polls route through Supabase.
+  window._vixDbg='S:'+info.tickers.length+':'+(info.tickers.indexOf('NSE:INDIAVIX')>=0?'v':'-');
   var body = JSON.stringify({ symbols: info.tickers });
   
   fetch(SUPABASE_URL + '/functions/v1/stock-ltp-live', {
@@ -3929,24 +3930,27 @@ function tvPollScanner() {
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    if (!data || !data.data) return;
+    if (!data || !data.data) { window._vixDbg='F:none'; return; }
+    window._vixDbg='F:'+data.data.length+':'+(JSON.stringify(data.data).indexOf('INDIAVIX')>=0?'v':'-');
     
     data.data.forEach(function(item) {
       var ticker = item.ticker || item.s; // e.g. "NSE:RELIANCE" or "BSE:SENSEX"
-      var d = item.d;
-      if (item.price == null && (!d || d.length < 7)) return;
+      var d = item.d || [];
+      if (item.price == null && d.length < 7) return;
       
       var close = item.price != null ? item.price : d[0];
-      var changePct = item.changePercent != null ? item.changePercent : d[1];
-      var changeAbs = item.changeAbs != null ? item.changeAbs : d[2];
-      var volume = item.volume != null ? item.volume : d[3];
-      var high = item.high != null ? item.high : d[4];
-      var low = item.low != null ? item.low : d[5];
-      var open = item.open != null ? item.open : d[6];
+      if (close == null) return;
+      var changePct = item.changePercent != null ? item.changePercent : (d[1] != null ? d[1] : 0);
+      var changeAbs = item.changeAbs != null ? item.changeAbs : (d[2] != null ? d[2] : 0);
+      var volume = item.volume != null ? item.volume : (d[3] != null ? d[3] : 0);
+      var high = item.high != null ? item.high : (d[4] != null ? d[4] : close);
+      var low = item.low != null ? item.low : (d[5] != null ? d[5] : close);
+      var open = item.open != null ? item.open : (d[6] != null ? d[6] : close);
       
       // Check if it's an index (TradingView ticker -> Yahoo Finance symbol)
       if (tvIndexMap[ticker]) {
         var yhSym = tvIndexMap[ticker]; // e.g. '^NSEI'
+        if(yhSym==='^INDIAVIX')window._vixDbg='I:'+close;
         ipcCache[yhSym] = {
           price: close, prev: close - changeAbs, open: open,
           high: high, low: low, chg: changeAbs, pct: changePct
