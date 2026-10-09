@@ -3917,14 +3917,13 @@ function tvPollScanner() {
   info.stocks.forEach(function(s) { tvStockSubscribed.add(s); });
   tvUpdateButton();
   
-  var body = JSON.stringify({
-    symbols: { tickers: info.tickers, query: { types: [] } },
-    columns: TV_COLUMNS
-  });
+  // Server-side proxy (stock-ltp-live edge function): browsers get blocked by
+  // scanner.tradingview.com (CORS/403), so per-second polls route through Supabase.
+  var body = JSON.stringify({ symbols: info.tickers });
   
-  fetch(TV_SCAN_URL, {
+  fetch(SUPABASE_URL + '/functions/v1/stock-ltp-live', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY },
     body: body
   })
   .then(function(r) { return r.json(); })
@@ -3932,17 +3931,17 @@ function tvPollScanner() {
     if (!data || !data.data) return;
     
     data.data.forEach(function(item) {
-      var ticker = item.s; // e.g. "NSE:RELIANCE" or "BSE:SENSEX"
+      var ticker = item.ticker || item.s; // e.g. "NSE:RELIANCE" or "BSE:SENSEX"
       var d = item.d;
-      if (!d || d.length < 7) return;
+      if (item.price == null && (!d || d.length < 7)) return;
       
-      var close = d[0];
-      var changePct = d[1];
-      var changeAbs = d[2];
-      var volume = d[3];
-      var high = d[4];
-      var low = d[5];
-      var open = d[6];
+      var close = item.price != null ? item.price : d[0];
+      var changePct = item.changePercent != null ? item.changePercent : d[1];
+      var changeAbs = item.changeAbs != null ? item.changeAbs : d[2];
+      var volume = item.volume != null ? item.volume : d[3];
+      var high = item.high != null ? item.high : d[4];
+      var low = item.low != null ? item.low : d[5];
+      var open = item.open != null ? item.open : d[6];
       
       // Check if it's an index (TradingView ticker -> Yahoo Finance symbol)
       if (tvIndexMap[ticker]) {
@@ -3958,7 +3957,7 @@ function tvPollScanner() {
         renderHeaderIndices();
       } else {
         // Extract stock symbol from ticker (remove "NSE:" prefix)
-        var sym = ticker.replace('NSE:', '').replace('BSE:', '');
+        var sym = item.symbol || ticker.replace('NSE:', '').replace('BSE:', '');
         
         // Update stock cache
         tvStockCache[sym] = {
@@ -4022,8 +4021,8 @@ function tvUpdateRow(sym, price, chg, pct) {
       }
     }
     
-    // Update change% cell
-    var chgCell = row.querySelector('.chg-cell, td:nth-child(4)');
+    // Update change% cell (column 7 in both movers and F&O tables)
+    var chgCell = row.querySelector('.chg-cell, td:nth-child(7)');
     if (chgCell) {
       chgCell.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
       chgCell.style.color = pct >= 0 ? '#00d084' : '#d9304e';
