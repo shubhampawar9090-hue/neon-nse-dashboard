@@ -2841,7 +2841,9 @@ setInterval(function(){
 },10000);
 
 // Ticks arrive as {instrumentToken: ltp} maps from wss://socket.megabull.in
-var MEGA_WS_TOKENS={'^NSEI':'256265','^NSEBANK':'260105','^INDIAVIX':'264969'}; // SENSEX token 265 is FROZEN in MegaBull feed — TV owns SENSEX
+var MEGA_WS_TOKENS={'^NSEI':'256265','^NSEBANK':'260105','^INDIAVIX':'264969','^BSESN':'265'}; // all 4 indices via MegaBull WS (265 SENSEX revived 12 Oct 2026); TV = 10s-staleness fallback
+// ==== MEGABULL EQUITY FEED — all stock prices from MegaBull WS per se (12 Oct 2026) ====
+var mbStockTok={},mbTokSym={},mbStockFresh={},mbStocksLoaded=false;
 var megaWsAlive=false,megaWs=null,megaWsRetry=0,megaWsTimer=null;var mbIdxFresh={};
 
 async function megaWsInit(){
@@ -2879,6 +2881,27 @@ async function megaWsInit(){
     });
     renderIndexPriceCards();
     renderHeaderIndices();
+    // equity ticks -> stock cache (primary feed; TV proxy only for >10s stale)
+    var sym,stkHit=false;
+    Object.keys(mbTokSym).forEach(function(tok){
+      var ltp=m[tok];
+      if(ltp==null)return;
+      sym=mbTokSym[tok];
+      mbStockFresh[sym]=Date.now();
+      var c=tvStockCache[sym]||{};
+      var pc=c.prevClose;
+      var chg=(pc!=null)?(ltp-pc):(c.chg!=null?c.chg:0);
+      var pct=(pc)?((ltp-pc)/pc*100):(c.pct!=null?c.pct:0);
+      tvStockCache[sym]={price:ltp,chg:chg,pct:pct,
+        open:(c.open!=null?c.open:ltp),
+        high:(c.high!=null&&c.high>ltp?c.high:ltp),
+        low:(c.low!=null&&c.low<ltp?c.low:ltp),
+        prevClose:pc,volume:c.volume};
+      tvUpdateRow(sym,ltp,chg,pct);
+      updateLiveTickLTP(sym,ltp,pct,(c.open!=null?c.open:ltp),chg);
+      stkHit=true;
+    });
+    if(stkHit){tvResortMovers();renderHeaderStockTicker();}
     vpWsTick(m);
   };
   megaWs.onclose=function(){
@@ -2896,12 +2919,12 @@ function megaWsBadge(on){
     el=document.createElement('span');el.id='megaWsBadge';
     t.parentNode.appendChild(el);
   }
-  el.textContent=on?'MEGA WS LIVE':'MEGA WS OFF';
+  el.textContent=on?('MEGA WS LIVE'+(mbStocksLoaded?' \u00b7 '+Object.keys(mbStockTok).length+' stocks':'')):'MEGA WS OFF';
   el.style.cssText='margin-left:8px;font-size:10px;font-family:inherit;letter-spacing:1px;color:'+(on?'var(--green)':'var(--text2)');
 }
 
 // defer boot until all top-level consts (SUPABASE_KEY) are initialized
-setTimeout(function(){megaWsInit();},2500);
+setTimeout(function(){megaWsInit();mbLoadInstruments();},2500);
 setTimeout(function(){tvPushConnect();},3500);
 setInterval(function(){if(megaWsAlive&&mktOpen()&&megaWs&&megaWs.readyState!==1){try{megaWs.close();}catch(e){}}},60000);
 
@@ -2913,7 +2936,37 @@ var vpNums={};
 
 function megaWsTokenList(){
   var toks=Object.keys(MEGA_WS_TOKENS).map(function(s){return MEGA_WS_TOKENS[s];});
-  return toks.concat(Object.keys(VP_TOKENS));
+  toks=toks.concat(Object.keys(VP_TOKENS));
+  if(mbStocksLoaded)toks=toks.concat(Object.keys(mbStockTok).map(function(s){return mbStockTok[s];}));
+  return toks;
+}
+function mbLoadInstruments(){
+  if(mbStocksLoaded)return;
+  try{
+    var c=JSON.parse(sessionStorage.getItem('mbInst')||'null');
+    if(c&&c.at&&Date.now()-c.at<12*3600e3){mbApplyInstruments(c);return;}
+  }catch(e){}
+  fetch(SUPABASE_EDGE_BASE+'/mb-instruments',{headers:{'Authorization':'Bearer '+SUPABASE_KEY}})
+    .then(function(r){return r.json();})
+    .then(function(j){
+      if(!j||!j.ok)return;
+      try{sessionStorage.setItem('mbInst',JSON.stringify(j));}catch(e){}
+      mbApplyInstruments(j);
+    })
+    .catch(function(){setTimeout(mbLoadInstruments,60000);});
+}
+function mbApplyInstruments(j){
+  mbStockTok={};mbTokSym={};
+  (j.idx||{}); // index tokens already in MEGA_WS_TOKENS
+  (j.eq||[]).forEach(function(p){
+    var s=p[0],t=p[1];
+    if(s==='SENSEX')return;                 // 265 handled as ^BSESN index
+    if(!s||!t)return;
+    mbStockTok[s]=t;mbTokSym[t]=s;
+  });
+  mbStocksLoaded=true;
+  try{if(megaWs&&megaWs.readyState===1)megaWs.send(JSON.stringify({type:'SUBSCRIBE',data:megaWsTokenList()}));}catch(e){}
+  megaWsBadge(megaWsAlive);
 }
 function vpWsSubscribe(){
   try{if(megaWs&&megaWs.readyState===1){megaWs.send(JSON.stringify({type:'SUBSCRIBE',data:megaWsTokenList()}));}}catch(e){}
@@ -4036,7 +4089,7 @@ function tvPollScanner() {
         var yhSym = tvIndexMap[ticker]; // e.g. '^NSEI'
         // MegaBull WS is fresher for NIFTY/BANKNIFTY/VIX (TV scanner lags ~50pts on BANKNIFTY);
         // TV owns SENSEX (MegaBull token 265 frozen) and takes over any index MegaBull hasn't ticked in 10s
-        if (yhSym !== '^BSESN' && window.megaWsAlive && Date.now() - (mbIdxFresh[yhSym] || 0) < 10000) return;
+        if (window.megaWsAlive && Date.now() - (mbIdxFresh[yhSym] || 0) < 10000) return;
         ipcCache[yhSym] = {
           price: close, prev: close - changeAbs, open: open,
           high: high, low: low, chg: changeAbs, pct: changePct
@@ -4062,6 +4115,11 @@ function tvPollScanner() {
           volume: volume
         };
         
+        if (window.megaWsAlive && Date.now() - (mbStockFresh[sym] || 0) < 10000) {
+          // keep prevClose learned but let MegaBull own price
+          var cc = tvStockCache[sym]; if (cc) cc.prevClose = close - changeAbs;
+          return;
+        }
         // Update the table row
         tvUpdateRow(sym, close, changeAbs, changePct);
         updateLiveTickLTP(sym, close, changePct, open, close - changeAbs);
