@@ -2876,6 +2876,35 @@ function staleBanner(on){
   if(el)el.style.display=on?'block':'none';
 }
 var staleSince=0,watchdogBootAt=Date.now();
+// BUILD SELF-UPDATER (12 Oct 2026): browsers/GitHub Pages cache old builds for
+// up to 10 min after every deploy -> user sees frozen dashboards. This checks
+// for a newer BUILD_STAMP every 5 min (+ on tab focus) with a no-store fetch
+// and reloads when a new build ships. Reload guarded to 3/15 min.
+var BUILD_STAMP='20261012-1236';
+function checkNewBuild(){
+  if(location.protocol==='file:')return;
+  fetch(location.pathname+'?buildcheck='+Date.now(),{cache:'no-store'})
+    .then(function(r){return r.text();})
+    .then(function(t){
+      var m=t.match(/BUILD_STAMP='([^']+)'/);
+      if(!m||m[1]===BUILD_STAMP)return;
+      try{
+        var rl=JSON.parse(sessionStorage.getItem('buildReloads')||'[]');
+        rl=rl.filter(function(x){return Date.now()-x<900000;});
+        if(rl.length>=3)return;
+        rl.push(Date.now());sessionStorage.setItem('buildReloads',JSON.stringify(rl));
+      }catch(e){}
+      try{
+        var el=document.getElementById('staleBanner');
+        if(el){el.textContent='NEW VERSION — updating…';el.style.display='block';el.style.background='#1a5c8b';}
+      }catch(e){}
+      location.reload();
+    })
+    .catch(function(){});
+}
+setInterval(checkNewBuild,300000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(checkNewBuild,4000);});
+setTimeout(checkNewBuild,45000); // first check 45s after load
 setInterval(function(){
   if(!mktOpen()){staleSince=0;staleBanner(false);return;}
   var last=window.__lastIdxPaint||0;
