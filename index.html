@@ -1631,144 +1631,155 @@ body {
 }
 </style>
 <style>
-/* ================= CLEAN LIGHT FINTECH THEME v1 (13 Oct 2026) =================
-   Light brokerage look (Zerodha/Groww style): off-white bg, white cards,
-   blue #2563eb accent, soft shadows. Overrides PRO GLOW v2. */
+/* ================= DENSE PRO DARK THEME v1 (13 Oct 2026) =================
+   Institutional quant terminal: charcoal #111418, solid sharp cards,
+   teal/lime accents, monospace numerics, high information density. */
 
 :root {
-  --bg: #f6f8fb;
-  --bg2: #eef2f7;
-  --card: #ffffff;
-  --card2: #f8fafc;
-  --green: #16a34a;
-  --green-dim: #dcfce7;
-  --red: #dc2626;
-  --red-dim: #fee2e2;
-  --yellow: #ca8a04;
-  --yellow-dim: #fef9c3;
-  --cyan: #2563eb;
-  --amber: #d97706;
-  --orange: #ea580c;
-  --purple: #7c3aed;
-  --text: #0f172a;
-  --text2: #64748b;
-  --border: #e2e8f0;
-  --border2: #cbd5e1;
+  --bg: #111418;
+  --bg2: #0e1116;
+  --card: #151920;
+  --card2: #1a1f27;
+  --green: #a3e635;
+  --green-dim: #1a2e10;
+  --red: #ff5f56;
+  --red-dim: #3a1512;
+  --yellow: #fbbf24;
+  --yellow-dim: #3a2c08;
+  --cyan: #14b8a6;
+  --amber: #f59e0b;
+  --orange: #fb923c;
+  --purple: #a78bfa;
+  --text: #e8ebf1;
+  --text2: #8b95a5;
+  --border: #232936;
+  --border2: #2d3444;
 }
 
-/* --- flat light background, no ambient glows --- */
+/* --- flat charcoal background, monospace terminal type --- */
 body {
-  background: #f6f8fb !important;
+  background: #111418 !important;
   background-image: none !important;
   color: var(--text);
+  font-family: "IBM Plex Mono", "JetBrains Mono", "Courier New", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
 }
 
-/* --- solid white cards, soft shadow, no glass --- */
+/* --- solid sharp cards, no glass, no glow --- */
 .idx-pcard, .panel, .port-card, .sig-card, .mode-row, .gauge-card {
-  background: #ffffff !important;
+  background: #151920 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border: 1px solid var(--border) !important;
-  box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 4px 14px rgba(15,23,42,.06) !important;
-  color: var(--text);
+  border: 1px solid #232936 !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
 }
-
-/* --- index cards: soft accent borders --- */
-.idx-pcard { transition: transform .2s ease, box-shadow .2s ease; }
 .idx-pcard:hover {
-  transform: translateY(-2px);
-  border-color: #bfdbfe !important;
-  box-shadow: 0 6px 18px rgba(37,99,235,.14) !important;
+  transform: translateY(-1px);
+  border-color: #14b8a6 !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,.4) !important;
 }
-.idx-pcard.banknifty { border-color: #bfdbfe !important; }
-.idx-pcard.sensex { border-color: #fde68a !important; }
-.idx-pcard.vix { border-color: #ddd6fe !important; }
+.idx-pcard.banknifty { border-color: #1f3d3a !important; }
+.idx-pcard.sensex { border-color: #3a3324 !important; }
+.idx-pcard.vix { border-color: #332d47 !important; }
 
 /* --- kill all text glows --- */
 .port-card-value, .idx-pcard .p-val, .divider-text, .pos, .neg, .tick-badge { text-shadow: none !important; }
 
-/* --- signal cards: colored side bar, clean white --- */
-.sig-card.buy { border-color: #bbf7d0 !important; box-shadow: inset 3px 0 0 #16a34a, 0 1px 2px rgba(15,23,42,.05), 0 4px 14px rgba(15,23,42,.06) !important; }
-.sig-card.sell { border-color: #fecaca !important; box-shadow: inset 3px 0 0 #dc2626, 0 1px 2px rgba(15,23,42,.05), 0 4px 14px rgba(15,23,42,.06) !important; }
-.sig-card.hold { border-color: #fde68a !important; box-shadow: inset 3px 0 0 #d97706, 0 1px 2px rgba(15,23,42,.05), 0 4px 14px rgba(15,23,42,.06) !important; }
-.sig-card.buy:hover { box-shadow: inset 3px 0 0 #16a34a, 0 8px 20px rgba(22,163,74,.12) !important; }
-.sig-card.sell:hover { box-shadow: inset 3px 0 0 #dc2626, 0 8px 20px rgba(220,38,38,.12) !important; }
-.sig-card.hold:hover { box-shadow: inset 3px 0 0 #d97706, 0 8px 20px rgba(217,119,6,.12) !important; }
-.sig-card:hover .sl-tp .box { background-color: #f8fafc !important; }
+/* --- signal cards: side-coded bars, solid surfaces --- */
+.sig-card.buy { border-color: #2a3d1a !important; box-shadow: inset 3px 0 0 #a3e635 !important; }
+.sig-card.sell { border-color: #3d1f1e !important; box-shadow: inset 3px 0 0 #ff5f56 !important; }
+.sig-card.hold { border-color: #3d3419 !important; box-shadow: inset 3px 0 0 #fbbf24 !important; }
+.sig-card.buy:hover { box-shadow: inset 3px 0 0 #a3e635, 0 3px 12px rgba(0,0,0,.5) !important; }
+.sig-card.sell:hover { box-shadow: inset 3px 0 0 #ff5f56, 0 3px 12px rgba(0,0,0,.5) !important; }
+.sig-card.hold:hover { box-shadow: inset 3px 0 0 #fbbf24, 0 3px 12px rgba(0,0,0,.5) !important; }
+.sig-card:hover .sl-tp .box { background-color: #1a1f27 !important; }
 
-/* --- header: white bar, hairline border --- */
+/* --- header: dark bar, teal hairline --- */
 .top-header {
-  background: #ffffff !important;
+  background: #0e1116 !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  border-bottom: 1px solid var(--border) !important;
-  box-shadow: 0 1px 3px rgba(15,23,42,.06) !important;
+  border-bottom: 1px solid #232936 !important;
+  box-shadow: 0 1px 0 rgba(20,184,166,.35) !important;
 }
 #idxStrip .idx-card {
-  background: #f8fafc !important;
-  border-color: var(--border) !important;
+  background: #151920 !important;
+  border-color: #232936 !important;
+  border-radius: 3px !important;
   backdrop-filter: none !important;
 }
 
-/* --- sidebar: light, blue active pill --- */
+/* --- sidebar: darker rail, teal active bar --- */
+.sidebar { background-color: #0e1116 !important; border-right: 1px solid #232936 !important; }
+.sidebar-item { letter-spacing: 1px; font-size: 12px; }
 .sidebar-item.active {
-  background: #eff6ff !important;
-  border-left: none;
-  box-shadow: inset 3px 0 0 #2563eb !important;
-  color: #2563eb !important;
+  background: #16211f !important;
+  color: #14b8a6 !important;
+  box-shadow: inset 3px 0 0 #14b8a6 !important;
 }
-.sidebar-item:hover { background: #f1f5f9 !important; color: #2563eb !important; }
+.sidebar-item:hover { background: #14181f !important; color: #14b8a6 !important; }
+
+/* --- mobile nav --- */
+.mobile-nav { background-color: #0e1116 !important; border-top: 1px solid #232936 !important; }
 
 /* --- mode buttons --- */
+.mode-btn { border-radius: 3px !important; font-size: 11px !important; letter-spacing: .5px; }
 .mode-btn.active, .mode-btn.active.intraday, .mode-btn.active.swing {
   box-shadow: none !important;
-  background: #2563eb !important;
-  color: #ffffff !important;
-  border-color: #2563eb !important;
+  background: #14b8a6 !important;
+  color: #0e1116 !important;
+  border-color: #14b8a6 !important;
+  font-weight: 700;
 }
-.mode-btn:hover:not(.active) { background: #eff6ff !important; color: #2563eb !important; border-color: #bfdbfe !important; }
+.mode-btn:hover:not(.active) { background: #14181f !important; color: #14b8a6 !important; border-color: #1f3d3a !important; box-shadow: none !important; }
 
-/* --- tables --- */
-.tbl thead th { background: #f8fafc !important; color: #475569 !important; border-bottom: 1px solid var(--border) !important; }
-.tbl tr:hover td { background-color: #eff6ff !important; box-shadow: inset 2px 0 0 #2563eb; }
-.compare-tbl tr:hover td, .lt-tbl tr:hover { background-color: #eff6ff !important; }
-.tbl td { border-bottom: 1px solid #eef2f7; }
+/* --- dense tables --- */
+.tbl thead th { background: #0e1116 !important; color: #8b95a5 !important; font-size: 10px !important; text-transform: uppercase; letter-spacing: .8px; border-bottom: 1px solid #232936 !important; padding: 7px 10px !important; }
+.tbl td { font-size: 12px !important; padding: 6px 10px !important; border-bottom: 1px solid #1b2028; }
+.tbl tr:hover td { background-color: rgba(20,184,166,.07) !important; box-shadow: inset 2px 0 0 #14b8a6; }
+.compare-tbl tr:hover td, .lt-tbl tr:hover { background-color: rgba(20,184,166,.07) !important; }
+.lt-tbl td { font-size: 12px !important; }
 
-/* --- buttons / selects --- */
+/* --- panels --- */
+.panel:hover { border-color: #2d3444 !important; box-shadow: none !important; }
+.panel:hover .panel-hdr { background-color: #1a1f27 !important; }
+.panel-hdr { font-size: 11px !important; letter-spacing: 1px; }
+.divider-text { letter-spacing: 2px; font-size: 12px !important; }
+.divider:hover .divider-text { color: #14b8a6 !important; }
+
+/* --- buttons / selects: sharp, quiet --- */
 .btn-refresh, .port-refresh-btn, .chart-select, .news-filter-btn, .news-refresh-btn {
-  background: #ffffff !important;
-  border: 1px solid var(--border2) !important;
-  color: var(--text) !important;
+  background: #151920 !important;
+  border: 1px solid #2d3444 !important;
+  border-radius: 3px !important;
+  color: #e8ebf1 !important;
+  box-shadow: none !important;
 }
 .btn-refresh:hover, .port-refresh-btn:hover, .news-refresh-btn:hover {
-  border-color: #2563eb !important;
-  color: #2563eb !important;
-  background: #eff6ff !important;
-  box-shadow: 0 2px 8px rgba(37,99,235,.12) !important;
+  border-color: #14b8a6 !important;
+  color: #14b8a6 !important;
+  background: #14181f !important;
+  box-shadow: none !important;
 }
-.chart-select:hover { border-color: #2563eb !important; color: #2563eb !important; }
-.panel:hover { border-color: var(--border2) !important; box-shadow: 0 1px 2px rgba(15,23,42,.05), 0 6px 18px rgba(15,23,42,.08) !important; }
-.panel:hover .panel-hdr { background-color: #f8fafc !important; }
+.chart-select:hover { border-color: #14b8a6 !important; color: #14b8a6 !important; }
+.mn-btn:hover, .mn-btn:active { color: #14b8a6 !important; background-color: #14181f !important; }
 
-/* --- misc chrome --- */
-.mn-btn:hover, .mn-btn:active { color: #2563eb !important; background-color: #eff6ff !important; }
-.divider:hover .divider-text { color: #2563eb !important; }
-::-webkit-scrollbar { width: 9px; height: 9px; }
-::-webkit-scrollbar-track { background: #f1f5f9; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid #f1f5f9; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-* { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f1f5f9; }
-::selection { background: rgba(37,99,235,.18); color: inherit; }
+/* --- chrome --- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0e1116; }
+::-webkit-scrollbar-thumb { background: #2d3444; border-radius: 0; border: none; }
+::-webkit-scrollbar-thumb:hover { background: #3d4658; }
+* { scrollbar-width: thin; scrollbar-color: #2d3444 #0e1116; }
+::selection { background: rgba(20,184,166,.30); color: #fff; }
 
-/* --- news/mood accents kept semantic --- */
-.news-panel { background-color: #ffffff; border: 1px solid var(--border); }
-.news-mood-bar { background: #f8fafc; }
-.news-card { background: #ffffff; }
-.news-card:hover { border-color: #2563eb; box-shadow: 0 4px 12px rgba(15,23,42,.08); }
-.news-filter-btn.active { background: #2563eb; color: #ffffff; border-color: #2563eb; }
-/* --- sidebar + mobile nav: light --- */
-.sidebar { background-color: #ffffff !important; border-right: 1px solid var(--border) !important; }
-.mobile-nav { background-color: #ffffff !important; border-top: 1px solid var(--border) !important; }
+/* --- news accents --- */
+.news-panel { background-color: #151920; border: 1px solid #232936; border-radius: 4px; }
+.news-mood-bar { background: #0e1116; }
+.news-card { background: #151920; }
+.news-card:hover { border-color: #14b8a6; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+.news-filter-btn.active { background: #14b8a6; color: #0e1116; border-color: #14b8a6; }
 </style>
 </head>
 <body>
@@ -3023,7 +3034,7 @@ var staleSince=0,watchdogBootAt=Date.now();
 // up to 10 min after every deploy -> user sees frozen dashboards. This checks
 // for a newer BUILD_STAMP every 5 min (+ on tab focus) with a no-store fetch
 // and reloads when a new build ships. Reload guarded to 3/15 min.
-var BUILD_STAMP='20261013-0030';
+var BUILD_STAMP='20261013-0035';
 function checkNewBuild(){
   if(location.protocol==='file:')return;
   fetch(location.pathname+'?buildcheck='+Date.now(),{cache:'no-store'})
