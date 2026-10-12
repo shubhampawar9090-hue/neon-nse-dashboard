@@ -2858,6 +2858,7 @@ function megaWsBadge(on){
 
 // defer boot until all top-level consts (SUPABASE_KEY) are initialized
 setTimeout(function(){megaWsInit();mbLoadInstruments();},2500);
+setTimeout(function(){try{mbIdxRelay();}catch(e){}},1500); // fresh MB index prices within ~2s of load, before MB WS boots
 setTimeout(function(){tvPushConnect();},3500);
 setInterval(function(){if(megaWsAlive&&mktOpen()&&megaWs&&megaWs.readyState!==1){try{megaWs.close();}catch(e){}}},60000);
 // INDEX-FEED WATCHDOG v2 (12 Oct 2026): if no index card repaint for 25s during
