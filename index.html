@@ -2722,23 +2722,6 @@ var MEGA_WS_TOKENS={'^NSEI':'256265','^NSEBANK':'260105','^INDIAVIX':'264969','^
 var mbStockTok={},mbTokSym={},mbStockFresh={},mbStocksLoaded=false;
 var megaWsAlive=false,megaWs=null,megaWsRetry=0,megaWsTimer=null;var mbIdxFresh={};
 
-async function megaWsInit(){
-  if(megaWsTimer){clearTimeout(megaWsTimer);megaWsTimer=null;}
-  if(!mktOpen()){megaWsRetry=0;megaWsTimer=setTimeout(megaWsInit,30000);return;}
-  var j;
-  try{
-    var res=await fetch(SUPABASE_EDGE_BASE+'/get-mega-jwt',{headers:{'Authorization':'Bearer '+SUPABASE_KEY}});
-    j=await res.json();
-    if(!j.success||!j.token)throw new Error('no token');
-  }catch(e){
-    megaWsTimer=setTimeout(megaWsInit,Math.min(5000*Math.pow(2,megaWsRetry++),60000));return;
-  }
-  try{megaWs.close();}catch(e){}
-  megaWs=new WebSocket('wss://socket.megabull.in?id='+encodeURIComponent(j.token));
-  megaWs.onopen=function(){
-    megaWsAlive=true;window.megaWsAlive=true;megaWsRetry=0;megaWsBadge(true);
-    try{megaWs.send(JSON.stringify({type:'SUBSCRIBE',data:megaWsTokenList()}));}catch(e){}
-  };
 // LIVE PRICE PATCH (12 Oct 2026): MegaBull WS ticks update signal-card prices in real time
 var sigCardSyms={};
 function sigKey(sym){return String(sym||'').replace(/\.(NS|BO)$/,'');}
@@ -2756,6 +2739,23 @@ function patchSigCard(sym,ltp,chg,pct){
     }
   }catch(e){}
 }
+async function megaWsInit(){
+  if(megaWsTimer){clearTimeout(megaWsTimer);megaWsTimer=null;}
+  if(!mktOpen()){megaWsRetry=0;megaWsTimer=setTimeout(megaWsInit,30000);return;}
+  var j;
+  try{
+    var res=await fetch(SUPABASE_EDGE_BASE+'/get-mega-jwt',{headers:{'Authorization':'Bearer '+SUPABASE_KEY}});
+    j=await res.json();
+    if(!j.success||!j.token)throw new Error('no token');
+  }catch(e){
+    megaWsTimer=setTimeout(megaWsInit,Math.min(5000*Math.pow(2,megaWsRetry++),60000));return;
+  }
+  try{megaWs.close();}catch(e){}
+  megaWs=new WebSocket('wss://socket.megabull.in?id='+encodeURIComponent(j.token));
+  megaWs.onopen=function(){
+    megaWsAlive=true;window.megaWsAlive=true;megaWsRetry=0;megaWsBadge(true);
+    try{megaWs.send(JSON.stringify({type:'SUBSCRIBE',data:megaWsTokenList()}));}catch(e){}
+  };
   megaWs.onmessage=function(ev){
     var m;try{m=JSON.parse(ev.data);}catch(e){return;}
     if(!m||typeof m!=='object')return;
