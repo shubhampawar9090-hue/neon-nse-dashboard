@@ -1,7 +1,7 @@
 // get-mega-jwt — fresh MegaBull JWT for the dashboard's live WebSocket feed.
 // Read-only purpose: the JWT powers wss://socket.megabull.in tick data (paper account).
 const MEGA_API = 'https://api.megabull.in';
-const MEGA_KEY = '5bd189e7-ef64-4571-82d1-d4c7eac7aa8f';
+const MEGA_KEY = 'a0ecbdf3-c729-4369-8dc4-6d73801d7783';
 const MEGA_EMAIL = 'shubhampawar9090@gmail.com';
 const MEGA_PASSWORD = 'NeonNSE@2026';
 

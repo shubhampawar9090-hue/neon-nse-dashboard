@@ -40,7 +40,7 @@ function notifyAgent(content: string) {
 // Data endpoints now require Authorization: Bearer <jwt>; if the stored JWT is
 // expired/missing we sign in, persist the fresh JWT to ai_agent_config, and retry once.
 const MEGA_API = 'https://api.megabull.in';
-const MEGA_KEY = '5bd189e7-ef64-4571-82d1-d4c7eac7aa8f';
+const MEGA_KEY = 'a0ecbdf3-c729-4369-8dc4-6d73801d7783';
 const MEGA_EMAIL = 'shubhampawar9090@gmail.com';
 const MEGA_PASSWORD = 'NeonNSE@2026';
 const _SB = Deno.env.get("SUPABASE_URL") || "";
