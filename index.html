@@ -76,11 +76,14 @@ body {
   letter-spacing: 1.5px;
 }
 .logo-icon {
-  background: linear-gradient(135deg, var(--cyan), var(--green));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
+.logo-icon svg { display: block; }
+.logo-text b { color: var(--cyan); font-weight: 800; }
+.logo-text { font-weight: 700; }
 .idx-strip-header {
   display: flex;
   align-items: center;
@@ -1773,8 +1776,8 @@ body {
   <header class="top-header">
     <div class="th-left">
       <div class="logo">
-        <span class="logo-icon">▲</span>
-        <span class="logo-text">NSE TERMINAL</span>
+        <span class="logo-icon"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="NSE Terminal logo"><rect width="26" height="26" rx="7" fill="url(#nseLgG)"/><defs><linearGradient id="nseLgG" x1="0" y1="0" x2="26" y2="26" gradientUnits="userSpaceOnUse"><stop stop-color="#2563eb"/><stop offset="1" stop-color="#0f766e"/></linearGradient></defs><line x1="7" y1="9" x2="7" y2="21" stroke="#ffffff" stroke-opacity=".75" stroke-width="1.4"/><rect x="5.4" y="12" width="3.2" height="6.5" rx="1" fill="#ffffff"/><line x1="13" y1="7" x2="13" y2="20" stroke="#ffffff" stroke-opacity=".75" stroke-width="1.4"/><rect x="11.4" y="10" width="3.2" height="7" rx="1" fill="#ffffff"/><line x1="19" y1="5" x2="19" y2="17" stroke="#ffffff" stroke-opacity=".75" stroke-width="1.4"/><rect x="17.4" y="7.5" width="3.2" height="6.5" rx="1" fill="#ffffff"/><path d="M5.5 10.5 L10 7.5 L14.5 8.5 L20.5 4" stroke="#4ade80" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="logo-text"><b>NSE</b> TERMINAL</span>
       </div>
       <div class="idx-strip-header">
         <div id="idxStrip"></div>
@@ -3020,7 +3023,7 @@ var staleSince=0,watchdogBootAt=Date.now();
 // up to 10 min after every deploy -> user sees frozen dashboards. This checks
 // for a newer BUILD_STAMP every 5 min (+ on tab focus) with a no-store fetch
 // and reloads when a new build ships. Reload guarded to 3/15 min.
-var BUILD_STAMP='20261013-0025';
+var BUILD_STAMP='20261013-0030';
 function checkNewBuild(){
   if(location.protocol==='file:')return;
   fetch(location.pathname+'?buildcheck='+Date.now(),{cache:'no-store'})
