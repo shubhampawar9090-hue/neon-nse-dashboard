@@ -1763,8 +1763,9 @@ body {
 .news-card { background: #ffffff; }
 .news-card:hover { border-color: #2563eb; box-shadow: 0 4px 12px rgba(15,23,42,.08); }
 .news-filter-btn.active { background: #2563eb; color: #ffffff; border-color: #2563eb; }
-/* --- sidebar: light --- */
+/* --- sidebar + mobile nav: light --- */
 .sidebar { background-color: #ffffff !important; border-right: 1px solid var(--border) !important; }
+.mobile-nav { background-color: #ffffff !important; border-top: 1px solid var(--border) !important; }
 </style>
 </head>
 <body>
@@ -3019,7 +3020,7 @@ var staleSince=0,watchdogBootAt=Date.now();
 // up to 10 min after every deploy -> user sees frozen dashboards. This checks
 // for a newer BUILD_STAMP every 5 min (+ on tab focus) with a no-store fetch
 // and reloads when a new build ships. Reload guarded to 3/15 min.
-var BUILD_STAMP='20261013-0020';
+var BUILD_STAMP='20261013-0025';
 function checkNewBuild(){
   if(location.protocol==='file:')return;
   fetch(location.pathname+'?buildcheck='+Date.now(),{cache:'no-store'})
