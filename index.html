@@ -2739,6 +2739,23 @@ async function megaWsInit(){
     megaWsAlive=true;window.megaWsAlive=true;megaWsRetry=0;megaWsBadge(true);
     try{megaWs.send(JSON.stringify({type:'SUBSCRIBE',data:megaWsTokenList()}));}catch(e){}
   };
+// LIVE PRICE PATCH (12 Oct 2026): MegaBull WS ticks update signal-card prices in real time
+var sigCardSyms={};
+function sigKey(sym){return String(sym||'').replace(/\.(NS|BO)$/,'');}
+function patchSigCard(sym,ltp,chg,pct){
+  try{
+    var raw=sigCardSyms[sigKey(sym)];
+    if(!raw)return;
+    var pe=document.getElementById('scp-'+raw);
+    if(!pe)return;
+    pe.textContent=f(ltp);
+    var ce=document.getElementById('scc-'+raw);
+    if(ce){
+      ce.textContent=(pct>=0?'+':'')+ (Math.round(pct*100)/100) +'% ('+(chg>=0?'+':'')+f0(chg)+')';
+      ce.className='chg-val '+(pct>=0?'pos':'neg');
+    }
+  }catch(e){}
+}
   megaWs.onmessage=function(ev){
     var m;try{m=JSON.parse(ev.data);}catch(e){return;}
     if(!m||typeof m!=='object')return;
@@ -2754,6 +2771,7 @@ async function megaWsInit(){
       if(ltp<d.low)d.low=ltp;
       ipcCache[sym]=d;
       headerIdxCache[sym]={price:ltp,change:d.chg,changePercent:d.pct};
+      patchSigCard(sym,ltp,d.chg,d.pct);
     });
     renderIndexPriceCards();
     renderHeaderIndices();
@@ -2774,6 +2792,7 @@ async function megaWsInit(){
         low:(c.low!=null&&c.low<ltp?c.low:ltp),
         prevClose:pc,volume:c.volume};
       tvUpdateRow(sym,ltp,chg,pct);
+      patchSigCard(sym,ltp,chg,pct);
       updateLiveTickLTP(sym,ltp,pct,(c.open!=null?c.open:ltp),chg);
       stkHit=true;
     });
@@ -3231,8 +3250,9 @@ function renderCard(d){
     posBadge='<span class="pos-status '+psCls+'">'+psTxt+'</span>';
   }
   var sigTime=d.signalTime||new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST';
-  var h='<div class="sig-card '+cc+'"><div class="sc-head"><div><div class="sc-name">'+cs(d.symbol)+'</div><div class="sc-price">'+f(d.price)+'</div></div><div class="sc-badge '+bc+'">'+d.signal+'</div></div>'+
-    '<div class="sc-meta"><span class="chg-val '+ch+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(priceChange>=0?'+':'')+f0(priceChange)+')</span><span class="vol-txt">Vol: '+volStr+' ('+d.volumeRatio+'x)</span>'+posBadge+'</div>'+
+  try{sigCardSyms[sigKey(d.symbol)]=d.symbol;}catch(e){}
+  var h='<div class="sig-card '+cc+'"><div class="sc-head"><div><div class="sc-name">'+cs(d.symbol)+'</div><div class="sc-price" id="scp-'+d.symbol+'">'+f(d.price)+'</div></div><div class="sc-badge '+bc+'">'+d.signal+'</div></div>'+
+    '<div class="sc-meta"><span class="chg-val '+ch+'" id="scc-'+d.symbol+'">'+(d.changePercent>=0?'+':'')+d.changePercent+'% ('+(priceChange>=0?'+':'')+f0(priceChange)+')</span><span class="vol-txt">Vol: '+volStr+' ('+d.volumeRatio+'x)</span>'+posBadge+'</div>'+
     '<div class="sc-sigtime"><span class="sigtime-icon">⏱</span> Signal: '+sigTime+'</div>'+
     '<div class="sl-tp">'+
     '<div class="box sl"><div class="lbl">SL</div><div class="val">'+(sl!=null?f(sl):'—')+'</div></div>'+
