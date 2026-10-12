@@ -1643,7 +1643,7 @@ body {
     <div class="th-right">
       <div class="status-cluster">
         <span class="pill" id="statusPill"><span class="pill-dot" id="pillDot"></span><span id="pillText">CONNECTING</span></span>
-        <span class="clock">Yahoo Finance | <b id="clock">--:--:--</b> IST</span>
+        <span class="clock">TradingView · MegaBull | <b id="clock">--:--:--</b> IST</span>
         <button class="btn-refresh" onclick="loadAll();loadAllNsePrices()">↻ Refresh</button>
         <button class="btn-refresh" id="tvToggleBtn" onclick="toggleTradingView()" style="background:rgba(0,212,255,.15);border-color:#00d4ff;color:#00d4ff">TV: ON</button>
       </div>
@@ -2321,7 +2321,7 @@ body {
   </div>
 
 <script>
-// === Supabase Edge Functions (primary) with Yahoo Finance fallback ===
+// === Supabase Edge Functions (TradingView/MegaBull primary; Yahoo blocked) ===
 const SUPABASE_EDGE_BASE='https://jqmhcalsabexjjiceoux.supabase.co/functions/v1';
 const EDGE_PRICE_API=SUPABASE_EDGE_BASE+'/get-nse-data';
 const EDGE_TA_API=SUPABASE_EDGE_BASE+'/get-technical-analysis';
@@ -2364,133 +2364,9 @@ function calcVWAP(closes,volumes){
   return vv?pv/vv:0;
 }
 
-// === Fetch stock data directly from Yahoo Finance ===
-async function fetchStockData(symbol){
-  try{
-    var url=YF_BASE+symbol+'?interval=1d&range=5d';
-    var res=await fetch(url);
-    var j=await res.json();
-    var meta=j.chart.result[0].meta;
-    var price=meta.regularMarketPrice;
-    var allCandles1=j.chart.result[0].indicators.quote[0]||{};
-    var allCloses1=(allCandles1.close||[]).filter(function(v){return v!=null;});
-    var prev=allCloses1.length>=2?allCloses1[allCloses1.length-2]:(meta.chartPreviousClose||price);
-    var change=price-prev;
-    var changePercent=prev?(change/prev)*100:0;
-    var volumes=(j.chart.result[0].indicators.quote[0].volume||[]).filter(function(v){return v!=null;});
-    var recentVol=volumes.slice(-5);
-    var avgVol=recentVol.length?recentVol.reduce(function(a,b){return a+b},0)/recentVol.length:0;
-    var latestVol=volumes.pop()||0;
-    var volumeRatio=avgVol?(latestVol/avgVol):0;
-    return{
-      symbol:symbol,price:Math.round(price*100)/100,
-      change:Math.round(change*100)/100,
-      changePercent:Math.round(changePercent*100)/100,
-      volume:latestVol,volumeRatio:Math.round(volumeRatio*100)/100,
-      previousClose:prev,
-      dayHigh:meta.regularMarketDayHigh||price,
-      dayLow:meta.regularMarketDayLow||price,
-      fiftyTwoWeekHigh:meta.fiftyTwoWeekHigh||0,
-      fiftyTwoWeekLow:meta.fiftyTwoWeekLow||0,
-      error:false
-    };
-  }catch(e){return{symbol:symbol,price:0,change:0,changePercent:0,volumeRatio:0,error:true};}
-}
+// (direct Yahoo Finance stock fetch removed — data comes from TradingView/MegaBull edge functions)
 
-// === Fetch technical analysis directly from Yahoo Finance ===
-async function fetchTA(symbol,timeframe){
-  timeframe=timeframe||'intraday';
-  try{
-    var interval={'5m':'5m','15m':'15m','1h':'60m','swing':'1d'}[timeframe]||'5m';
-    var range={'5m':'1mo','15m':'1mo','1h':'3mo','swing':'6mo'}[timeframe]||'1mo';
-    var url=YF_BASE+symbol+'?interval='+interval+'&range='+range;
-    var res=await fetch(url);
-    var j=await res.json();
-    var result=j.chart.result[0];
-    var candles=result.indicators.quote[0];
-    var closes=(candles.close||[]).filter(function(v){return v!=null;});
-    var highs=(candles.high||[]).filter(function(v){return v!=null;});
-    var lows=(candles.low||[]).filter(function(v){return v!=null;});
-    var volumes=(candles.volume||[]).filter(function(v){return v!=null;});
-    if(closes.length<5)return{symbol:symbol,error:true};
-    var price=closes[closes.length-1];
-    // EMA
-    var emaPeriods={'5m':[5,13,26],'15m':[5,13,26],'1h':[9,21,50],'swing':[9,21,50]}[timeframe]||[5,13,26];
-    var emas={};
-    emaPeriods.forEach(function(p){
-      if(closes.length>=p){var e=calcEMA(closes,p);emas['ema'+p]=Math.round(e[e.length-1]*100)/100;}
-    });
-    // RSI
-    var rsi=Math.round(calcRSI(closes,14)*100)/100;
-    // ATR
-    var atr=Math.round(calcATR(highs,lows,closes,14)*100)/100;
-    // VWAP
-    var vwap=Math.round(calcVWAP(closes,volumes)*100)/100;
-    // S/R
-    var lookback={'5m':5,'15m':10,'1h':20,'swing':20}[timeframe]||5;
-    var recentHighs=highs.slice(-lookback),recentLows=lows.slice(-lookback);
-    var resistance=Math.round(Math.max.apply(null,recentHighs)*100)/100;
-    var support=Math.round(Math.min.apply(null,recentLows)*100)/100;
-    // Signal
-    var emaKeys=Object.keys(emas).map(function(k){return parseInt(k.replace('ema',''));});
-    var signal='NEUTRAL',buyScore=0,sellScore=0;
-    if(emaKeys.length>=2){
-      var shortEma=emas['ema'+emaKeys[0]],longEma=emas['ema'+emaKeys[1]];
-      if(shortEma>longEma){signal='BUY';buyScore+=30;}else{signal='SELL';sellScore+=30;}
-    }
-    if(rsi<30){buyScore+=25;signal='BUY';}
-    else if(rsi>70){sellScore+=25;signal='SELL';}
-    else{buyScore+=5;}
-    // SL/TP
-    var slMult=1.5;
-    var tpMult=[1,2,3];
-    var sl=Math.round((price-atr*slMult)*100)/100;
-    var tp1=Math.round((price+atr*tpMult[0])*100)/100;
-    var tp2=Math.round((price+atr*tpMult[1])*100)/100;
-    var tp3=Math.round((price+atr*tpMult[2])*100)/100;
-    // EMA crossover
-    var emaCrossover={golden:false,death:false,cross:'none'};
-    if(emaKeys.length>=2&&closes.length>emaKeys[1]){
-      var shortArr=calcEMA(closes,emaKeys[0]);
-      var longArr=calcEMA(closes,emaKeys[1]);
-      var lastIdx=shortArr.length-1;
-      if(lastIdx>0){
-        var wasBelow=shortArr[lastIdx-1]<=longArr[lastIdx-1];
-        var nowAbove=shortArr[lastIdx]>longArr[lastIdx];
-        var wasAbove=shortArr[lastIdx-1]>=longArr[lastIdx-1];
-        var nowBelow=shortArr[lastIdx]<longArr[lastIdx];
-        if(wasBelow&&nowAbove){emaCrossover.golden=true;emaCrossover.cross='golden';buyScore+=20;}
-        else if(wasAbove&&nowBelow){emaCrossover.death=true;emaCrossover.cross='death';sellScore+=20;}
-      }
-    }
-    // pctFrom52WeekHigh
-    var meta=result.meta||{};
-    var fiftyTwoWeekHigh=meta.fiftyTwoWeekHigh||Math.max.apply(null,highs);
-    var fiftyTwoWeekLow=meta.fiftyTwoWeekLow||Math.min.apply(null,lows);
-    var pctFrom52WeekHigh=fiftyTwoWeekHigh?Math.round((1-price/fiftyTwoWeekHigh)*100):0;
-    buyScore=Math.min(100,buyScore);sellScore=Math.min(100,sellScore);
-    // Volume ratio
-    var recentVol=volumes.slice(-5);
-    var avgVol=recentVol.length?recentVol.reduce(function(a,b){return a+b},0)/recentVol.length:0;
-    var latestVol=volumes.pop()||0;
-    var volRatio=avgVol?Math.round((latestVol/avgVol)*100)/100:0;
-    return{
-      symbol:symbol,price:Math.round(price*100)/100,
-      emas:emas,rsi,atr,vwap,support,resistance,
-      signal,buyScore,sellScore,sl,tp1,tp2,tp3,
-      emaCrossover,error:false,
-      fiftyTwoWeekHigh,fiftyTwoWeekLow,pctFrom52WeekHigh,
-      volumeRatio:volRatio,
-      dayHigh:meta.regularMarketDayHigh||price,
-      dayLow:meta.regularMarketDayLow||price,
-      previousClose:closes.length>=2?closes[closes.length-2]:(meta.chartPreviousClose||price),
-      change:Math.round((price-(closes.length>=2?closes[closes.length-2]:(meta.chartPreviousClose||price)))*100)/100,
-      changePercent:Math.round(((price-(closes.length>=2?closes[closes.length-2]:(meta.chartPreviousClose||price)))/(closes.length>=2?closes[closes.length-2]:(meta.chartPreviousClose||price))*100)*100)/100,
-      chartPattern:'—',trend:closes.length>5&&closes[closes.length-1]>closes[closes.length-5]?'Up':(closes[closes.length-1]<closes[closes.length-5]?'Down':'Sideways'),
-      orbSignal:'None'
-    };
-  }catch(e){return{symbol:symbol,error:true};}
-}
+// (direct Yahoo Finance TA fetch removed — TA comes from get-technical-analysis, TradingView-driven)
 var currentMode='5m';
 var taSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TMPV.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS','HCLTECH.NS','BAJFINANCE.NS','ASIANPAINT.NS','NESTLEIND.NS','ONGC.NS','NTPC.NS','POWERGRID.NS','COALINDIA.NS','ADANIENT.NS','ADANIPORTS.NS','TATASTEEL.NS','JSWSTEEL.NS','NAUKRI.NS','BSE.NS','DIXON.NS'];
 var pxSyms=['^NSEI','^BSESN','^NSEBANK','RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS','SBIN.NS','TMPV.NS','TITAN.NS','BHARTIARTL.NS','LT.NS','AXISBANK.NS','ITC.NS','KOTAKBANK.NS','MARUTI.NS','SUNPHARMA.NS','ULTRACEMCO.NS','WIPRO.NS','NAUKRI.NS','BSE.NS','DIXON.NS'];
@@ -2561,7 +2437,7 @@ function renderIndices(data){
   document.getElementById('idxStrip').innerHTML=h;
 }
 
-// === LIVE HEADER INDICES — fetches directly from Yahoo Finance ===
+// === LIVE HEADER INDICES — via TradingView edge proxy ===
 var headerIdxSymbols={'^NSEI':'NIFTY 50','^BSESN':'SENSEX','^NSEBANK':'BANKNIFTY'};
 var headerIdxCache={};
 
@@ -2645,7 +2521,7 @@ async function fetchIndexPriceCards(){
     });
   }catch(e){
     console.error('Index cards fetch failed:',e.message);
-    // Fallback: try Yahoo Finance directly (may fail due to CORS)
+    // Fallback: retry via the edge price proxy (TradingView)
     await Promise.all(symbols.map(async function(sym){
       try{
         var url=EDGE_PRICE_API;
@@ -3943,25 +3819,11 @@ async function loadAll(){
     showFetchError('Backend connection failed: '+e.message);
   }
   
-  // Fallback: try direct Yahoo Finance (may fail due to CORS)
-  if(!priceResults||!priceResults.length){
-    try{
-      priceResults=await Promise.all(pxSyms.map(fetchStockData));
-      priceResults=priceResults.filter(function(d){return !d.error;});
-    }catch(e){console.error('YF price fallback failed:',e);}
-  }
-  if(!taResults||!taResults.length){
-    console.log('Falling back to direct Yahoo Finance for TA...');
-    try{
-      taResults=await Promise.all(taSyms.map(function(s){return fetchTA(s,currentMode);}));
-      taResults=taResults.filter(function(d){return !d.error;});
-      console.log('Direct YF TA: '+taResults.length+' OK');
-    }catch(e){console.error('YF TA fallback failed:',e);}
-  }
+  // Yahoo Finance fallbacks removed (blocked). Edge functions are TradingView/MegaBull-driven.
   
   // Check if we have any data
   if((!priceResults||priceResults.length===0)&&(!taResults||taResults.length===0)){
-    showFetchError('Unable to fetch market data. Edge Functions and Yahoo Finance both failed.');
+    showFetchError('Unable to fetch market data from TradingView/MegaBull edge functions.');
     updStatus();
     return;
   }
@@ -4019,7 +3881,7 @@ var tvLastResort = 0; // timestamp of last re-sort
 var TV_SCAN_URL = 'https://scanner.tradingview.com/india/scan';
 var TV_COLUMNS = ['close', 'change', 'change_abs', 'volume', 'high', 'low', 'open', 'Recommend.All'];
 
-// Index symbol mapping: TradingView ticker -> Yahoo Finance symbol (for ipcCache)
+// Index symbol mapping: TradingView ticker -> internal symbol (for ipcCache)
 var tvIndexMap = {
   'NSE:NIFTY': '^NSEI',
   'BSE:SENSEX': '^BSESN',
@@ -4335,7 +4197,7 @@ function toggleTradingView() {
     tvEnabled = false;
     var btn = document.getElementById('tvToggleBtn');
     if (btn) { btn.textContent = 'TV: OFF'; btn.style.background = 'rgba(255,255,255,.05)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--muted)'; }
-    console.log('TV: Disabled, falling back to Yahoo Finance polling');
+    console.log('TV: Disabled, MegaBull WS + 1s TV proxy remain');
   } else {
     tvEnabled = true;
     startTradingViewTicks();
@@ -4520,9 +4382,9 @@ async function loadChart(sym){
     
     // Show data source indicator
     var srcEl=document.getElementById('chartSource');
-    if(srcEl){srcEl.textContent=json.source==='tradingview'?'⚡ TradingView':'Yahoo Finance';srcEl.style.color=json.source==='tradingview'?'#00d1ff':'#666';}
+    if(srcEl){srcEl.textContent=json.source==='tradingview'?'⚡ TradingView':'TradingView';srcEl.style.color='#00d1ff';}
     
-    chartData={meta:meta,closes:closes,highs:highs,lows:lows,volumes:volumes,timestamps:timestamps,sym:sym,source:json.source||'yahoo'};
+    chartData={meta:meta,closes:closes,highs:highs,lows:lows,volumes:volumes,timestamps:timestamps,sym:sym,source:json.source||'tradingview'};
     lastTickPrice=meta.regularMarketPrice;
     
     // Build labels
@@ -4592,7 +4454,7 @@ async function tickUpdateChart(){
     var candles=json.data.chart.candles||[];
     // Update source indicator if source changed
     var srcEl=document.getElementById('chartSource');
-    if(srcEl&&json.source){srcEl.textContent=json.source==='tradingview'?'⚡ TradingView':'Yahoo Finance';srcEl.style.color=json.source==='tradingview'?'#00d1ff':'#666';}
+    if(srcEl&&json.source){srcEl.textContent='⚡ TradingView';srcEl.style.color='#00d1ff';}
     var timestamps=candles.map(function(c){return c.t;});
     var closes=candles.map(function(c){return c.c;}).filter(function(v){return v!=null;});
     var highs=candles.map(function(c){return c.h;}).filter(function(v){return v!=null;});
