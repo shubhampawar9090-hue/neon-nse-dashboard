@@ -2860,18 +2860,39 @@ function megaWsBadge(on){
 setTimeout(function(){megaWsInit();mbLoadInstruments();},2500);
 setTimeout(function(){tvPushConnect();},3500);
 setInterval(function(){if(megaWsAlive&&mktOpen()&&megaWs&&megaWs.readyState!==1){try{megaWs.close();}catch(e){}}},60000);
-// INDEX-FEED WATCHDOG (12 Oct 2026): if no index card repaint for 25s during
-// market hours (silent MB stall + TV proxy failure), force a full MegaBull WS
-// reconnect (onclose -> fresh-JWT megaWsInit) and fire an immediate TV poll.
+// INDEX-FEED WATCHDOG v2 (12 Oct 2026): if no index card repaint for 25s during
+// market hours (silent MB stall + relay failure + TV proxy failure), heal AND
+// make it visible: red banner + force MegaBull WS reconnect + immediate polls.
+// If still frozen after 120s, reload the page itself (max 3 reloads / 15 min).
+function staleBanner(on){
+  var el=document.getElementById('staleBanner');
+  if(!el&&on){
+    el=document.createElement('div');el.id='staleBanner';
+    el.style.cssText='position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:99999;background:#9b1c1c;color:#fff;padding:9px 20px;border-radius:8px;font:700 12px/1.4 system-ui,sans-serif;letter-spacing:.6px;box-shadow:0 4px 24px rgba(0,0,0,.55)';
+    el.textContent='LIVE FEED STALLED — auto-recovering…';
+    (document.body||document.documentElement).appendChild(el);
+  }
+  if(el)el.style.display=on?'block':'none';
+}
+var staleSince=0,watchdogBootAt=Date.now();
 setInterval(function(){
-  if(!mktOpen())return;
+  if(!mktOpen()){staleSince=0;staleBanner(false);return;}
   var last=window.__lastIdxPaint||0;
-  if(!last||Date.now()-last<25000)return;
-  window.__lastIdxPaint=Date.now(); // avoid rapid re-fire while healing
+  var stale=(last&&Date.now()-last>25000)||(!last&&Date.now()-watchdogBootAt>45000);
+  if(!stale){staleSince=0;staleBanner(false);return;}
+  if(!staleSince)staleSince=last?Date.now()-25000:watchdogBootAt;
+  staleBanner(true);
   try{megaWs.close();}catch(e){} // triggers fresh-JWT reconnect path
   try{tvPollScanner();}catch(e){}
   try{mbIdxRelay();}catch(e){}
   try{megaWsBadge(false);}catch(e){}
+  if(Date.now()-staleSince>120000&&!document.hidden){
+    try{
+      var rl=JSON.parse(sessionStorage.getItem('staleReloads')||'[]');
+      rl=rl.filter(function(t){return Date.now()-t<900000;});
+      if(rl.length<3){rl.push(Date.now());sessionStorage.setItem('staleReloads',JSON.stringify(rl));location.reload();}
+    }catch(e){location.reload();}
+  }
 },10000);
 
 // ==== AI VIRTUAL PORTFOLIO (virtual broker ledger + live WS LTP) ====
