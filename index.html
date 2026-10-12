@@ -1781,6 +1781,172 @@ body {
 .news-card:hover { border-color: #14b8a6; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
 .news-filter-btn.active { background: #14b8a6; color: #0e1116; border-color: #14b8a6; }
 </style>
+<style>
+/* ================= TERMINAL TABLE LAYOUT v1 (13 Oct 2026) =================
+   Reference-style: signal cards -> dense table rows (ASSET | SIGNAL | ENTRY | SL |
+   TP1 | TP2 | TP3 | RSI | VWAP | ATR) with solid signal pills + teal numeric
+   columns, narrow icon rail sidebar. CSS-only: JS + live-patch ids untouched. */
+
+/* ---------- Signals as a table ---------- */
+.sig-grid {
+  display: flex !important;
+  flex-direction: column;
+  gap: 0;
+  background: #12161c;
+  border: 1px solid #232936;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-bottom: 18px;
+}
+
+.sig-card {
+  display: grid !important;
+  grid-template-columns: minmax(150px,1.5fr) 110px repeat(5, minmax(70px,1fr)) 54px 80px 60px;
+  grid-template-areas: "name badge entry sl tp1 tp2 tp3 rsi vwap atr";
+  align-items: stretch;
+  gap: 0;
+  padding: 0 !important;
+  min-width: 860px;
+  border: none !important;
+  border-bottom: 1px solid #1e242e !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  position: relative;
+  min-height: 34px;
+  transform: none !important;
+}
+.sig-card:hover { background: rgba(20,184,166,.06) !important; transform: none !important; }
+.sig-card.buy  { box-shadow: inset 3px 0 0 #a3e635 !important; }
+.sig-card.sell { box-shadow: inset 3px 0 0 #ff5f56 !important; }
+.sig-card.hold { box-shadow: inset 3px 0 0 #fbbf24 !important; }
+
+/* flatten wrappers so children sit on the card grid */
+.sc-head, .sl-tp, .sc-emas { display: contents !important; }
+.sc-head > div:first-child { display: contents !important; }
+.sc-head::before, .sc-head::after, .sc-head > div:first-child::after,
+.sl-tp::before, .sl-tp::after, .sc-name::after { content: none !important; display: none !important; }
+
+/* ASSET (name + live price + change) */
+.sc-name {
+  grid-area: name;
+  align-self: center;
+  padding: 6px 10px 0;
+  font-size: 13px; font-weight: 700; color: #e8ebf1;
+  line-height: 1.1;
+}
+.sc-price {
+  grid-area: name;
+  align-self: end;
+  justify-self: start;
+  padding: 0 10px 5px;
+  font-size: 10.5px !important; font-weight: 500 !important; color: #8b95a5 !important;
+  line-height: 1;
+}
+.sc-price::before { content: "\20B9"; opacity: .6; margin-right: 1px; }
+
+/* SIGNAL pill: solid red / orange / yellow like the reference */
+.sc-badge {
+  grid-area: badge;
+  position: static !important;
+  align-self: center; justify-self: start;
+  margin-left: 8px;
+  min-width: 88px; text-align: center;
+  font-size: 10.5px !important; font-weight: 800 !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  letter-spacing: .5px;
+  border: none !important;
+  color: #fff !important;
+}
+.sc-badge.sell { background: linear-gradient(180deg,#ef4a3c,#d93a2d) !important; }
+.sc-badge.buy  { background: linear-gradient(180deg,#84cc16,#65a30d) !important; color:#0e1116 !important; }
+.sc-badge.hold { background: linear-gradient(180deg,#f59e0b,#d97706) !important; color:#1a1204 !important; }
+
+/* hide secondary card rows (kept in DOM for JS) */
+.sc-meta, .sc-sigtime, .sc-intra, .sc-tags, .sc-sr-row { display: none !important; }
+
+/* numeric columns: boxes become cells */
+.sl-tp .box {
+  display: flex !important; align-items: center; justify-content: center;
+  padding: 0 4px !important; margin: 0;
+  border: none !important; border-radius: 0 !important;
+  border-left: 1px solid #1a2028 !important;
+  background: transparent !important;
+}
+.sl-tp .box .lbl { display: none !important; }
+.sl-tp .box .val {
+  margin: 0 !important; font-size: 12px !important; font-weight: 600 !important;
+  font-family: "IBM Plex Mono", Consolas, monospace !important;
+  color: #e8ebf1 !important;
+}
+.sl-tp .box.entry { grid-area: entry; }
+.sl-tp .box.sl    { grid-area: sl;  background: rgba(163,230,53,.10) !important; }
+.sl-tp .box.sl .val { color: #d9f99d !important; }
+.sl-tp .box.tp { background: rgba(20,184,166,.28) !important; }
+.sl-tp .box.tp .val { color: #ecfeff !important; }
+.sl-tp .box.tp:nth-of-type(3) { grid-area: tp1; }
+.sl-tp .box.tp:nth-of-type(4) { grid-area: tp2; }
+.sl-tp .box.tp:nth-of-type(5) { grid-area: tp3; }
+.sig-card:hover .sl-tp .box { background-color: inherit; }
+
+/* RSI | VWAP | ATR cells (children of .sc-emas, which is display:contents) */
+.sc-emas .sc-ema-lbl { display: none !important; }
+.sc-emas .sc-ema-val {
+  display: flex !important; align-items: center; justify-content: center;
+  margin: 0 !important; padding: 0 4px;
+  border-left: 1px solid #1a2028;
+  font-family: "IBM Plex Mono", Consolas, monospace !important;
+  font-size: 12px !important; font-weight: 600 !important;
+}
+/* order inside .sc-emas: EMA(1) RSI(2) VWAP(3) ATR(4) */
+.sc-emas .sc-ema-val:nth-of-type(1) { display: none !important; }
+.sc-emas .sc-ema-val:nth-of-type(2) { grid-area: rsi;  }
+.sc-emas .sc-ema-val:nth-of-type(3) { grid-area: vwap; background: rgba(163,230,53,.14); color: #d9f99d !important; }
+.sc-emas .sc-ema-val:nth-of-type(4) { grid-area: atr;  background: #0e1116; color: #e8ebf1 !important; }
+.sc-emas .sc-ema-val:nth-of-type(2) { background: rgba(20,184,166,.28); color: #ecfeff !important; }
+
+/* section headers + grid header strip */
+.sig-section { border-radius: 3px !important; font-size: 12px !important; padding: 7px 12px !important; margin: 20px 0 8px !important; }
+
+.sig-grid > .sig-card:first-of-type { border-top: none; }
+
+/* ---------- Narrow icon rail sidebar ---------- */
+.sidebar { width: 64px !important; padding: 12px 0 !important; align-items: center; }
+.sidebar-menu { align-items: center; gap: 6px; width: 100%; }
+.sidebar-item {
+  flex-direction: column; justify-content: center;
+  width: 52px !important; height: 52px;
+  padding: 0 !important; gap: 3px !important;
+  font-size: 8px !important; letter-spacing: .6px !important;
+  border-radius: 6px; text-align: center;
+}
+.sidebar-item .sidebar-icon { font-size: 17px; }
+.sidebar-item .sidebar-label { font-size: 8px; line-height: 1; }
+.sidebar-item.active { background: #14211f !important; box-shadow: inset 2px 0 0 #14b8a6 !important; }
+
+/* ---------- Index cards: compact, reference proportions ---------- */
+.idx-pcard { padding: 9px 12px !important; border-radius: 5px !important; }
+.idx-pcard .ipc-name { font-size: 14px !important; color: #e8ebf1 !important; letter-spacing: .3px !important; text-transform: none !important; }
+
+/* real column header row (injected by ensureSigHeaders) */
+.sig-thead {
+  display: grid;
+  grid-template-columns: minmax(150px,1.5fr) 110px repeat(5, minmax(70px,1fr)) 54px 80px 60px;
+  min-width: 860px;
+  background: #0e1116;
+  border-bottom: 1px solid #232936;
+  position: sticky; top: 0; z-index: 2;
+}
+.sig-thead > div {
+  padding: 8px 10px;
+  font-size: 10px; font-weight: 700; letter-spacing: .9px;
+  color: #8b95a5; text-transform: uppercase;
+  text-align: center;
+}
+.sig-thead > div:first-child { text-align: left; }
+.sig-thead > div + div { border-left: 1px solid #1a2028; }
+</style>
 </head>
 <body>
 <!-- TOP HEADER -->
@@ -3034,7 +3200,7 @@ var staleSince=0,watchdogBootAt=Date.now();
 // up to 10 min after every deploy -> user sees frozen dashboards. This checks
 // for a newer BUILD_STAMP every 5 min (+ on tab focus) with a no-store fetch
 // and reloads when a new build ships. Reload guarded to 3/15 min.
-var BUILD_STAMP='20261013-0035';
+var BUILD_STAMP='20261013-0045';
 function checkNewBuild(){
   if(location.protocol==='file:')return;
   fetch(location.pathname+'?buildcheck='+Date.now(),{cache:'no-store'})
@@ -3537,6 +3703,17 @@ function renderCard(d){
   return h;
 }
 
+
+function ensureSigHeaders(){
+  ['buyCards','sellCards','holdCards'].forEach(function(id){
+    var g=document.getElementById(id); if(!g) return;
+    if(!g.querySelector('.sig-card')) return;
+    if(g.querySelector('.sig-thead')) return;
+    var h=document.createElement('div'); h.className='sig-thead';
+    h.innerHTML='<div>ASSET</div><div>SIGNAL</div><div>ENTRY</div><div>SL</div><div>TP1</div><div>TP2</div><div>TP3</div><div>RSI</div><div>VWAP</div><div>ATR</div>';
+    g.insertBefore(h,g.firstChild);
+  });
+}
 function renderTA(data){
   var v=data.filter(function(d){return!d.error;});
   var b=v.filter(function(d){return d.signal.indexOf('BUY')>=0;}).sort(function(a,b){return (b.buyScore||0)-(a.buyScore||0);});
@@ -3546,6 +3723,7 @@ function renderTA(data){
   document.getElementById('sellCards').innerHTML=s.map(renderCard).join('')||'<div class="loading">No sell signals</div>';
   document.getElementById('holdCards').innerHTML=h.map(renderCard).join('')||'<div class="loading">No hold signals</div>';
   window._taLoaded=true;
+  try{ensureSigHeaders();}catch(e){}
 }
 
 
