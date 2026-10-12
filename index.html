@@ -2675,6 +2675,7 @@ function tvPushFrame(p){
     if(!wasAlive)tvPushBadge(true);
     renderIndexPriceCards();
     renderHeaderIndices();
+    patchSigCard(yh,lp,(v.ch!=null?v.ch:(lp-prev)),(v.chp!=null?v.chp:(prev?((lp-prev)/prev*100):0)));
   });
 }
 function tvPushConnect(){
