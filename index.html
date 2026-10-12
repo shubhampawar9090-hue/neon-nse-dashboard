@@ -2585,6 +2585,7 @@ function flashPrice(el,sym,newPrice){
 }
 
 function renderIndexPriceCards(){
+  window.__lastIdxPaint=Date.now();
   Object.keys(ipcSymbols).forEach(function(sym){
     var d=ipcCache[sym];
     var pfx=ipcSymbols[sym].prefix;
@@ -2822,6 +2823,18 @@ function megaWsBadge(on){
 setTimeout(function(){megaWsInit();mbLoadInstruments();},2500);
 setTimeout(function(){tvPushConnect();},3500);
 setInterval(function(){if(megaWsAlive&&mktOpen()&&megaWs&&megaWs.readyState!==1){try{megaWs.close();}catch(e){}}},60000);
+// INDEX-FEED WATCHDOG (12 Oct 2026): if no index card repaint for 25s during
+// market hours (silent MB stall + TV proxy failure), force a full MegaBull WS
+// reconnect (onclose -> fresh-JWT megaWsInit) and fire an immediate TV poll.
+setInterval(function(){
+  if(!mktOpen())return;
+  var last=window.__lastIdxPaint||0;
+  if(!last||Date.now()-last<25000)return;
+  window.__lastIdxPaint=Date.now(); // avoid rapid re-fire while healing
+  try{megaWs.close();}catch(e){} // triggers fresh-JWT reconnect path
+  try{tvPollScanner();}catch(e){}
+  try{megaWsBadge(false);}catch(e){}
+},10000);
 
 // ==== AI VIRTUAL PORTFOLIO (virtual broker ledger + live WS LTP) ====
 var VP_TOKENS={};               // instrumentToken -> {id, entry, qty}
