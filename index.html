@@ -2723,6 +2723,42 @@ var MEGA_WS_TOKENS={'^NSEI':'256265','^NSEBANK':'260105','^INDIAVIX':'264969','^
 // ==== MEGABULL EQUITY FEED — all stock prices from MegaBull WS per se (12 Oct 2026) ====
 var mbStockTok={},mbTokSym={},mbStockFresh={},mbStocksLoaded=false;
 var megaWsAlive=false,megaWs=null,megaWsRetry=0,megaWsTimer=null;var mbIdxFresh={};
+// MB INDEX RELAY (12 Oct 2026): server-side mb-idx-ltp keeps index cards on
+// FRESH MegaBull prices when this browser's own MB WS dies. TV scanner lags
+// 17-46 pts on indices and showed stale "not moving" prices. Priority:
+// browser MB WS > MB relay (>TV only when relay also stale) > TV scanner.
+var mbRelayFresh={},mbRelayBusy=false,mbRelayFail=0,mbRelayTick=0;
+function mbIdxRelay(){
+  if(!mktOpen()||mbRelayBusy||window.megaWsAlive)return;
+  mbRelayTick++;if(mbRelayFail>=5&&(mbRelayTick%5))return; // back off if relay failing
+  mbRelayBusy=true;
+  fetch(SUPABASE_EDGE_BASE+'/mb-idx-ltp',{headers:{'Authorization':'Bearer '+SUPABASE_KEY}})
+    .then(function(r){return r.json();})
+    .then(function(j){
+      mbRelayBusy=false;
+      if(!j||!j.ok||!j.ltp){mbRelayFail++;return;}
+      mbRelayFail=0;
+      var now=Date.now();
+      Object.keys(j.ltp).forEach(function(yh){
+        var lp=j.ltp[yh];
+        if(lp==null)return;
+        if(now-(mbIdxFresh[yh]||0)<10000)return; // browser MB owns it
+        var old=ipcCache[yh]||{};
+        var prev=old.prev!=null?old.prev:lp;
+        var pct=prev?((lp-prev)/prev*100):0;
+        ipcCache[yh]={price:lp,prev:prev,open:old.open!=null?old.open:lp,
+          high:Math.max(lp,old.high||lp),low:Math.min(lp,old.low||lp),
+          chg:lp-prev,pct:pct};
+        headerIdxCache[yh]={price:lp,change:lp-prev,changePercent:pct};
+        mbRelayFresh[yh]=now;
+        renderIndexPriceCards();
+        renderHeaderIndices();
+        patchSigCard(yh,lp,lp-prev,pct);
+      });
+    })
+    .catch(function(){mbRelayBusy=false;mbRelayFail++;});
+}
+setInterval(mbIdxRelay,6000);
 
 // LIVE PRICE PATCH (12 Oct 2026): MegaBull WS ticks update signal-card prices in real time
 var sigCardSyms={};
@@ -2834,6 +2870,7 @@ setInterval(function(){
   window.__lastIdxPaint=Date.now(); // avoid rapid re-fire while healing
   try{megaWs.close();}catch(e){} // triggers fresh-JWT reconnect path
   try{tvPollScanner();}catch(e){}
+  try{mbIdxRelay();}catch(e){}
   try{megaWsBadge(false);}catch(e){}
 },10000);
 
@@ -3993,6 +4030,7 @@ function tvPollScanner() {
         // MegaBull WS is fresher for NIFTY/BANKNIFTY/VIX (TV scanner lags ~50pts on BANKNIFTY);
         // TV owns SENSEX (MegaBull token 265 frozen) and takes over any index MegaBull hasn't ticked in 10s
         if (window.megaWsAlive && Date.now() - (mbIdxFresh[yhSym] || 0) < 10000) return;
+        if (mbRelayFresh[yhSym] && Date.now() - mbRelayFresh[yhSym] < 10000) return; // MB relay fresher than lagging TV
         ipcCache[yhSym] = {
           price: close, prev: close - changeAbs, open: open,
           high: high, low: low, chg: changeAbs, pct: changePct
