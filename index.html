@@ -1843,7 +1843,6 @@ body {
   font-size: 10.5px !important; font-weight: 500 !important; color: #8b95a5 !important;
   line-height: 1;
 }
-.sc-price::before { content: "\20B9"; opacity: .6; margin-right: 1px; }
 
 /* SIGNAL pill: solid red / orange / yellow like the reference */
 .sc-badge {
@@ -3229,7 +3228,7 @@ var staleSince=0,watchdogBootAt=Date.now();
 // up to 10 min after every deploy -> user sees frozen dashboards. This checks
 // for a newer BUILD_STAMP every 5 min (+ on tab focus) with a no-store fetch
 // and reloads when a new build ships. Reload guarded to 3/15 min.
-var BUILD_STAMP='20261013-0100';
+var BUILD_STAMP='20261013-0105';
 function checkNewBuild(){
   if(location.protocol==='file:')return;
   fetch(location.pathname+'?buildcheck='+Date.now(),{cache:'no-store'})
